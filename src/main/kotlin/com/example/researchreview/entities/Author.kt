@@ -21,7 +21,7 @@ class Author: BaseEntity() {
 
     @OneToOne(mappedBy = "user")
     @JoinColumn(nullable = true, name = "user_id")
-    var user: Users? = null;
+    var user: User? = null;
 
 //    @ManyToMany
 //    @JoinTable(name = "author_article",
