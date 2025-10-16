@@ -5,7 +5,11 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.MappedSuperclass
+import jakarta.persistence.PrePersist
+import jakarta.persistence.PreUpdate
 import org.hibernate.envers.NotAudited
+import org.springframework.cglib.core.Local
+import java.time.LocalDateTime
 
 @MappedSuperclass
 class BaseEntity {
@@ -14,10 +18,10 @@ class BaseEntity {
     var id: String = "";
 
     @NotAudited
-    var createdAt: Long = System.currentTimeMillis();
+    var createdAt: LocalDateTime = LocalDateTime.now();
 
     @NotAudited
-    var updatedAt: Long = System.currentTimeMillis();
+    var updatedAt: LocalDateTime = LocalDateTime.now();
 
     @NotAudited
     var createdBy: String = "";
@@ -25,4 +29,16 @@ class BaseEntity {
     @NotAudited
     var updatedBy: String = "";
     var deleted: Boolean = false;
+
+    @PrePersist
+    fun prePersist(){
+        createdAt = LocalDateTime.now()
+        createdBy = "system" //TODO: temp, will be replaced by authenticated user's id'
+    }
+
+    @PreUpdate
+    fun preUpdate(){
+        updatedAt = LocalDateTime.now()
+        updatedBy = "system" //TODO: temp, will be replaced by authenticated user's id'
+    }
 }

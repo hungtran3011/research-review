@@ -1,5 +1,6 @@
 package com.example.researchreview.entities
 
+import com.example.researchreview.constants.AccountStatus
 import com.example.researchreview.constants.Role
 import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
@@ -17,6 +18,7 @@ class User: BaseEntity() {
     var email: String = "";
     var role: Role = Role.USER;
     var avatarId: String? = null;
+    var status: AccountStatus = AccountStatus.INACTIVE;
 
     @ManyToOne
     @JoinColumn(name = "institution_id")

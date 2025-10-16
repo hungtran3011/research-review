@@ -25,4 +25,6 @@ class Institution {
     @Column(nullable = false)
     var name: String = "";
     var website: String = "";
+    var logo: String = "";
+    var country: String = "";
 }
