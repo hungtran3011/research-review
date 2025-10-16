@@ -6,9 +6,11 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
+import org.hibernate.envers.Audited
+import org.hibernate.envers.RelationTargetAuditMode
 
 @Entity
-@Table(name = "authors")
+@Table(name = "author")
 class Author: BaseEntity() {
     var name: String = "";
 
@@ -16,10 +18,11 @@ class Author: BaseEntity() {
     var email: String = "";
 
     @ManyToOne
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     @JoinColumn(name = "institution_id")
     var institution: Institution = Institution();
 
-    @OneToOne(mappedBy = "user")
+    @OneToOne
     @JoinColumn(nullable = true, name = "user_id")
     var user: User? = null;
 

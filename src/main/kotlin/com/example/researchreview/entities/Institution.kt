@@ -16,7 +16,7 @@ import java.util.UUID
 @AllArgsConstructor
 @Data
 @Entity
-@Table(name = "institutions")
+@Table(name = "institution")
 class Institution {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

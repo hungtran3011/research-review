@@ -3,6 +3,7 @@ package com.example.researchreview.entities
 import com.example.researchreview.constants.CommentStatus
 import jakarta.persistence.Entity
 import jakarta.persistence.ManyToOne
+import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 
 @Entity
@@ -19,4 +20,7 @@ class CommentThread: BaseEntity() {
     var version: Int = 0;
     var x: Int = 0;
     var y: Int = 0;
+
+    @OneToMany
+    var comments: MutableList<Comment> = mutableListOf();
 }

@@ -5,9 +5,12 @@ import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.hibernate.envers.Audited
+import org.hibernate.envers.RelationTargetAuditMode
 
 @Entity
 @Table(name = "users")
+@Audited
 class User: BaseEntity() {
 
     var name: String = "";
@@ -17,5 +20,6 @@ class User: BaseEntity() {
 
     @ManyToOne
     @JoinColumn(name = "institution_id")
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     var institution: Institution? = null;
 }

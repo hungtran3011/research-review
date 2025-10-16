@@ -5,7 +5,7 @@ import jakarta.persistence.Lob
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "comments")
+@Table(name = "comment")
 class Comment: BaseEntity() {
     @Lob
     var content: String = "";

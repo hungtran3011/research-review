@@ -7,10 +7,13 @@ import jakarta.persistence.Table
 import org.hibernate.envers.Audited
 
 @Entity
-@Table(name = "articles")
+@Table(name = "article")
 class Article: BaseEntity() {
     var title: String = "";
+    @Audited
     var abstract: String = "";
+
+    @Audited
     var conclusion: String = "";
 
     @Audited

@@ -13,5 +13,5 @@ class ArticleAuthor: BaseEntity() {
     @ManyToOne
     var author: Author = Author();
 
-    var order: Int = 0;
+    var authorOrder: Int = 0;
 }
