@@ -1,4 +1,13 @@
 services:
+  app:
+    build: .
+    env_file: .env
+    ports:
+      - '8080:8080'
+    depends_on:
+        - elasticsearch
+        - postgres
+        - redis
   elasticsearch:
     image: 'docker.elastic.co/elasticsearch/elasticsearch:7.17.10'
     environment:
