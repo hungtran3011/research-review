@@ -2,6 +2,8 @@ package com.example.researchreview.dtos
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import org.springframework.cglib.core.Local
+import java.time.LocalDateTime
 
 data class UserDto(
     var id: String,
@@ -18,8 +20,8 @@ data class UserDto(
 
     var avatarId: String,
     var institutionId: String,
-    var createdAt: Long,
-    var updatedAt: Long,
+    var createdAt: LocalDateTime,
+    var updatedAt: LocalDateTime,
     var createdBy: String,
     var updatedBy: String,
 )

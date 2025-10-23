@@ -16,4 +16,5 @@ data class UserRequestDto(
 
     var avatarId: String,
     var institutionId: String,
+    var institutionName: String?, // can be used for searching
 )

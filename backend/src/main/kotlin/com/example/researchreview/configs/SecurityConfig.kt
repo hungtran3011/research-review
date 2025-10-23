@@ -14,15 +14,15 @@ class SecurityConfig {
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         // Security filter chain configuration goes here
         http
-            .csrf { it.ignoringRequestMatchers("/api/v1/test/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html") }
+            .csrf { it.disable() }
             .authorizeHttpRequests {
-                it.requestMatchers(
-                    "/api/v1/test/**",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui.html"
-                ).permitAll()
-                it.anyRequest().authenticated()
+//                it.requestMatchers(
+//                    "/api/v1/test/**",
+//                    "/swagger-ui/**",
+//                    "/v3/api-docs/**",
+//                    "/swagger-ui.html"
+//                ).permitAll()
+                it.anyRequest().permitAll()
             }
         return http.build()
     }

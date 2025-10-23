@@ -1,15 +1,14 @@
 package com.example.researchreview.entities
 
 import jakarta.persistence.*
-import lombok.AllArgsConstructor
 
 @Entity
 @Table(name = "templates")
-@AllArgsConstructor
 class Template(
-    var name: String,
+    var name: String = "",
     var description: String? = "",
-    var bucketPath: String,
+    var bucketPath: String? = null,
+    @Column(columnDefinition = "TEXT")
+    var variables: String? = null, // JSON array of variable names like ["userName", "userEmail", "resetLink"]
 ): BaseEntity() {
-
 }
