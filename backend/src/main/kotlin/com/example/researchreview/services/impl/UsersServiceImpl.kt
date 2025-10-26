@@ -11,6 +11,7 @@ import com.example.researchreview.services.UsersService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class UsersServiceImpl(
@@ -18,6 +19,8 @@ class UsersServiceImpl(
     private val institutionRepository: InstitutionRepository,
     private val userMapper: UserMapper
 ): UsersService {
+
+    @Transactional
     override fun getAll(pageable: Pageable): Page<UserDto> {
         val users = userRepository.findAll(pageable)
         val result = users.map { user ->
@@ -26,16 +29,19 @@ class UsersServiceImpl(
         return result
     }
 
+    @Transactional
     override fun getById(id: String): UserDto {
         val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
         return userMapper.toDto(user)
     }
 
+    @Transactional
     override fun getByEmail(email: String): UserDto? {
         val user = userRepository.findByEmail(email)
         return user?.let { userMapper.toDto(it) }
     }
 
+    @Transactional
     override fun search(
         dto: UserRequestDto,
         pageable: Pageable
@@ -47,6 +53,7 @@ class UsersServiceImpl(
         return result
     }
 
+    @Transactional
     override fun create(userDto: UserRequestDto): UserDto {
         if (userDto.role.equals("ADMIN") or userDto.role.equals("EDITOR")) throw Exception("Admin and Editor roles are not allowed")
         val user = userMapper.toEntity(userDto)
@@ -56,6 +63,7 @@ class UsersServiceImpl(
         return userMapper.toDto(savedUser)
     }
 
+    @Transactional
     override fun update(
         id: String,
         userDto: UserRequestDto
@@ -70,6 +78,7 @@ class UsersServiceImpl(
         return userMapper.toDto(savedUser)
     }
 
+    @Transactional
     override fun updateRole(id: String, role: String): UserDto {
         val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
         val newRole = try { Role.valueOf(role) } catch (e: Exception) { throw IllegalArgumentException("Invalid role") }
@@ -82,6 +91,7 @@ class UsersServiceImpl(
         return userMapper.toDto(savedUser)
     }
 
+    @Transactional
     override fun updateStatus(id: String, status: String): UserDto {
         val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
         val newStatus = try { AccountStatus.valueOf(status) } catch (e: Exception) { throw IllegalArgumentException("Invalid status") }
@@ -91,6 +101,6 @@ class UsersServiceImpl(
     }
 
     override fun delete(id: String) {
-        TODO("Not yet implemented")
+        userRepository.deleteById(id)
     }
 }

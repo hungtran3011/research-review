@@ -33,4 +33,10 @@ interface UserRepository: JpaRepository<User, String> {
 
     @Query("SELECT u FROM User u WHERE u.deleted = false")
     fun getAll(pageable: Pageable): Page<User>
+
+    override fun deleteById(id: String) {
+        val user = findById(id).orElseThrow { Exception("User not found") }
+        user.deleted = true
+        save(user)
+    }
 }

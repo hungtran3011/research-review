@@ -1,11 +1,19 @@
 import './App.css'
 import { Button } from '@fluentui/react-components'
+import { makeStyles } from '@fluentui/react-components'
+
+const buttonStyles = makeStyles({
+  button: {
+    height: '40px',
+  }
+})
 
 function App() {
+  const classes = buttonStyles()
   return (
-    <>
-      <Button appearance="primary">Hello</Button>
-    </>
+    <div className='wrapper'>
+      <Button appearance="primary" className={classes.button}>Hello</Button>
+    </div>
   )
 }
 

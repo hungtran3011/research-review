@@ -5,11 +5,10 @@ import java.util.Base64
 
 class CodeGen {
     fun genCode(): String {
-        var rand = SecureRandom()
-        var double = rand.nextDouble();
-        var code = toBase64(double.toString().toByteArray())
-        return code
-
+        val rand = SecureRandom()
+        val bytes = ByteArray(64)
+        rand.nextBytes(bytes)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 
     fun toBase64(byteArray: ByteArray): String {

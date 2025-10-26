@@ -1,13 +1,18 @@
-import { StrictMode } from 'react'
+// import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { FluentProvider, webDarkTheme } from '@fluentui/react-components'
+import { FluentProvider, webDarkTheme, webLightTheme } from '@fluentui/react-components'
+import { BrowserRouter, Route, Routes } from 'react-router'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+  // <StrictMode>
     <FluentProvider theme={webDarkTheme}>
-      <App />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />} />
+        </Routes>
+      </BrowserRouter>
     </FluentProvider>
-  </StrictMode>,
+  // </StrictMode>,
 )
