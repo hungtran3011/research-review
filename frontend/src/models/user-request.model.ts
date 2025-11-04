@@ -5,4 +5,8 @@ export interface UserRequestDto {
   avatarId: string;
   institutionId: string;
   institutionName?: string;
+  trackId: string;
+  gender?: string;
+  nationality?: string;
+  academicStatus?: string;
 }

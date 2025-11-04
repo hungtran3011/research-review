@@ -33,3 +33,6 @@ build/
 .vscode/
 .env
 application-local.properties
+
+# Local secrets (do not commit)
+secrets/

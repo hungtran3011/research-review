@@ -17,4 +17,10 @@ data class UserRequestDto(
     var avatarId: String,
     var institutionId: String,
     var institutionName: String?, // can be used for searching
+    var trackId: String,
+
+    // new fields for user profile
+    var gender: String = "",
+    var nationality: String = "",
+    var academicStatus: String = ""
 )

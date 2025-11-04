@@ -6,15 +6,16 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.oauth2.jwt.JwtDecoder
-import org.springframework.security.oauth2.jwt.JwtDecoders
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.cors.CorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
     @param:Value("\${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") private val jwkSetUri: String,
-    @param:Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") private val issuerUri: String
+    @param:Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") private val issuerUri: String,
+    private val corsConfigurer: CorsConfigurationSource,
+    private val jwtDecoder: JwtDecoder
 ) {
 
     @Bean
@@ -33,20 +34,11 @@ class SecurityConfig(
             }
             .oauth2ResourceServer {
                 it.jwt { jwtConfigurer ->
-                    jwtConfigurer.decoder(jwtDecoder())
+                    jwtConfigurer.decoder(jwtDecoder)
                 }
             }
+            .cors { cors -> cors.configurationSource(corsConfigurer) }
         return http.build()
     }
 
-    @Bean
-    fun jwtDecoder(): JwtDecoder {
-        if (jwkSetUri.isNotBlank()) {
-            return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build()
-        }
-        if (issuerUri.isNotBlank()) {
-            return JwtDecoders.fromOidcIssuerLocation(issuerUri)
-        }
-        throw IllegalStateException("Either 'spring.security.oauth2.resourceserver.jwt.jwk-set-uri' or 'spring.security.oauth2.resourceserver.jwt.issuer-uri' must be set")
-    }
 }

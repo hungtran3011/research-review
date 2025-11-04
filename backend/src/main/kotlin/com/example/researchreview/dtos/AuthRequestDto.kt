@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank
 data class AuthRequestDto(
     @field:Email(message = "Invalid email format")
     @field:NotBlank(message = "Email is required")
-    val email: String
+    val email: String,
+    val isSignUp: Boolean?
 )
 

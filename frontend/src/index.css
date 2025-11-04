@@ -4,9 +4,20 @@
   padding: 0;
 }
 
-#root, .fui-FluentProvider {
+#root {
   padding: 0;
   margin: 0;
   width: 100vw;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#root > .fui-FluentProvider {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }

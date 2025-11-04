@@ -23,4 +23,9 @@ COPY --from=build /app/target/research-review-0.0.1-SNAPSHOT.jar app.jar
 # Copy resources directory if needed at runtime (though they should be in the JAR)
 COPY --from=build /app/src/main/resources /app/resources
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Entrypoint will read mounted /run/secrets/* or env vars and start the JVM with jwt properties
+ENTRYPOINT ["/app/entrypoint.sh"]

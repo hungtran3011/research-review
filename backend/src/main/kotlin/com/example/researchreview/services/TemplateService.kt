@@ -13,6 +13,6 @@ interface TemplateService {
     fun create(tmpl: TemplateRequestDto): TemplateDto
     fun update(id: String, tmpl: TemplateRequestDto): TemplateDto
     fun delete(id: String): Boolean
-    fun renderTemplate(templateId: String, variables: Map<String, Any>): String
-    fun getTemplateContent(templateId: String): String?
+    fun renderTemplate(id: String, variables: Map<String, Any>): String
+    fun getTemplateContent(id: String): String?
 }

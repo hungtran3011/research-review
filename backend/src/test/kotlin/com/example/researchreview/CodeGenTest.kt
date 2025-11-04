@@ -7,8 +7,7 @@ class CodeGenTest {
 
     @Test
     fun testCodeGen() {
-        val codeGen = CodeGen()
-        val code = codeGen.genCode()
+        val code = CodeGen.genCode()
         println(code)
         assert(code.length != 0);
     }

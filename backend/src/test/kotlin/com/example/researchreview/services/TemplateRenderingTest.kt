@@ -1,8 +1,11 @@
 package com.example.researchreview.services
 
+import io.awspring.cloud.s3.S3Template
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 
@@ -11,6 +14,12 @@ class TemplateRenderingTest {
 
     @Autowired
     private lateinit var stringTemplateEngine: TemplateEngine
+
+    @MockitoBean
+    private lateinit var redisTemplate: RedisTemplate<String, String>
+
+    @MockitoBean
+    private lateinit var s3Template: S3Template
 
     @Test
     fun `test template rendering with variables`() {

@@ -6,7 +6,6 @@ import com.example.researchreview.mappers.TemplateMapper
 import com.example.researchreview.repositories.TemplateRepository
 import com.example.researchreview.services.S3Service
 import com.example.researchreview.services.TemplateService
-import lombok.extern.slf4j.Slf4j
 import org.owasp.html.HtmlPolicyBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -107,8 +106,8 @@ class TemplateServiceImpl @Autowired constructor(
         return true
     }
 
-    override fun renderTemplate(templateId: String, variables: Map<String, Any>): String {
-        val htmlContent = getTemplateContent(templateId)
+    override fun renderTemplate(id: String, variables: Map<String, Any>): String {
+        val htmlContent = getTemplateContent(id)
             ?: throw Exception("Template not found or content unavailable")
 
         // Create Thymeleaf context with variables
