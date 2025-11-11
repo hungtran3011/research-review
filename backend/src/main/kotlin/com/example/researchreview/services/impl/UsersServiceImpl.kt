@@ -33,7 +33,8 @@ class UsersServiceImpl(
 
     @Transactional
     override fun getById(id: String): UserDto {
-        val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
+        val user = userRepository.findById(id)
+            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
         return userMapper.toDto(user)
     }
 
@@ -57,18 +58,44 @@ class UsersServiceImpl(
 
     @Transactional
     override fun create(userDto: UserRequestDto): UserDto {
-        if (userDto.role.equals("ADMIN") or userDto.role.equals("EDITOR")) throw Exception("Admin and Editor roles are not allowed")
+        // Validate role - don't allow creating ADMIN or EDITOR via this endpoint
+        if (userDto.role.equals(Role.ADMIN.name) || userDto.role.equals(Role.EDITOR.name)) {
+            throw IllegalArgumentException("Admin and Editor roles are not allowed for self-registration")
+        }
+        
+        // Check if user already exists
+        val existingUser = userRepository.findByEmail(userDto.email)
+        if (existingUser != null) {
+            throw IllegalArgumentException("User with email ${userDto.email} already exists")
+        }
+        
+        // Create user entity from DTO
         val user = userMapper.toEntity(userDto)
-        val institution = institutionRepository.findById(userDto.institutionId).orElseThrow { Exception("Institution not found") }
+        
+        // Set institution
+        val institution = institutionRepository.findById(userDto.institutionId)
+            .orElseThrow { IllegalArgumentException("Institution not found with id: ${userDto.institutionId}") }
         user.institution = institution
-        // Resolve track from repository if provided
+        
+        // Set track if provided
         val trackId = userDto.trackId
         if (trackId.isNotBlank()) {
-            val track = trackRepository.findById(trackId).orElseThrow { Exception("Track not found") }
+            val track = trackRepository.findById(trackId)
+                .orElseThrow { IllegalArgumentException("Track not found with id: $trackId") }
             user.track = track
         } else {
             user.track = null
         }
+        
+        // Set additional profile fields
+        userMapper.stringToGender(userDto.gender)?.let { user.gender = it }
+        user.nationality = userDto.nationality
+        userMapper.stringToAcademicStatus(userDto.academicStatus)?.let { user.academicStatus = it }
+        
+        // Set user as active after completing profile
+        user.status = AccountStatus.ACTIVE
+        
+        // Save and return
         val savedUser = userRepository.save(user)
         return userMapper.toDto(savedUser)
     }
@@ -78,36 +105,65 @@ class UsersServiceImpl(
         id: String,
         userDto: UserRequestDto
     ): UserDto {
-        // temp, will be replaced by authenticated user's id'
-        val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
-        val institution = institutionRepository.findById(userDto.institutionId).orElseThrow { Exception("Institution not found") }
+        // Find existing user
+        val user = userRepository.findById(id)
+            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+        
+        // Validate email hasn't changed or if changed, it's not taken
+        if (userDto.email != user.email) {
+            val existingUser = userRepository.findByEmail(userDto.email)
+            if (existingUser != null && existingUser.id != id) {
+                throw IllegalArgumentException("Email ${userDto.email} is already taken")
+            }
+            user.email = userDto.email
+        }
+        
+        // Update basic fields
         user.name = userDto.name
         user.avatarId = userDto.avatarId
+        
+        // Update institution
+        val institution = institutionRepository.findById(userDto.institutionId)
+            .orElseThrow { IllegalArgumentException("Institution not found with id: ${userDto.institutionId}") }
         user.institution = institution
-        // set profile fields
-        userMapper.stringToGender(userDto.gender)?.let { user.gender = it }
-        user.nationality = userDto.nationality
-        userMapper.stringToAcademicStatus(userDto.academicStatus)?.let { user.academicStatus = it }
-        // Resolve track from repository if provided
+        
+        // Update track if provided
         val trackId = userDto.trackId
         if (trackId.isNotBlank()) {
-            val track = trackRepository.findById(trackId).orElseThrow { Exception("Track not found") }
+            val track = trackRepository.findById(trackId)
+                .orElseThrow { IllegalArgumentException("Track not found with id: $trackId") }
             user.track = track
         } else {
             user.track = null
         }
+        
+        // Update profile fields
+        userMapper.stringToGender(userDto.gender)?.let { user.gender = it }
+        user.nationality = userDto.nationality
+        userMapper.stringToAcademicStatus(userDto.academicStatus)?.let { user.academicStatus = it }
+        
+        // Save and return
         val savedUser = userRepository.save(user)
         return userMapper.toDto(savedUser)
     }
 
     @Transactional
     override fun updateRole(id: String, role: String): UserDto {
-        val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
-        val newRole = try { Role.valueOf(role) } catch (_: Exception) { throw IllegalArgumentException("Invalid role") }
-        // Only allow ADMIN to assign ADMIN or EDITOR roles
-        if ((newRole == Role.ADMIN || newRole == Role.EDITOR)) {
-            throw IllegalArgumentException("Only ADMIN can assign ADMIN or EDITOR roles.")
+        val user = userRepository.findById(id)
+            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+        
+        val newRole = try {
+            Role.valueOf(role)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Invalid role: $role. Valid roles are: ${Role.values().joinToString()}")
         }
+        
+        // Security check: Only allow ADMIN to assign ADMIN or EDITOR roles
+        // This should be enhanced with actual authentication check
+        if (newRole == Role.ADMIN || newRole == Role.EDITOR) {
+            throw IllegalArgumentException("Only ADMIN can assign ADMIN or EDITOR roles")
+        }
+        
         user.role = newRole
         val savedUser = userRepository.save(user)
         return userMapper.toDto(savedUser)
@@ -115,14 +171,25 @@ class UsersServiceImpl(
 
     @Transactional
     override fun updateStatus(id: String, status: String): UserDto {
-        val user = userRepository.findById(id).orElseThrow { Exception("User not found") }
-        val newStatus = try { AccountStatus.valueOf(status) } catch (_: Exception) { throw IllegalArgumentException("Invalid status") }
+        val user = userRepository.findById(id)
+            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+        
+        val newStatus = try {
+            AccountStatus.valueOf(status)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Invalid status: $status. Valid statuses are: ${AccountStatus.values().joinToString()}")
+        }
+        
         user.status = newStatus
         val savedUser = userRepository.save(user)
         return userMapper.toDto(savedUser)
     }
 
+    @Transactional
     override fun delete(id: String) {
+        val user = userRepository.findById(id)
+            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+        // Soft delete
         userRepository.deleteById(id)
     }
 }

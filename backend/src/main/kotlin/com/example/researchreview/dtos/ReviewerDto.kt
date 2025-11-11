@@ -12,8 +12,8 @@ data class ReviewerDto(
 
     var institution: InstitutionDto,
     var user: UserDto?,
-    var createdAt: LocalDateTime,
-    var updatedAt: LocalDateTime,
-    var createdBy: String,
-    var updatedBy: String
+    var createdAt: LocalDateTime?,
+    var updatedAt: LocalDateTime?,
+    var createdBy: String?,
+    var updatedBy: String?
 )

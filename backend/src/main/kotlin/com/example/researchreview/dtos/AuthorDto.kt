@@ -8,8 +8,8 @@ data class AuthorDto(
     var email: String,
     var institution: InstitutionDto,
     var user: UserDto?,
-    var createdAt: LocalDateTime = LocalDateTime.now(),
-    var updatedAt: LocalDateTime = LocalDateTime.now(),
-    var createdBy: String,
-    var updatedBy: String
+    var createdAt: LocalDateTime? = LocalDateTime.now(),
+    var updatedAt: LocalDateTime? = LocalDateTime.now(),
+    var createdBy: String?,
+    var updatedBy: String?
 )

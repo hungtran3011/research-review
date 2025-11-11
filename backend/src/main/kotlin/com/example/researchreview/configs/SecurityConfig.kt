@@ -28,7 +28,10 @@ class SecurityConfig(
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/swagger-ui.html",
-                    "/api/v1/auth/**"
+                    "/api/v1/auth/**",
+                    "/api/v1/users/complete-info",
+                    "/api/v1/institutions/**",
+                    "/api/v1/tracks/**"
                 ).permitAll()
                 it.anyRequest().authenticated()
             }

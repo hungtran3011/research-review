@@ -9,8 +9,8 @@ import jakarta.persistence.Table
 class Institution(
     @Column(nullable = false)
     var name: String = "",
-    var website: String = "",
-    var logo: String = "",
+    var website: String? = "",
+    var logo: String? = "",
     var country: String = ""
 ): BaseEntity() {
     constructor() : this("", "", "", "")

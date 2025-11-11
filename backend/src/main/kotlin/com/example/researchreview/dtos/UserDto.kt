@@ -25,8 +25,8 @@ data class UserDto(
     var gender: Gender = Gender.OTHER,
     var nationality: String = "",
     var academicStatus: AcademicStatus = AcademicStatus.TS,
-    var createdAt: LocalDateTime = LocalDateTime.now(),
-    var updatedAt: LocalDateTime = LocalDateTime.now(),
-    var createdBy: String = "",
-    var updatedBy: String = "",
+    var createdAt: LocalDateTime? = LocalDateTime.now(),
+    var updatedAt: LocalDateTime? = LocalDateTime.now(),
+    var createdBy: String? = "",
+    var updatedBy: String? = "",
 )

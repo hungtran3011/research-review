@@ -6,7 +6,7 @@ import jakarta.persistence.Table
 @Entity
 @Table(name = "track")
 class Track: BaseEntity() {
-    var name: String = "";
-    var description: String = "";
+    var name: String = ""
+    var description: String? = "";
     var isActive: Boolean = true;
 }

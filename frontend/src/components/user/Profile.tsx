@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import { makeStyles, Input, Field, Text, Combobox, Option, Button } from '@fluentui/react-components'
+import { useState, useEffect } from 'react'
+import { makeStyles, Input, Field, Text, Combobox, Option, Button, Spinner } from '@fluentui/react-components'
 import { Mail16Regular } from '@fluentui/react-icons'
 import { useAuthStore } from '../../stores/authStore'
 import { getWorldData } from '../../services/country.service'
 import { useQuery } from '@tanstack/react-query'
 import type { UserRequestDto } from '../../models'
-import { useCompleteUserInfo } from '../../hooks/useUser'
+import { useCurrentUser, useUpdateUser } from '../../hooks/useUser'
 import { Gender, AcademicStatus, GenderMap } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
+import { Navigate } from 'react-router'
 
 const useStyles = makeStyles({
     root: {
@@ -20,13 +21,16 @@ const useStyles = makeStyles({
         height: '100%',
         flexGrow: 1,
         alignSelf: 'center',
-        padding: '0 16px',
+        padding: '32px 16px',
+        maxWidth: '800px',
+        margin: '0 auto',
     },
 
     form: {
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
+        width: '100%',
     },
 
     formField: {
@@ -49,22 +53,31 @@ const useStyles = makeStyles({
 
     submitButton: {
         margin: "auto"
+    },
+
+    loadingContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '16px',
     }
 })
 
-function Info() {
+function Profile() {
     const classes = useStyles()
-    const { email } = useAuthStore()
+    const { email, isAuthenticated } = useAuthStore()
     const { data: worldData } = useQuery({
         queryKey: ['worldData'],
         queryFn: getWorldData
     })
+    const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser(email || '')
     const { data: institutionsResponse, isLoading: institutionsLoading } = useInstitutions()
     const { data: tracksResponse, isLoading: tracksLoading } = useTracks()
-    const completeUserInfo = useCompleteUserInfo()
+    const updateUser = useUpdateUser()
     
     const institutions = institutionsResponse?.data?.content || []
     const tracks = tracksResponse?.data || []
+    const currentUser = currentUserResponse?.data
     
     const [form, setForm] = useState<UserRequestDto>({
         email: email || '',
@@ -85,12 +98,42 @@ function Info() {
         lastName: '',
         phoneNumber: '',
         dateOfBirth: '',
-        researchField: '',
     })
+
+    // Populate form with current user data
+    useEffect(() => {
+        if (currentUser) {
+            const nameParts = currentUser.name.split(' ')
+            const firstName = nameParts.pop() || ''
+            const lastName = nameParts.join(' ')
+
+            setForm({
+                email: currentUser.email,
+                name: currentUser.name,
+                role: currentUser.role,
+                avatarId: currentUser.avatarId || '',
+                institutionId: currentUser.institutionId || '',
+                institutionName: currentUser.institutionName || currentUser.institution?.name || '',
+                trackId: currentUser.trackId || currentUser.track?.id || '',
+                gender: currentUser.gender || '',
+                nationality: currentUser.nationality || '',
+                academicStatus: currentUser.academicStatus || '',
+            })
+
+            setAdditionalFields({
+                firstName,
+                lastName,
+                phoneNumber: '', // Add if available in UserDto
+                dateOfBirth: '', // Add if available in UserDto
+            })
+        }
+    }, [currentUser])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        completeUserInfo.mutate(form)
+        if (currentUser?.id) {
+            updateUser.mutate({ id: currentUser.id, data: form })
+        }
     }
 
     const handleFirstNameChange = (value: string) => {
@@ -103,18 +146,42 @@ function Info() {
         setForm({ ...form, name: `${value} ${additionalFields.firstName}`.trim() })
     }
 
-    document.title = "Thông tin tài khoản - Research Review"
+    document.title = "Thông tin cá nhân - Research Review"
+
+    // Redirect if not authenticated
+    if (!isAuthenticated) {
+        return <Navigate to="/sign-in" replace />
+    }
+
+    // Loading state
+    if (userLoading) {
+        return (
+            <div className={classes.root}>
+                <div className={classes.loadingContainer}>
+                    <Spinner size="large" label="Đang tải thông tin..." />
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className={classes.root}>
-            <Text as="h1" size={500} weight={"bold"}>Nhập thông tin của bạn</Text>
+            <Text as="h1" size={500} weight={"bold"}>Thông tin cá nhân</Text>
+            
+            {updateUser.isSuccess && (
+                <Text className={classes.successText}>Cập nhật thông tin thành công!</Text>
+            )}
+            {updateUser.isError && (
+                <Text className={classes.errorText}>Có lỗi xảy ra khi cập nhật thông tin</Text>
+            )}
+
             <form className={classes.form} onSubmit={handleSubmit}>
                 <Field label={"Email"} required hint={"Email đã đăng ký, không thay đổi"} className={classes.formField}>
                     <Input 
                         contentBefore={<Mail16Regular />} 
                         placeholder='email@example.com' 
                         disabled 
-                        value={email || form.email} 
+                        value={form.email} 
                     />
                 </Field>
                 <div className={classes.row}>
@@ -136,7 +203,7 @@ function Info() {
                     </Field>
                 </div>
                 <div className={classes.row}>
-                    <Field label={"Số điện thoại"} required hint={"Số điện thoại 10 số"} className={classes.formField}>
+                    <Field label={"Số điện thoại"} hint={"Số điện thoại 10 số"} className={classes.formField}>
                         <Input 
                             placeholder='VD: 0123456789' 
                             value={additionalFields.phoneNumber}
@@ -144,7 +211,7 @@ function Info() {
                             type='tel'
                         />
                     </Field>
-                    <Field label={"Ngày tháng năm sinh"} required hint={"Ngày tháng năm sinh của bạn"} className={classes.formField}>
+                    <Field label={"Ngày tháng năm sinh"} hint={"Ngày tháng năm sinh của bạn"} className={classes.formField}>
                         <Input 
                             placeholder='VD: 01/01/2000' 
                             value={additionalFields.dateOfBirth}
@@ -182,7 +249,7 @@ function Info() {
                     </Field>
                 </div>
                 <div className={classes.row}>
-                    <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn, ví dụ Trường Đại học ABC"} className={classes.formField}>
+                    <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn"} className={classes.formField}>
                         <Combobox 
                             placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
                             value={form.institutionId ? institutions.find(i => i.id === form.institutionId)?.name || '' : ''}
@@ -237,14 +304,14 @@ function Info() {
                     </Field>
                 </div>
 
-                <div style={{ display: "flex" }}>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
                     <Button 
                         appearance="primary" 
                         type="submit" 
                         className={classes.submitButton}
-                        disabled={completeUserInfo.isPending}
+                        disabled={updateUser.isPending}
                     >
-                        {completeUserInfo.isPending ? 'Đang xử lý...' : 'Hoàn tất đăng ký'}
+                        {updateUser.isPending ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
                     </Button>
                 </div>
             </form>
@@ -252,4 +319,4 @@ function Info() {
     )
 }
 
-export default Info
+export default Profile

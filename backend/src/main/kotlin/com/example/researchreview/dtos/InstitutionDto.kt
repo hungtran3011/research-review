@@ -4,6 +4,6 @@ data class InstitutionDto(
     var id: String = "",
     var name: String = "",
     var country: String = "",
-    var website: String = "",
-    var logo: String = "",
+    var website: String? = "",
+    var logo: String? = "",
 )

@@ -1,4 +1,5 @@
 import type { TrackDto } from "./track.model";
+import type { InstitutionDto } from "./institution.model";
 
 export interface UserDto {
   id: string;
@@ -7,7 +8,13 @@ export interface UserDto {
   email: string;
   avatarId: string;
   institutionId: string;
-  track: TrackDto;
+  institutionName: string;
+  institution?: InstitutionDto;
+  trackId: string;
+  track?: TrackDto;
+  gender: string;
+  nationality: string;
+  academicStatus: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

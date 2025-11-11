@@ -11,6 +11,7 @@ import VerifyFail from './components/auth/VerifyFailed.tsx'
 import VerifyToken from './components/auth/VerifyToken.tsx'
 import { QueryProvider } from './providers/QueryProvider.tsx'
 import Info from './components/user/Info.tsx'
+import Profile from './components/user/Profile.tsx'
 import Nav from './components/common/Nav.tsx'
 import { ThemeProvider } from './providers/ThemeProvider.tsx'
 
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/verify-success" element={<VerifySucess />} />
           <Route path="/verify-failed" element={<VerifyFail />} />
           <Route path='/info' element={<Info />} />
+          <Route path='/profile' element={<Profile />} />
           <Route path="*" element={<div>Not Found</div>} />
         </Routes>
       </BrowserRouter>

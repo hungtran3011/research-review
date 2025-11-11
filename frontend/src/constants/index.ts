@@ -4,3 +4,5 @@ export * from './article-status';
 export * from './business-code';
 export * from './comment-status';
 export * from './role';
+export * from './gender';
+export * from './academic-status';

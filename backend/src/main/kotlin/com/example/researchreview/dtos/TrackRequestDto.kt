@@ -1,7 +1,12 @@
 package com.example.researchreview.dtos
 
-class TrackRequestDto {
-    private var name: String? = null
-    private var description: String? = null
-    private var isActive: Boolean? = null
-}
+import jakarta.validation.constraints.NotBlank
+
+data class TrackRequestDto(
+    @field:NotBlank(message = "Name is required")
+    val name: String,
+    
+    val description: String? = null,
+    
+    val isActive: Boolean = true
+)

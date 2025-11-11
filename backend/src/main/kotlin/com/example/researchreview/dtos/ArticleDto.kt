@@ -20,8 +20,8 @@ data class ArticleDto(
     @field:NotBlank(message = "Status is required")
     var authors: List<AuthorDto>,
     var reviewers: List<ReviewerDto>,
-    var createdAt: LocalDateTime,
-    var updatedAt: LocalDateTime,
-    var createdBy: String,
-    var updatedBy: String
+    var createdAt: LocalDateTime?,
+    var updatedAt: LocalDateTime?,
+    var createdBy: String?,
+    var updatedBy: String?
 )

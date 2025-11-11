@@ -2,6 +2,7 @@ import React from 'react'
 import {CheckmarkCircle48Color} from '@fluentui/react-icons'
 import { makeStyles, Text } from '@fluentui/react-components'
 import { useLocation, Navigate, useNavigate } from 'react-router'
+import { useAuthStore } from '../../stores/authStore'
 
 const useStyles = makeStyles({
   root: {
@@ -35,19 +36,28 @@ function VerifySucess() {
   const location = useLocation()
   const navigate = useNavigate()
   const fromVerify = location.state?.fromVerify
+  const { isSignUp } = useAuthStore()
 
-  document.title = "Xác thực email thành công - Research Review"
+  document.title = isSignUp 
+    ? "Xác thực email thành công - Research Review"
+    : "Đăng nhập thành công - Research Review"
 
-  // Redirect to info page after 5 seconds
+  // Redirect to appropriate page after 5 seconds
   React.useEffect(() => {
     if (!fromVerify) return
 
     const timer = setTimeout(() => {
-      navigate('/info')
+      if (isSignUp) {
+        // Sign up flow: go to info page to complete profile
+        navigate('/info')
+      } else {
+        // Sign in flow: go to home page
+        navigate('/')
+      }
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [navigate, fromVerify])
+  }, [navigate, fromVerify, isSignUp])
 
   // Redirect if not from verify flow
   if (!fromVerify) {
@@ -58,9 +68,15 @@ function VerifySucess() {
     <div className={classes.root}>
       <div className={classes.titleRegion}>
         <CheckmarkCircle48Color />
-        <Text as="h1" weight="bold" size={500}>Xác thực email thành công</Text>
+        <Text as="h1" weight="bold" size={500}>
+          {isSignUp ? 'Xác thực email thành công' : 'Đăng nhập thành công'}
+        </Text>
       </div>
-      <Text size={400}>Bạn sẽ tiếp tục đến với bước điền thông tin cá nhân sau 5 giây...</Text>
+      <Text size={400}>
+        {isSignUp 
+          ? 'Bạn sẽ tiếp tục đến với bước điền thông tin cá nhân sau 5 giây...'
+          : 'Bạn sẽ được chuyển đến trang chủ sau 5 giây...'}
+      </Text>
     </div>
   )
 }

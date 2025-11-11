@@ -7,6 +7,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.MappedSuperclass
 import jakarta.persistence.PrePersist
 import jakarta.persistence.PreUpdate
+import org.hibernate.annotations.ColumnDefault
 import org.hibernate.envers.NotAudited
 import org.springframework.cglib.core.Local
 import java.time.LocalDateTime
@@ -14,6 +15,7 @@ import java.time.LocalDateTime
 @MappedSuperclass
 class BaseEntity {
     @Id
+    @ColumnDefault("gen_random_uuid()") // For UUID generation in Postgres
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: String = "";
 
