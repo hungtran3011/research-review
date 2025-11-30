@@ -31,5 +31,6 @@ interface ReviewerMapper {
 
     @Named("userIdToUser")
     fun userIdToUser(id: String?): User = if (id.isNullOrBlank()) User() else User().apply { this.id = id }
+
 }
 

@@ -1,5 +1,6 @@
 package com.example.researchreview.entities
 
+import com.example.researchreview.utils.SecurityUtils
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -34,13 +35,17 @@ class BaseEntity {
 
     @PrePersist
     fun prePersist(){
-        createdAt = LocalDateTime.now()
-        createdBy = "system" //TODO: temp, will be replaced by authenticated user's id'
+        val userId = SecurityUtils.currentUserId()
+        val now = LocalDateTime.now()
+        createdAt = now
+        updatedAt = now
+        createdBy = userId
+        updatedBy = userId
     }
 
     @PreUpdate
     fun preUpdate(){
         updatedAt = LocalDateTime.now()
-        updatedBy = "system" //TODO: temp, will be replaced by authenticated user's id'
+        updatedBy = SecurityUtils.currentUserId()
     }
 }

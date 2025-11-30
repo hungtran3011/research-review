@@ -1,5 +1,7 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.SpecialErrorCode
+import com.example.researchreview.constants.UserBusinessCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.UserRequestDto
@@ -59,7 +61,7 @@ class UserController(
             } else {
                 ResponseEntity.status(404).body(
                     BaseResponseDto(
-                        code = 404,
+                        code = UserBusinessCode.USER_NOT_FOUND.value,
                         message = "User not found with email: $email",
                         data = null
                     )
@@ -101,7 +103,7 @@ class UserController(
         } catch (e: IllegalArgumentException) {
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
-                    code = 400,
+                    code = SpecialErrorCode.BAD_REQUEST.value, //
                     message = e.message ?: "Invalid request",
                     data = null
                 )
@@ -109,7 +111,7 @@ class UserController(
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(
                 BaseResponseDto(
-                    code = 500,
+                    code = SpecialErrorCode.INTERNAL_ERROR.value,
                     message = "Internal server error: ${e.message}",
                     data = null
                 )

@@ -4,6 +4,7 @@ import com.example.researchreview.constants.EditorBusinessCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.EditorDto
+import com.example.researchreview.dtos.EditorRequestDto
 import com.example.researchreview.services.EditorService
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
@@ -16,7 +17,7 @@ class EditorController(
     private val editorService: EditorService
 ) {
     @PostMapping("/")
-    fun create(@Valid @RequestBody editor: EditorDto): ResponseEntity<BaseResponseDto<EditorDto>> {
+    fun create(@Valid @RequestBody editor: EditorRequestDto): ResponseEntity<BaseResponseDto<EditorDto>> {
         val created = try {
             editorService.create(editor)
         } catch (e: Exception) {
@@ -53,10 +54,23 @@ class EditorController(
     }
 
     @PutMapping("/{id}")
-    fun update(@PathVariable id: String, @RequestBody editor: EditorDto): EditorDto {
-        // ensure the DTO id matches the path id
-        if (editor.id.isBlank()) editor.id = id
-        return editorService.update(editor)
+    fun update(@PathVariable id: String, @Valid @RequestBody editor: EditorRequestDto): ResponseEntity<BaseResponseDto<EditorDto>> {
+        val updated = try {
+            editorService.update(id, editor)
+        } catch (e: Exception) {
+            val response = BaseResponseDto(
+                code = EditorBusinessCode.EDITOR_CREATED_FAIL.value,
+                message = "Errors when updating editor: ${e.message}",
+                data = EditorDto()
+            )
+            return ResponseEntity.status(422).body(response)
+        }
+        val response = BaseResponseDto(
+            code = EditorBusinessCode.EDITOR_FOUND.value,
+            message = "Editor updated successfully",
+            data = updated
+        )
+        return ResponseEntity.ok(response)
     }
 
     @DeleteMapping("/{id}")

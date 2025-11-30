@@ -22,7 +22,7 @@ class TemplateRenderingTest {
     private lateinit var s3Template: S3Template
 
     @Test
-    fun `test template rendering with variables`() {
+    fun templateRenderingWithVariables() {
         // This is the HTML template with Thymeleaf variables
         val templateHtml = """
             <html>
@@ -62,7 +62,7 @@ class TemplateRenderingTest {
     }
 
     @Test
-    fun `test conditional rendering`() {
+    fun conditionalRendering() {
         val templateHtml = """
             <div th:if="${'$'}{isApproved}">
                 <p>Your article has been approved!</p>
@@ -94,7 +94,7 @@ class TemplateRenderingTest {
     }
 
     @Test
-    fun `test list iteration`() {
+    fun listIteration() {
         val templateHtml = """
             <h3>Reviewers:</h3>
             <ul>

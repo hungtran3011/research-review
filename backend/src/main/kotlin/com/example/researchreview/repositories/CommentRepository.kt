@@ -1,7 +1,6 @@
 package com.example.researchreview.repositories
 
-import com.example.researchreview.entities.CommentThread
+import com.example.researchreview.entities.Comment
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface CommentRepository: JpaRepository<CommentThread, String> {
-}
+interface CommentRepository: JpaRepository<Comment, String>

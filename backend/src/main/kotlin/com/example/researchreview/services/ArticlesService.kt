@@ -2,6 +2,7 @@ package com.example.researchreview.services
 
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleRequestDto
+import com.example.researchreview.dtos.InitialReviewRequestDto
 import com.example.researchreview.dtos.ReviewerDto
 import com.example.researchreview.dtos.ReviewerRequestDto
 import org.springframework.data.domain.Page
@@ -20,4 +21,5 @@ interface ArticlesService {
     fun getReviewers(id: String): List<ReviewerDto>
     fun requestRejection(id: String): Unit
     fun requestApproval(id: String): Unit
+    fun initialReview(articleId: String, request: InitialReviewRequestDto): ArticleDto
 }

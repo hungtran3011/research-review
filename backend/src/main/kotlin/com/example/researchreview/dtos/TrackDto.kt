@@ -24,4 +24,22 @@ data class TrackDto(
         "",
         ""
     )
+
+    constructor(
+        id: String,
+        name: String,
+        editors: List<EditorDto>,
+        description: String?,
+        isActive: Boolean,
+    ) : this(
+        id,
+        name,
+        editors,
+        description,
+        isActive,
+        LocalDateTime.now(),
+        LocalDateTime.now(),
+        "",
+        ""
+    )
 }

@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
+import java.util.Optional
 
 interface UserRepository: JpaRepository<User, String> {
     @Query(value = "SELECT * FROM users u " +
@@ -34,8 +35,10 @@ interface UserRepository: JpaRepository<User, String> {
     @Query("SELECT u FROM User u WHERE u.deleted = false")
     fun getAll(pageable: Pageable): Page<User>
 
+    fun findByIdAndDeletedFalse(id: String): Optional<User>
+
     override fun deleteById(id: String) {
-        val user = findById(id).orElseThrow { Exception("User not found") }
+        val user = findByIdAndDeletedFalse(id).orElseThrow { Exception("User not found") }
         user.deleted = true
         save(user)
     }

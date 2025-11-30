@@ -39,7 +39,34 @@ enum class EmailBusinessCode(val value: Int) {
     EMAIL_SENT_FAIL(5002)
 }
 
+enum class UserBusinessCode(val value: Int) {
+    USER_NOT_FOUND(6001),
+}
+
+enum class ArticleBusinessCode(val value: Int) {
+    ARTICLE_CREATED_SUCCESSFULLY(7001),
+    ARTICLE_CREATED_FAIL(7002),
+    ARTICLE_FOUND(7003),
+    ARTICLE_NOT_FOUND(7004),
+    ARTICLE_UPDATED_SUCCESSFULLY(7005),
+    ARTICLE_STATUS_UPDATED(7006),
+}
+
+enum class ReviewerBusinessCode(val value: Int) {
+    REVIEWER_CONTACTED(8001),
+    REVIEWER_CONTACT_FAILED(8002),
+    REVIEWER_UNASSIGNED(8003),
+}
+
+enum class CommentBusinessCode(val value: Int) {
+    COMMENT_THREAD_CREATED(9001),
+    COMMENT_THREAD_FOUND(9002),
+    COMMENT_THREAD_UPDATED(9003),
+    COMMENT_THREAD_NOT_FOUND(9004)
+}
+
 enum class SpecialErrorCode(val value: Int) {
     GENERAL_ERROR(99999),
-    INTERNAL_ERROR(500)
+    INTERNAL_ERROR(500),
+    BAD_REQUEST(400)
 }

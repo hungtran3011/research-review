@@ -78,7 +78,9 @@ function App() {
           </Card>
           <Card className={classes.card}>
             <CardHeader header={<Text weight="semibold">Quick Actions</Text>} />
-            <Button icon={<Add16Regular />} appearance="primary">Submit New Article</Button>
+            <Button icon={<Add16Regular />} appearance="primary" as='a' href='/article/submit'>
+              Submit New Article
+            </Button>
             <Button icon={<Document16Regular />}>View My Reviews</Button>
           </Card>
         </div>

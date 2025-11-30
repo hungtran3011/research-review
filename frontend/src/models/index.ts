@@ -1,12 +1,15 @@
 // Index file to export all models
 export * from './article.model';
 export * from './article-request.model';
+export * from './article-submission.model';
+export * from './article-version.model';
 export * from './author.model';
 export * from './author-request.model';
 export * from './auth-request.model';
 export * from './auth-response.model';
 export * from './base-response.model';
 export * from './basic-email.model';
+export * from './comment.model';
 export * from './editor.model';
 export * from './institution.model';
 export * from './page-response.model';

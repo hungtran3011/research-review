@@ -14,6 +14,10 @@ import Info from './components/user/Info.tsx'
 import Profile from './components/user/Profile.tsx'
 import Nav from './components/common/Nav.tsx'
 import { ThemeProvider } from './providers/ThemeProvider.tsx'
+import SubmitArticle from './components/article/SubmitArticle.tsx'
+import ReviewArticle from './components/article/ReviewArticle.tsx'
+import { sampleComments, sampleVersions, sampleArticleSubmission } from './components/article/sampleData.ts'
+import EditorInitialReview from './components/article/EditorInitialReview.tsx'
 
 
 createRoot(document.getElementById('root')!).render(
@@ -32,6 +36,21 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/verify-failed" element={<VerifyFail />} />
           <Route path='/info' element={<Info />} />
           <Route path='/profile' element={<Profile />} />
+          <Route path='/article/submit' element={<SubmitArticle />} />
+          <Route path='/article/review' element={
+            <ReviewArticle 
+              articleId='demo-123'
+              initialVersions={sampleVersions}
+              initialComments={sampleComments}
+            />
+            } />
+          <Route path='/article/initial-review' element={
+            <EditorInitialReview 
+              article={sampleArticleSubmission}
+              onAccept={(reason) => console.log('Accepted:', reason)}
+              onReject={(reason) => console.log('Rejected:', reason)}
+            />
+          } />
           <Route path="*" element={<div>Not Found</div>} />
         </Routes>
       </BrowserRouter>

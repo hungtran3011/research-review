@@ -21,6 +21,12 @@ class Article: BaseEntity() {
     @Audited
     var link: String = "";
 
+    @Audited
+    var initialReviewNote: String? = null;
+
+    @Audited
+    var initialReviewNextSteps: String? = null;
+
     @ManyToOne
     var track: Track = Track();
 

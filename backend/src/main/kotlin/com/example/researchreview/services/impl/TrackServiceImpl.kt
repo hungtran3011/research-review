@@ -50,7 +50,7 @@ class TrackServiceImpl(
     override fun delete(id: String): String {
         val track = trackRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Track not found with id: $id") }
-        trackRepository.deleteById(id)
+        track.deleted = true
         return "Track deleted successfully"
     }
 
