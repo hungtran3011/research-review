@@ -6,6 +6,7 @@ import io.awspring.cloud.s3.S3Template
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
+import java.time.Duration
 
 @Service
 class S3ServiceImpl @Autowired constructor(
@@ -32,5 +33,15 @@ class S3ServiceImpl @Autowired constructor(
 
     override fun delete(bucketName: String, key: String) {
         s3Template.deleteObject(bucketName, key)
+    }
+
+    override fun createUploadUrl(bucketName: String, key: String, expirationSeconds: Long): String {
+        val url = s3Template.createSignedPutURL(bucketName, key, Duration.ofSeconds(expirationSeconds))
+        return url.toString()
+    }
+
+    override fun createDownloadUrl(bucketName: String, key: String, expirationSeconds: Long): String {
+        val url = s3Template.createSignedGetURL(bucketName, key, Duration.ofSeconds(expirationSeconds))
+        return url.toString()
     }
 }

@@ -10,6 +10,7 @@ data class CommentThreadDto(
     val id: String = "",
     val articleId: String = "",
     val reviewerId: String? = null,
+    val reviewerLabel: String? = null,
     val version: Int = 1,
     val pageNumber: Int = 1,
     val x: Int = 0,

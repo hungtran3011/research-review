@@ -25,7 +25,8 @@ interface UserMapper {
             Mapping(target = "track", source = "track", qualifiedByName = ["trackToDto"]),
             Mapping(target = "nationality", source = "nationality"),
             Mapping(target = "academicStatus", source = "academicStatus"),
-            Mapping(target = "gender", source = "gender")
+            Mapping(target = "gender", source = "gender"),
+            Mapping(target = "status", source = "status")
         ]
     )
     fun toDto(user: User): UserDto

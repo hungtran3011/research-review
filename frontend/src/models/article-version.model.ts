@@ -1,6 +1,6 @@
 export interface ArticleVersionDto {
   version: number
   fileUrl: string
-  uploadedAt: Date
+  uploadedAt: string
   uploadedBy: string
 }

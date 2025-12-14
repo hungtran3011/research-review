@@ -148,7 +148,7 @@ class UsersServiceImpl(
     }
 
     @Transactional
-    override fun updateRole(id: String, role: String): UserDto {
+    override fun updateRole(id: String, role: String, performedBy: Role): UserDto {
         val user = userRepository.findById(id)
             .orElseThrow { IllegalArgumentException("User not found with id: $id") }
         
@@ -159,8 +159,7 @@ class UsersServiceImpl(
         }
         
         // Security check: Only allow ADMIN to assign ADMIN or EDITOR roles
-        // This should be enhanced with actual authentication check
-        if (newRole == Role.ADMIN || newRole == Role.EDITOR) {
+        if ((newRole == Role.ADMIN || newRole == Role.EDITOR) && performedBy != Role.ADMIN) {
             throw IllegalArgumentException("Only ADMIN can assign ADMIN or EDITOR roles")
         }
         

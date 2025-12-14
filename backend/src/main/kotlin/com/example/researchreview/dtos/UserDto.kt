@@ -1,6 +1,7 @@
 package com.example.researchreview.dtos
 
 import com.example.researchreview.constants.AcademicStatus
+import com.example.researchreview.constants.AccountStatus
 import com.example.researchreview.constants.Gender
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
@@ -25,6 +26,7 @@ data class UserDto(
     var gender: Gender = Gender.OTHER,
     var nationality: String = "",
     var academicStatus: AcademicStatus = AcademicStatus.TS,
+    var status: AccountStatus = AccountStatus.INACTIVE,
     var createdAt: LocalDateTime? = LocalDateTime.now(),
     var updatedAt: LocalDateTime? = LocalDateTime.now(),
     var createdBy: String? = "",

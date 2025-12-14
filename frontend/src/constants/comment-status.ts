@@ -1,6 +1,7 @@
 export const CommentStatus = {
-  OPEN: 0,
-  RESOLVED: 1
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  ADDRESSED: 'ADDRESSED',
 } as const;
 
 export type CommentStatusType = typeof CommentStatus[keyof typeof CommentStatus];

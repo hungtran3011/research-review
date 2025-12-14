@@ -16,6 +16,6 @@ interface JwtService {
     fun createRefreshToken(subject: String): Pair<String, Instant>
     fun issueTokensForUser(userId: String, authorities: List<String> = emptyList()): Tokens
     fun validateAccessToken(token: String): Jwt
-    fun refreshTokens(userId: String, providedRefreshToken: String): Tokens
+    fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String> = emptyList()): Tokens
     fun revokeRefreshForUser(userId: String)
 }

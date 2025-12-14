@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
     makeStyles,
     Button,
@@ -25,7 +25,14 @@ import {
 } from '@fluentui/react-icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
-import type { CommentDto, ArticleVersionDto } from '../../models'
+import type { ArticleVersionDto } from '../../models'
+import { CommentStatus } from '../../constants'
+import type { CommentStatusType } from '../../constants'
+import { useParams } from 'react-router'
+import { useArticle } from '../../hooks/useArticles'
+import { useArticleComments, useCreateComment, useUpdateCommentStatus } from '../../hooks/useComments'
+import { useAuthStore } from '../../stores/authStore'
+import { Spinner } from '@fluentui/react-components'
 
 const useStyles = makeStyles({
     root: {
@@ -257,24 +264,46 @@ const useStyles = makeStyles({
     },
 })
 
-// Data Types
-interface ReviewArticleProps {
-    articleId?: string
-    // This would come from API/props
-    initialVersions?: ArticleVersionDto[]
-    initialComments?: CommentDto[]
+type CommentItem = {
+    id: string
+    version: number
+    pageNumber: number
+    status: CommentStatusType
+    content: string
+    author: string
+    createdAt?: Date
+    section?: string
+    selectedText?: string
 }
 
-function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArticleProps) {
+function ReviewArticle() {
     const classes = useStyles()
 
     // State management
-    const [versions] = useState<ArticleVersionDto[]>(initialVersions)
-    const [currentVersion, setCurrentVersion] = useState<number>(versions[versions.length - 1]?.version || 1)
-    const [pdfUrl, setPdfUrl] = useState<string | null>(versions[versions.length - 1]?.fileUrl || null)
+    const params = useParams<{ articleId: string }>()
+    const articleId = params.articleId
+    const safeArticleId = articleId ?? ''
+    const {
+        data: articleResponse,
+        isLoading: isArticleLoading,
+        isError: isArticleError,
+        error: articleError,
+    } = useArticle(articleId, !!articleId)
+    const article = articleResponse?.data
+    const {
+        data: commentsResponse,
+        isLoading: isCommentsLoading,
+        isError: isCommentsError,
+        error: commentsError,
+    } = useArticleComments(articleId, !!articleId)
+    const { mutate: createComment, isPending: isCreatingComment } = useCreateComment(safeArticleId)
+    const { mutate: updateCommentStatus, isPending: isUpdatingCommentStatus } = useUpdateCommentStatus(safeArticleId)
+    const reviewerName = useAuthStore((state) => state.email) ?? 'Reviewer'
+    const [versions, setVersions] = useState<ArticleVersionDto[]>([])
+    const [currentVersion, setCurrentVersion] = useState<number>(1)
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null)
     const [tocData, setTocData] = useState<TocItem[]>([])
-    const [comments, setComments] = useState<CommentDto[]>(initialComments)
-    const [selectedComment, setSelectedComment] = useState<CommentDto | null>(null)
+    const [selectedComment, setSelectedComment] = useState<CommentItem | null>(null)
     const [newCommentText, setNewCommentText] = useState('')
     const [isAddingComment, setIsAddingComment] = useState(false)
     const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null)
@@ -286,6 +315,42 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
     const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 1024)
 
     const pdfDocumentRef = useRef<unknown>(null)
+    const commentThreads = useMemo(() => commentsResponse?.data ?? [], [commentsResponse])
+    const commentItems = useMemo<CommentItem[]>(() => {
+        return commentThreads.map(thread => {
+            const latest = thread.comments[thread.comments.length - 1]
+            const createdAtSource = latest?.createdAt ?? thread.updatedAt ?? thread.createdAt
+            return {
+                id: thread.id,
+                version: thread.version,
+                pageNumber: thread.pageNumber,
+                status: thread.status,
+                content: latest?.content ?? '',
+                author: latest?.authorName ?? 'Reviewer',
+                createdAt: createdAtSource ? new Date(createdAtSource) : new Date(),
+                section: thread.section ?? undefined,
+                selectedText: thread.selectedText ?? undefined,
+            }
+        })
+    }, [commentThreads])
+
+    useEffect(() => {
+        if (article?.link) {
+            const fallbackDate = article.updatedAt ?? article.createdAt ?? new Date().toISOString()
+            const versionList: ArticleVersionDto[] = [
+                {
+                    version: 1,
+                    fileUrl: article.link,
+                    uploadedAt: fallbackDate,
+                    uploadedBy: article.createdBy ?? 'Hệ thống',
+                },
+            ]
+            setVersions(versionList)
+            const latestVersion = versionList[versionList.length - 1]
+            setCurrentVersion(latestVersion?.version ?? 1)
+            setPdfUrl(latestVersion?.fileUrl ?? null)
+        }
+    }, [article])
 
     // Track mobile/desktop view
     useEffect(() => {
@@ -383,42 +448,46 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
     }
 
     // Filter comments - show all comments from this version and earlier versions
-    // This allows reviewers to see previous comments and mark them as resolved when viewing newer versions
-    // Sort by version (descending) so most recent comments appear first
-    const versionComments = comments
-        .filter(c => c.version <= currentVersion)
-        .sort((a, b) => b.version - a.version || b.createdAt.getTime() - a.createdAt.getTime())
+    const versionComments = useMemo(() => {
+        return commentItems
+            .filter(c => c.version <= currentVersion)
+            .sort((a, b) => {
+                if (b.version !== a.version) {
+                    return b.version - a.version
+                }
+                const timeA = a.createdAt?.getTime() ?? 0
+                const timeB = b.createdAt?.getTime() ?? 0
+                return timeB - timeA
+            })
+    }, [commentItems, currentVersion])
 
     // Handle adding new comment
     const handleAddComment = () => {
-        if (!newCommentText.trim()) return
+        if (!newCommentText.trim() || !articleId) return
 
-        const newComment: CommentDto = {
-            id: Date.now().toString(),
-            version: currentVersion,
-            pageNumber: currentPdfPage, // Use actual current page from PDF viewer
-            position: selectedPosition ? { x: selectedPosition.x, y: selectedPosition.y } : undefined,
-            selectedText: selectedText || undefined,
+        createComment({
             content: newCommentText,
-            author: 'Current Reviewer', // This should come from auth context
-            authorId: 'reviewer-1',
-            createdAt: new Date(),
-            status: 'open',
+            authorName: reviewerName,
+            version: currentVersion,
+            pageNumber: currentPdfPage,
+            x: selectedPosition?.x ?? 0,
+            y: selectedPosition?.y ?? 0,
+            selectedText: selectedText || undefined,
             section: getSectionForPage(currentPdfPage),
-        }
-
-        setComments(prev => [...prev, newComment])
-        setNewCommentText('')
-        setIsAddingComment(false)
-        setSelectedPosition(null)
-        setSelectedText('')
+        }, {
+            onSuccess: () => {
+                setNewCommentText('')
+                setIsAddingComment(false)
+                setSelectedPosition(null)
+                setSelectedText('')
+            }
+        })
     }
 
     // Handle comment status change
-    const handleCommentStatusChange = (commentId: string, status: CommentDto['status']) => {
-        setComments(prev =>
-            prev.map(c => (c.id === commentId ? { ...c, status } : c))
-        )
+    const handleCommentStatusChange = (commentId: string, status: CommentStatusType) => {
+        if (!articleId) return
+        updateCommentStatus({ threadId: commentId, data: { status } })
     }
 
     // Handle clicking on TOC item
@@ -478,13 +547,13 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
     }, [tocData])
 
     // Get status badge
-    const getStatusBadge = (status: CommentDto['status']) => {
-        const config = {
-            open: { color: 'warning' as const, text: 'Mở' },
-            resolved: { color: 'success' as const, text: 'Đã giải quyết' },
-            addressed: { color: 'informative' as const, text: 'Đã xử lý' },
+    const getStatusBadge = (status: CommentStatusType) => {
+        const config: Record<CommentStatusType, { color: 'warning' | 'success' | 'informative' | 'brand'; text: string }> = {
+            [CommentStatus.OPEN]: { color: 'warning', text: 'Mở' },
+            [CommentStatus.RESOLVED]: { color: 'success', text: 'Đã giải quyết' },
+            [CommentStatus.ADDRESSED]: { color: 'informative', text: 'Đã xử lý' },
         }
-        const { color, text } = config[status]
+        const { color, text } = config[status] ?? config[CommentStatus.OPEN]
         return <Badge appearance="filled" color={color}>{text}</Badge>
     }
 
@@ -493,6 +562,59 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
         if (isTocVisible) {
             setIsTocVisible(false)
         }
+    }
+
+    const centeredStateStyles = {
+        minHeight: '60vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '12px',
+        padding: '24px',
+        textAlign: 'center',
+    } as const
+
+    if (!articleId) {
+        return (
+            <div style={centeredStateStyles}>
+                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
+                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Đường dẫn phản biện không hợp lệ.
+                </Text>
+            </div>
+        )
+    }
+
+    if (isArticleError) {
+        const errorMessage = articleError instanceof Error ? articleError.message : 'Không thể tải thông tin bài báo.'
+        return (
+            <div style={centeredStateStyles}>
+                <Text weight="semibold" size={400}>Đã xảy ra lỗi</Text>
+                <Text size={300} style={{ color: tokens.colorPaletteDarkOrangeForeground1 }}>
+                    {errorMessage}
+                </Text>
+            </div>
+        )
+    }
+
+    if (isArticleLoading && !article) {
+        return (
+            <div style={centeredStateStyles}>
+                <Spinner size="large" label="Đang tải bài báo..." />
+            </div>
+        )
+    }
+
+    if (!article) {
+        return (
+            <div style={centeredStateStyles}>
+                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
+                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Bài báo có thể đã bị xóa hoặc bạn không có quyền truy cập.
+                </Text>
+            </div>
+        )
     }
 
     // Render comments content (reusable for both desktop and mobile)
@@ -511,16 +633,30 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
                         }
                     }}
                 >
-                    {versions.map(v => (
-                        <Option key={v.version} value={v.version.toString()} text={`Phiên bản ${v.version}`}>
-                            Phiên bản {v.version} - {new Date(v.uploadedAt).toLocaleDateString('vi-VN')}
+                    {versions.length === 0 ? (
+                        <Option value="0" disabled>
+                            Chưa có phiên bản
                         </Option>
-                    ))}
+                    ) : (
+                        versions.map(v => (
+                            <Option key={v.version} value={v.version.toString()} text={`Phiên bản ${v.version}`}>
+                                Phiên bản {v.version} - {new Date(v.uploadedAt).toLocaleDateString('vi-VN')}
+                            </Option>
+                        ))
+                    )}
                 </Dropdown>
             </div>
 
             <div className={classes.commentsList}>
-                {versionComments.length === 0 ? (
+                {isCommentsLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                        <Spinner size="small" label="Đang tải nhận xét..." />
+                    </div>
+                ) : isCommentsError ? (
+                    <Text style={{ textAlign: 'center', color: tokens.colorPaletteDarkOrangeForeground1 }}>
+                        {(commentsError instanceof Error ? commentsError.message : 'Không thể tải nhận xét.')}
+                    </Text>
+                ) : versionComments.length === 0 ? (
                     <Text style={{ textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
                         Không có nhận xét cho phiên bản này
                     </Text>
@@ -568,7 +704,7 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
                                     •
                                 </Text>
                                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    {new Date(comment.createdAt).toLocaleString()}
+                                    {comment.createdAt?.toLocaleString('vi-VN')}
                                 </Text>
                             </div>
 
@@ -596,8 +732,9 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
                                     icon={<CheckmarkRegular />}
                                     onClick={(e) => {
                                         e.stopPropagation()
-                                        handleCommentStatusChange(comment.id, 'resolved')
+                                        handleCommentStatusChange(comment.id, CommentStatus.RESOLVED)
                                     }}
+                                    disabled={isUpdatingCommentStatus}
                                 >
                                     Giải quyết
                                 </Button>
@@ -607,10 +744,11 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
                                     icon={<DismissRegular />}
                                     onClick={(e) => {
                                         e.stopPropagation()
-                                        setComments(prev => prev.filter(c => c.id !== comment.id))
+                                        handleCommentStatusChange(comment.id, CommentStatus.ADDRESSED)
                                     }}
+                                    disabled={isUpdatingCommentStatus}
                                 >
-                                    Xóa
+                                    Đánh dấu đã xử lý
                                 </Button>
                             </div>
                         </Card>
@@ -663,8 +801,8 @@ function ReviewArticle({ initialVersions = [], initialComments = [] }: ReviewArt
                         rows={4}
                     />
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button appearance="primary" onClick={handleAddComment}>
-                            Đăng nhận xét
+                        <Button appearance="primary" onClick={handleAddComment} disabled={isCreatingComment}>
+                            {isCreatingComment ? 'Đang đăng...' : 'Đăng nhận xét'}
                         </Button>
                         <Button
                             appearance="subtle"

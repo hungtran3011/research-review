@@ -12,6 +12,7 @@ import {
     DialogActions,
     DialogContent,
     tokens,
+    Spinner,
 } from '@fluentui/react-components'
 import {
     CheckmarkCircleRegular,
@@ -22,7 +23,9 @@ import {
 } from '@fluentui/react-icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
-import type { ArticleSubmissionDto } from '../../models'
+import { useParams } from 'react-router'
+import { useArticle, useInitialReview } from '../../hooks/useArticles'
+import { InitialReviewDecision, ArticleStatus } from '../../constants'
 
 const useStyles = makeStyles({
     root: {
@@ -160,14 +163,7 @@ const useStyles = makeStyles({
     },
 })
 
-// Data Types
-interface EditorInitialReviewProps {
-    article: ArticleSubmissionDto
-    onAccept?: (reason: string) => void
-    onReject?: (reason: string) => void
-}
-
-function EditorInitialReview({ article, onAccept, onReject }: EditorInitialReviewProps) {
+function EditorInitialReview() {
     const classes = useStyles()
 
     // State management
@@ -180,6 +176,36 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
     const [isTocVisible, setIsTocVisible] = useState<boolean>(true)
 
     const pdfDocumentRef = useRef<unknown>(null)
+    const params = useParams<{ articleId: string }>()
+    const articleId = params.articleId
+    const safeArticleId = articleId ?? ''
+    const { data: articleResponse, isLoading, isError, error } = useArticle(articleId, !!articleId)
+    const article = articleResponse?.data
+    const { mutate: submitInitialReview, isPending: isSubmittingDecision } = useInitialReview(safeArticleId)
+    const centeredStateStyles = {
+        minHeight: '60vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '12px',
+        padding: '24px',
+        textAlign: 'center',
+    } as const
+
+    const statusLabels: Record<string, string> = {
+        [ArticleStatus.SUBMITTED]: 'Đã gửi',
+        [ArticleStatus.PENDING_REVIEW]: 'Chờ phản biện',
+        [ArticleStatus.IN_REVIEW]: 'Đang phản biện',
+        [ArticleStatus.REJECT_REQUESTED]: 'Đang xem xét loại bỏ',
+        [ArticleStatus.REJECTED]: 'Đã từ chối',
+        [ArticleStatus.ACCEPTED]: 'Đã chấp nhận',
+    }
+
+    const formatDate = (value?: string) => {
+        if (!value) return 'Chưa cập nhật'
+        return new Date(value).toLocaleString('vi-VN')
+    }
 
     // Parse TOC items recursively
     const parseTocItems = useCallback(async (items: unknown[], pdf: unknown): Promise<TocItem[]> => {
@@ -244,6 +270,48 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
         }
     }, [parseTocItems])
 
+    if (!articleId) {
+        return (
+            <div style={centeredStateStyles}>
+                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
+                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Đường dẫn không hợp lệ.
+                </Text>
+            </div>
+        )
+    }
+
+    if (isError) {
+        const errorMessage = error instanceof Error ? error.message : 'Không thể tải thông tin bài báo.'
+        return (
+            <div style={centeredStateStyles}>
+                <Text weight="semibold" size={400}>Đã xảy ra lỗi</Text>
+                <Text size={300} style={{ color: tokens.colorPaletteDarkOrangeForeground1 }}>
+                    {errorMessage}
+                </Text>
+            </div>
+        )
+    }
+
+    if (isLoading && !article) {
+        return (
+            <div style={centeredStateStyles}>
+                <Spinner size="large" label="Đang tải bài báo..." />
+            </div>
+        )
+    }
+
+    if (!article) {
+        return (
+            <div style={centeredStateStyles}>
+                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
+                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                    Bài báo có thể đã bị xóa hoặc bạn không có quyền truy cập.
+                </Text>
+            </div>
+        )
+    }
+
     // Handle clicking on TOC item
     // Handle clicking on TOC item
     const handleTocClick = (pageNumber: number) => {
@@ -262,23 +330,37 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
         }
     }
 
-    // Handle reject
     const handleReject = () => {
-        if (onReject && rejectReason.trim()) {
-            onReject(rejectReason)
-            setIsRejectDialogOpen(false)
-            setRejectReason('')
-        }
+        if (!rejectReason.trim() || !articleId) return
+        submitInitialReview({
+            decision: InitialReviewDecision.REJECT,
+            note: rejectReason.trim(),
+        }, {
+            onSuccess: () => {
+                setIsRejectDialogOpen(false)
+                setRejectReason('')
+            },
+        })
     }
 
-    // Handle accept
     const handleAccept = () => {
-        if (onAccept) {
-            onAccept(acceptReason)
-            setIsAcceptDialogOpen(false)
-            setAcceptReason('')
-        }
+        if (!articleId) return
+        const note = acceptReason.trim() || 'Chấp nhận và gửi tới reviewer'
+        submitInitialReview({
+            decision: InitialReviewDecision.SEND_TO_REVIEW,
+            note,
+        }, {
+            onSuccess: () => {
+                setIsAcceptDialogOpen(false)
+                setAcceptReason('')
+            },
+        })
     }
+
+    const authorNames = article.authors?.map(author => author.name).join(', ') || 'Chưa cập nhật'
+    const trackName = article.track?.name ?? 'Chưa gán'
+    const submittedDate = formatDate(article.createdAt)
+    const statusLabel = statusLabels[article.status] ?? article.status
 
     return (
         <div className={classes.root}>
@@ -306,7 +388,7 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
                             Tác giả:
                         </Text>
                         <Text size={200}>
-                            {article.authors.join(', ')}
+                            {authorNames}
                         </Text>
                     </div>
                     <div className={classes.infoCol}>
@@ -314,7 +396,21 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
                             Ngày gửi
                         </Text>
                         <Text size={200}>
-                            {article.submittedDate.toLocaleDateString('vi-VN')}
+                            {submittedDate}
+                        </Text>
+                    </div>
+                    <div className={classes.infoCol}>
+                        <Text size={200} className={classes.infoLabel}>
+                            Chuyên đề
+                        </Text>
+                        <Text size={200}>{trackName}</Text>
+                    </div>
+                    <div className={classes.infoCol}>
+                        <Text size={200} className={classes.infoLabel}>
+                            Trạng thái hiện tại
+                        </Text>
+                        <Text size={200}>
+                            {statusLabel}
                         </Text>
                     </div>
                 </div>
@@ -375,7 +471,7 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
                                     />
                                 </DialogContent>
                                 <DialogActions>
-                                    <Button appearance="primary" onClick={handleReject} disabled={!rejectReason.trim()}>
+                                    <Button appearance="primary" onClick={handleReject} disabled={!rejectReason.trim() || isSubmittingDecision}>
                                         Từ chối bài báo
                                     </Button>
                                     <Button appearance="secondary" onClick={() => setIsRejectDialogOpen(false)}>
@@ -391,6 +487,7 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
                                 <Button
                                     appearance="primary"
                                     icon={<CheckmarkCircleRegular />}
+                                    disabled={isSubmittingDecision}
                                 >
                                     Chấp nhận và mời reviewer
                                 </Button>
@@ -414,7 +511,7 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
                                         />
                                     </DialogContent>
                                     <DialogActions>
-                                        <Button appearance="primary" onClick={handleAccept}>
+                                        <Button appearance="primary" onClick={handleAccept} disabled={isSubmittingDecision}>
                                             Đồng ý và tiếp tục tìm người phản biện
                                         </Button>
                                         <Button appearance="secondary" onClick={() => setIsAcceptDialogOpen(false)}>
@@ -428,7 +525,7 @@ function EditorInitialReview({ article, onAccept, onReject }: EditorInitialRevie
 
                 {/* PDF Viewer */}
                 <PdfViewer
-                    fileUrl={article.fileUrl}
+                    fileUrl={article.link}
                     emptyMessage="Không có bài báo để xem"
                     onDocumentLoadSuccess={handleDocumentLoadSuccess}
                     jumpToPage={jumpToPage}

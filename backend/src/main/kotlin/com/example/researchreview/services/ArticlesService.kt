@@ -22,4 +22,5 @@ interface ArticlesService {
     fun requestRejection(id: String): Unit
     fun requestApproval(id: String): Unit
     fun initialReview(articleId: String, request: InitialReviewRequestDto): ArticleDto
+    fun updateLink(id: String, link: String): ArticleDto
 }

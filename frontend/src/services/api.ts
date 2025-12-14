@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import { useAuthStore } from '../stores/authStore';
 
 // Create axios instance with default config
 export const api = axios.create({
@@ -12,11 +13,11 @@ export const api = axios.create({
 // Request interceptor for adding auth token if needed
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // You can add token to headers here if needed
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = useAuthStore.getState().accessToken;
+    if (token) {
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error: AxiosError) => {

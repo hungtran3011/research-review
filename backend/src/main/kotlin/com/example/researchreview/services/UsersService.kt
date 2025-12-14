@@ -1,5 +1,6 @@
 package com.example.researchreview.services
 
+import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.UserRequestDto
 import org.springframework.data.domain.Page
@@ -12,7 +13,7 @@ interface UsersService {
     fun search(dto: UserRequestDto, pageable: Pageable): Page<UserDto>;
     fun create(userDto: UserRequestDto): UserDto;
     fun update(id: String, userDto: UserRequestDto): UserDto;
-    fun updateRole(id: String, role: String): UserDto;
+    fun updateRole(id: String, role: String, performedBy: Role): UserDto;
     fun updateStatus(id: String, status: String): UserDto;
     fun delete(id: String);
 }

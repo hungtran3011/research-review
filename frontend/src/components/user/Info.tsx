@@ -6,7 +6,7 @@ import { getWorldData } from '../../services/country.service'
 import { useQuery } from '@tanstack/react-query'
 import type { UserRequestDto } from '../../models'
 import { useCompleteUserInfo } from '../../hooks/useUser'
-import { Gender, AcademicStatus, GenderMap } from '../../constants'
+import { Gender, AcademicStatus } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 
 const useStyles = makeStyles({
@@ -103,6 +103,14 @@ function Info() {
         setForm({ ...form, name: `${value} ${additionalFields.firstName}`.trim() })
     }
 
+    const academicStatusOptions = [
+        { value: AcademicStatus.GSTS, label: 'Giáo sư - Tiến sĩ' },
+        { value: AcademicStatus.PGSTS, label: 'Phó giáo sư - Tiến sĩ' },
+        { value: AcademicStatus.TS, label: 'Tiến sĩ' },
+        { value: AcademicStatus.THS, label: 'Thạc sĩ' },
+        { value: AcademicStatus.CN, label: 'Cử nhân' },
+    ]
+
     document.title = "Thông tin tài khoản - Research Review"
 
     return (
@@ -157,7 +165,7 @@ function Info() {
                     <Field label={"Giới tính"} required hint={"Giới tính của bạn"} className={classes.formField}>
                         <Combobox
                             placeholder='Giới tính của bạn'
-                            value={form.gender ? GenderMap[form.gender as keyof typeof GenderMap] : ''}
+                            selectedOptions={form.gender ? [form.gender] : []}
                             onOptionSelect={(_e, data) => setForm({ ...form, gender: data.optionValue || '' })}
                             required
                         >
@@ -169,7 +177,7 @@ function Info() {
                     <Field label={"Quốc tịch"} required hint={"Quốc tịch của bạn"} className={classes.formField}>
                         <Combobox
                             placeholder='Quốc tịch của bạn'
-                            value={form.nationality ? worldData?.find(c => c.alpha2 === form.nationality)?.name || '' : ''}
+                            selectedOptions={form.nationality ? [form.nationality] : []}
                             onOptionSelect={(_e, data) => setForm({ ...form, nationality: data.optionValue || '' })}
                             required
                         >
@@ -185,7 +193,7 @@ function Info() {
                     <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn, ví dụ Trường Đại học ABC"} className={classes.formField}>
                         <Combobox 
                             placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
-                            value={form.institutionId ? institutions.find(i => i.id === form.institutionId)?.name || '' : ''}
+                            selectedOptions={form.institutionId ? [form.institutionId] : []}
                             onOptionSelect={(_e, data) => {
                                 const selectedInstitution = institutions.find(i => i.id === data.optionValue)
                                 setForm({ 
@@ -207,7 +215,7 @@ function Info() {
                     <Field label={"Lĩnh vực nghiên cứu (Track)"} required hint={"Lĩnh vực nghiên cứu của bạn"} className={classes.formField}>
                         <Combobox 
                             placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
-                            value={form.trackId ? tracks.find(t => t.id === form.trackId)?.name || '' : ''}
+                            selectedOptions={form.trackId ? [form.trackId] : []}
                             onOptionSelect={(_e, data) => setForm({ ...form, trackId: data.optionValue || '' })}
                             disabled={tracksLoading}
                             required
@@ -224,15 +232,16 @@ function Info() {
                     <Field label={"Học hàm, học vị"} required hint={"Học hàm, học vị của bạn"} className={classes.formField}>
                         <Combobox 
                             placeholder='Học hàm, học vị của bạn'
-                            value={form.academicStatus}
+                            selectedOptions={form.academicStatus ? [form.academicStatus] : []}
+                            value={form.academicStatus ? academicStatusOptions.find(option => option.label === form.academicStatus)?.value || '' : ''}
                             onOptionSelect={(_e, data) => setForm({ ...form, academicStatus: data.optionValue || '' })}
                             required
                         >
-                            <Option value={AcademicStatus.GSTS}>Giáo sư - Tiến sĩ</Option>
-                            <Option value={AcademicStatus.PGSTS}>Phó giáo sư - Tiến sĩ</Option>
-                            <Option value={AcademicStatus.TS}>Tiến sĩ</Option>
-                            <Option value={AcademicStatus.THS}>Thạc sĩ</Option>
-                            <Option value={AcademicStatus.CN}>Cử nhân</Option>
+                            {academicStatusOptions.map(option => (
+                                <Option key={option.value} value={option.label} text={option.label}>
+                                    {option.label}
+                                </Option>
+                            ))}
                         </Combobox>
                     </Field>
                 </div>

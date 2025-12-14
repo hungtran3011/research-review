@@ -6,6 +6,7 @@ import com.example.researchreview.dtos.AuthRequestDto
 import com.example.researchreview.dtos.AuthResponseDto
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.VerifyTokenRequestDto
+import com.example.researchreview.dtos.RefreshTokenRequestDto
 import com.example.researchreview.exceptions.EmailExistedException
 import com.example.researchreview.exceptions.InternalErrorException
 import com.example.researchreview.exceptions.SendEmailFailedException
@@ -95,13 +96,19 @@ class AuthController(
     @PostMapping("/verify")
     fun verifyToken(@Valid @RequestBody request: VerifyTokenRequestDto): ResponseEntity<BaseResponseDto<AuthResponseDto>> {
         val (response, statusCode) = try {
-            val isValid = authService.verifyMagicLink(request.email, request.token, request.isSignUp)
+            val issuedTokens = authService.verifyMagicLink(request.email, request.token, request.isSignUp)
+            val success = issuedTokens != null || request.isSignUp
             val resp = BaseResponseDto(
-                code = if (isValid) AuthBusinessCode.VERIFICATION_SUCCESS.value else AuthBusinessCode.INVALID_TOKEN.value,
-                message = if (isValid) "Token verified successfully" else "Invalid token",
-                data = AuthResponseDto(success = isValid, message = if (isValid) "Token verified successfully" else "Invalid token")
+                code = if (success) AuthBusinessCode.VERIFICATION_SUCCESS.value else AuthBusinessCode.INVALID_TOKEN.value,
+                message = if (success) "Token verified successfully" else "Invalid token",
+                data = AuthResponseDto(
+                    success = success,
+                    message = if (success) "Token verified successfully" else "Invalid token",
+                    accessToken = issuedTokens?.accessToken,
+                    refreshToken = issuedTokens?.refreshToken
+                )
             )
-            resp to if (isValid) 200 else 400
+            resp to if (success) 200 else 400
         } catch (e: TokenInvalidException) {
             val resp = BaseResponseDto(
                 code = AuthBusinessCode.INVALID_TOKEN.value,
@@ -116,6 +123,33 @@ class AuthController(
                 data = AuthResponseDto(success = false, message = "Internal server error")
             )
             resp to 500
+        }
+
+        return if (statusCode == 200) ResponseEntity.ok(response) else ResponseEntity.status(statusCode).body(response)
+    }
+
+    @PostMapping("/refresh")
+    fun refreshTokens(@Valid @RequestBody request: RefreshTokenRequestDto): ResponseEntity<BaseResponseDto<AuthResponseDto>> {
+        val (response, statusCode) = try {
+            val tokens = authService.refreshAccessToken(request.refreshToken)
+            val resp = BaseResponseDto(
+                code = AuthBusinessCode.VERIFICATION_SUCCESS.value,
+                message = "Tokens refreshed successfully",
+                data = AuthResponseDto(
+                    success = true,
+                    message = "Tokens refreshed successfully",
+                    accessToken = tokens.accessToken,
+                    refreshToken = tokens.refreshToken
+                )
+            )
+            resp to 200
+        } catch (_: TokenInvalidException) {
+            val resp = BaseResponseDto(
+                code = AuthBusinessCode.INVALID_TOKEN.value,
+                message = "Invalid token",
+                data = AuthResponseDto(success = false, message = "Invalid token")
+            )
+            resp to 401
         }
 
         return if (statusCode == 200) ResponseEntity.ok(response) else ResponseEntity.status(statusCode).body(response)

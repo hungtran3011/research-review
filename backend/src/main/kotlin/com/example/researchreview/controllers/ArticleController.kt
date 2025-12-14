@@ -9,6 +9,7 @@ import com.example.researchreview.dtos.InitialReviewRequestDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.ReviewerContactRequestDto
 import com.example.researchreview.dtos.ReviewerDto
+import com.example.researchreview.dtos.ArticleLinkUpdateRequestDto
 import com.example.researchreview.services.ArticlesService
 import com.example.researchreview.services.ReviewerService
 import jakarta.persistence.EntityNotFoundException
@@ -149,6 +150,21 @@ class ArticleController(
                 )
             )
         }
+    }
+
+    @PutMapping("/{id}/link")
+    fun updateLink(
+        @PathVariable id: String,
+        @Valid @RequestBody request: ArticleLinkUpdateRequestDto
+    ): ResponseEntity<BaseResponseDto<ArticleDto>> {
+        val updated = articlesService.updateLink(id, request.link)
+        return ResponseEntity.ok(
+            BaseResponseDto(
+                code = ArticleBusinessCode.ARTICLE_UPDATED_SUCCESSFULLY.value,
+                message = "Article link updated",
+                data = updated
+            )
+        )
     }
 
     @PostMapping("/{id}/reviewers/contact")

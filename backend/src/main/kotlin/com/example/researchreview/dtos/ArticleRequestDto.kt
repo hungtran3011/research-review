@@ -13,7 +13,6 @@ data class ArticleRequestDto (
     @field:NotBlank(message = "Conclusion is required")
     var conclusion: String = "",
 
-    @field:NotBlank(message = "Document link is required")
     var link: String = "",
 
     @field:NotBlank(message = "Track is required")

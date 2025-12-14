@@ -41,6 +41,12 @@ enum class EmailBusinessCode(val value: Int) {
 
 enum class UserBusinessCode(val value: Int) {
     USER_NOT_FOUND(6001),
+    USER_FOUND(6002),
+    USER_CREATED_SUCCESSFULLY(6003),
+    USER_CREATION_FAILED(6004),
+    USER_UPDATED_SUCCESSFULLY(6005),
+    USER_UPDATE_FAILED(6006),
+    USER_ALREADY_EXISTS(6007),
 }
 
 enum class ArticleBusinessCode(val value: Int) {
@@ -63,6 +69,22 @@ enum class CommentBusinessCode(val value: Int) {
     COMMENT_THREAD_FOUND(9002),
     COMMENT_THREAD_UPDATED(9003),
     COMMENT_THREAD_NOT_FOUND(9004)
+}
+
+enum class NotificationBusinessCode(val value: Int) {
+    NOTIFICATION_FOUND(10001),
+    NOTIFICATION_UPDATED(10002)
+}
+
+enum class AttachmentBusinessCode(val value: Int) {
+    ATTACHMENT_UPLOAD_SLOT_CREATED(11001),
+    ATTACHMENT_FINALIZED(11002),
+    ATTACHMENT_LIST_FOUND(11003),
+    ATTACHMENT_DELETED(11004)
+}
+
+enum class UploadBusinessCode(val value: Int) {
+    SUBMISSION_FILE_UPLOADED(12001)
 }
 
 enum class SpecialErrorCode(val value: Int) {

@@ -14,6 +14,7 @@ import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.repositories.UserRepository
 import com.example.researchreview.services.EmailService
+import com.example.researchreview.services.ReviewerArticleManager
 import com.example.researchreview.services.ReviewerService
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.stereotype.Service
@@ -28,7 +29,8 @@ class ReviewerServiceImpl(
     private val institutionRepository: InstitutionRepository,
     private val userRepository: UserRepository,
     private val emailService: EmailService,
-    private val reviewerMapper: ReviewerMapper
+    private val reviewerMapper: ReviewerMapper,
+    private val reviewerArticleManager: ReviewerArticleManager
 ) : ReviewerService {
 
     @Transactional
@@ -92,6 +94,7 @@ class ReviewerServiceImpl(
                 this.article = article
                 this.reviewer = reviewer
             }
+        reviewerArticleManager.ensureDisplayIndexFor(relation)
         relation.deleted = false
         relation.status = ReviewerInvitationStatus.PENDING
         relation.invitedAt = LocalDateTime.now()

@@ -2,6 +2,7 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.ArticleStatus
 import com.example.researchreview.constants.InitialReviewDecision
+import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleRequestDto
@@ -20,12 +21,17 @@ import com.example.researchreview.mappers.ReviewerMapper
 import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.repositories.AuthorRepository
+import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.InstitutionRepository
 import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.repositories.TrackRepository
 import com.example.researchreview.repositories.UserRepository
+import com.example.researchreview.services.ArticleAccessGuard
 import com.example.researchreview.services.ArticlesService
+import com.example.researchreview.services.CurrentUserService
+import com.example.researchreview.services.NotificationService
+import com.example.researchreview.services.ReviewerArticleManager
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -43,14 +49,19 @@ class ArticlesServiceImpl(
     private val reviewerArticleRepository: ReviewerArticleRepository,
     private val institutionRepository: InstitutionRepository,
     private val userRepository: UserRepository,
+    private val editorRepository: EditorRepository,
     private val articleMapper: ArticleMapper,
     private val authorMapper: AuthorMapper,
-    private val reviewerMapper: ReviewerMapper
+    private val reviewerMapper: ReviewerMapper,
+    private val reviewerArticleManager: ReviewerArticleManager,
+    private val articleAccessGuard: ArticleAccessGuard,
+    private val notificationService: NotificationService,
+    private val currentUserService: CurrentUserService
 ) : ArticlesService {
 
     @Transactional(readOnly = true)
     override fun getAll(pageable: Pageable): Page<ArticleDto> {
-        val page = articleRepository.findAllByDeletedFalse(pageable)
+        val page = articleAccessGuard.listAccessibleArticles(pageable)
         return page.map { toDto(it) }
     }
 
@@ -71,6 +82,7 @@ class ArticlesServiceImpl(
         }
         val saved = articleRepository.save(article)
         syncAuthors(saved, articleDto.authors)
+        notifyArticleSubmitted(saved)
         return toDto(saved)
     }
 
@@ -108,10 +120,12 @@ class ArticlesServiceImpl(
                 this.article = article
                 this.reviewer = reviewerEntity
             }
+        reviewerArticleManager.ensureDisplayIndexFor(relation)
         relation.deleted = false
         relation.status = ReviewerInvitationStatus.PENDING
         relation.invitedAt = LocalDateTime.now()
-        reviewerArticleRepository.save(relation)
+        val savedRelation = reviewerArticleRepository.save(relation)
+        notifyReviewerInvitation(savedRelation)
         return toDto(article)
     }
 
@@ -120,7 +134,8 @@ class ArticlesServiceImpl(
         val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(id, reviewerId)
             ?: throw EntityNotFoundException("Reviewer relation not found")
         relation.deleted = true
-        reviewerArticleRepository.save(relation)
+        val savedRelation = reviewerArticleRepository.save(relation)
+        notifyReviewerRevocation(savedRelation)
         return getById(id)
     }
 
@@ -151,6 +166,7 @@ class ArticlesServiceImpl(
     @Transactional
     override fun initialReview(articleId: String, request: InitialReviewRequestDto): ArticleDto {
         val article = fetchArticle(articleId)
+        val previousStatus = article.status
         article.initialReviewNote = request.note
         article.initialReviewNextSteps = request.nextSteps
         article.status = when (request.decision) {
@@ -159,13 +175,29 @@ class ArticlesServiceImpl(
             InitialReviewDecision.REJECT -> ArticleStatus.REJECTED
         }
         val saved = articleRepository.save(article)
+        if (previousStatus != saved.status) {
+            notifyArticleStatusChanged(saved, previousStatus)
+        }
+        return toDto(saved)
+    }
+
+    @Transactional
+    override fun updateLink(id: String, link: String): ArticleDto {
+        val article = fetchArticle(id)
+        article.link = link
+        val saved = articleRepository.save(article)
         return toDto(saved)
     }
 
     private fun updateStatus(id: String, status: ArticleStatus) {
         val article = fetchArticle(id)
+        val previousStatus = article.status
+        if (previousStatus == status) {
+            return
+        }
         article.status = status
-        articleRepository.save(article)
+        val saved = articleRepository.save(article)
+        notifyArticleStatusChanged(saved, previousStatus)
     }
 
     private fun toDto(article: Article): ArticleDto {
@@ -177,9 +209,7 @@ class ArticlesServiceImpl(
         return articleMapper.toDto(article, authors, reviewers)
     }
 
-    private fun fetchArticle(id: String): Article =
-        articleRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow { EntityNotFoundException("Article not found with id $id") }
+    private fun fetchArticle(id: String): Article = articleAccessGuard.fetchAccessibleArticle(id)
 
     private fun syncAuthors(article: Article, authors: List<AuthorDto>) {
         val existing = articleAuthorRepository.findAllByArticleIdAndDeletedFalse(article.id)
@@ -225,5 +255,107 @@ class ArticlesServiceImpl(
             reviewer.user = userRepository.findById(dto.userId!!).orElse(reviewer.user)
         }
         return reviewerRepository.save(reviewer)
+    }
+
+    private fun notifyArticleSubmitted(article: Article) {
+        val recipients = gatherStakeholders(article, includeReviewers = false)
+        dispatchArticleNotification(
+            recipients,
+            NotificationType.ARTICLE_SUBMITTED,
+            payload = mapOf(
+                "articleId" to article.id,
+                "title" to article.title,
+                "trackId" to article.track.id,
+                "status" to article.status.name
+            )
+        )
+    }
+
+    private fun notifyArticleStatusChanged(article: Article, previousStatus: ArticleStatus?) {
+        val recipients = gatherStakeholders(article)
+        dispatchArticleNotification(
+            recipients,
+            NotificationType.ARTICLE_STATUS_CHANGED,
+            payload = mapOf(
+                "articleId" to article.id,
+                "title" to article.title,
+                "previousStatus" to previousStatus?.name,
+                "currentStatus" to article.status.name
+            )
+        )
+    }
+
+    private fun notifyReviewerInvitation(relation: ReviewerArticle) {
+        val reviewerUserId = relation.reviewer.user?.id?.takeIf { it.isNotBlank() } ?: return
+        notificationService.notifyUser(
+            reviewerUserId,
+            NotificationType.REVIEWER_INVITED,
+            payload = mapOf(
+                "articleId" to relation.article.id,
+                "title" to relation.article.title,
+                "displayIndex" to relation.displayIndex,
+                "status" to relation.status.name
+            ),
+            contextId = relation.article.id,
+            contextType = "ARTICLE"
+        )
+    }
+
+    private fun notifyReviewerRevocation(relation: ReviewerArticle) {
+        val reviewerUserId = relation.reviewer.user?.id?.takeIf { it.isNotBlank() } ?: return
+        notificationService.notifyUser(
+            reviewerUserId,
+            NotificationType.REVIEWER_REVOKED,
+            payload = mapOf(
+                "articleId" to relation.article.id,
+                "title" to relation.article.title,
+                "displayIndex" to relation.displayIndex
+            ),
+            contextId = relation.article.id,
+            contextType = "ARTICLE"
+        )
+    }
+
+    private fun gatherStakeholders(
+        article: Article,
+        includeAuthors: Boolean = true,
+        includeEditors: Boolean = true,
+        includeReviewers: Boolean = true
+    ): Set<String> {
+        val authorIds = if (includeAuthors) {
+            articleAuthorRepository.findAllByArticleIdAndDeletedFalse(article.id)
+                .mapNotNull { it.author.user?.id?.takeIf { id -> id.isNotBlank() } }
+        } else emptyList()
+        val editorIds = if (includeEditors) {
+            editorRepository.findAllByTrackIdAndDeletedFalse(article.track.id)
+                .mapNotNull { it.user.id.takeIf { id -> id.isNotBlank() } }
+        } else emptyList()
+        val reviewerIds = if (includeReviewers) {
+            reviewerArticleRepository.findAllByArticleIdAndDeletedFalse(article.id)
+                .mapNotNull { it.reviewer.user?.id?.takeIf { id -> id.isNotBlank() } }
+        } else emptyList()
+        return (authorIds + editorIds + reviewerIds).toSet()
+    }
+
+    private fun dispatchArticleNotification(
+        recipients: Set<String>,
+        type: NotificationType,
+        payload: Map<String, Any?>
+    ) {
+        if (recipients.isEmpty()) {
+            return
+        }
+        val actorId = currentUserService.currentUser()?.id
+        val filtered = recipients.filter { it != actorId }
+        if (filtered.isEmpty()) {
+            return
+        }
+        notificationService.notifyUsers(
+            filtered,
+            type,
+            payload = payload,
+            contextId = payload["articleId"] as? String,
+            contextType = "ARTICLE"
+        )
     }
 }

@@ -21,4 +21,6 @@ class ReviewerArticle: BaseEntity() {
     var status: ReviewerInvitationStatus = ReviewerInvitationStatus.PENDING;
 
     var invitedAt: LocalDateTime? = null;
+
+    var displayIndex: Int = 0;
 }

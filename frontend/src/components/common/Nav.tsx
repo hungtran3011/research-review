@@ -4,7 +4,8 @@ import { tokens } from '@fluentui/react-components';
 import { useThemeStore } from '../../stores/themeStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useSignOut } from '../../hooks/useAuth';
-import { NavLink, useLocation } from 'react-router';
+import { useCurrentUser } from '../../hooks/useUser';
+import { NavLink, useNavigate } from 'react-router';
 import {
   WeatherSunny16Regular,
   WeatherSunny16Filled,
@@ -13,11 +14,13 @@ import {
   Home12Regular,
   SignOut20Regular,
   Person20Regular,
+  Add16Regular,
+  Document16Regular,
 } from "@fluentui/react-icons";
 
 const useStyles = makeStyles({
   nav: {
-    width: '100vw',
+    width: '100%',
     height: '60px',
     display: 'flex',
     flexDirection: 'row',
@@ -74,10 +77,27 @@ function Nav() {
   const classes = useStyles();
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
-  const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const email = useAuthStore((state) => state.email);
+  const navigate = useNavigate();
   const { mutate: signOut } = useSignOut();
+  const { data: currentUserResponse } = useCurrentUser(email || '', Boolean(isAuthenticated && email));
+  const role = currentUserResponse?.data?.role;
+  const isAdmin = role === 'ADMIN';
+
+  const commonLinks = [
+    { to: '/', label: 'Trang chủ', icon: <Home12Regular /> },
+    { to: '/articles/submit', label: 'Nộp bài báo', icon: <Add16Regular /> },
+    { to: '/help', label: 'Trợ giúp', icon: <Document16Regular /> },
+  ];
+
+  const authenticatedLinks = [
+    { to: '/profile', label: 'Hồ sơ của tôi', icon: <Person20Regular /> },
+  ];
+
+  const adminLinks = isAdmin
+    ? [{ to: '/admin/users', label: 'Quản trị', icon: <Document16Regular /> }]
+    : [];
 
   const handleSignOut = () => {
     signOut();
@@ -90,15 +110,16 @@ function Nav() {
         <div>Research Review</div>
       </div>
       <div className={classes.navLinks}>
-        <NavLink to="/" className={location.pathname === "/" ? classes.activeLink : classes.link}>
-          <Home12Regular /> Trang chủ
-        </NavLink>
-        <NavLink to="/link2" className={location.pathname === "/link2" ? classes.activeLink : classes.link}>
-          <Home12Regular /> Link 2
-        </NavLink>
-        <NavLink to="/link3" className={location.pathname === "/link3" ? classes.activeLink : classes.link}>
-          <Home12Regular /> Link 3
-        </NavLink>
+  {[...commonLinks, ...(isAuthenticated ? [...authenticatedLinks, ...adminLinks] : [])].map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            className={({ isActive }) => (isActive ? classes.activeLink : classes.link)}
+          >
+            {link.icon}
+            {link.label}
+          </NavLink>
+        ))}
       </div>
       <div className={classes.navActions}>
         {isAuthenticated ? (
@@ -108,7 +129,7 @@ function Nav() {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem icon={<Person20Regular />} onClick={() => window.location.href = '/info'}>
+                <MenuItem icon={<Person20Regular />} onClick={() => navigate('/info')}>
                   Thông tin cá nhân
                 </MenuItem>
                 <MenuItem icon={<SignOut20Regular />} onClick={handleSignOut}>

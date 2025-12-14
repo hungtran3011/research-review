@@ -7,7 +7,7 @@ interface AuthService {
     fun signUpInfo(info: UserRequestDto)
     fun signInWithMail(email: String)
     fun sendMagicLink(email: String, isSignUp: Boolean)
-    fun verifyMagicLink(email: String, token: String, isSignUp: Boolean): Boolean
+    fun verifyMagicLink(email: String, token: String, isSignUp: Boolean): Tokens?
     fun signOut()
-    fun refreshAccessToken(refreshToken: String): String
+    fun refreshAccessToken(refreshToken: String): Tokens
 }

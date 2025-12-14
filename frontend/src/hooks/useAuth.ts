@@ -52,7 +52,7 @@ export const useSignIn = () => {
  */
 export const useVerifyToken = () => {
   const navigate = useNavigate();
-  const { setAuthenticated, setVerified } = useAuthStore();
+  const { setAuthenticated, setVerified, setTokens } = useAuthStore();
 
   return useMutation<
     BaseResponseDto<AuthResponseDto>,
@@ -65,8 +65,11 @@ export const useVerifyToken = () => {
       if (data.code === AuthBusinessCode.VERIFICATION_SUCCESS) {
         setVerified(true);
         setAuthenticated(true);
-        // TODO: Extract tokens from response when backend implements JWT
-        // setTokens(data.data.accessToken, data.data.refreshToken);
+        const accessToken = data.data?.accessToken;
+        const refreshToken = data.data?.refreshToken;
+        if (accessToken && refreshToken) {
+          setTokens(accessToken, refreshToken);
+        }
         navigate('/verify-success', { state: { fromVerify: true } });
       } else if (data.code === AuthBusinessCode.EMAIL_VERIFIED) {
         setVerified(true);
@@ -107,7 +110,7 @@ export const useSignOut = () => {
     onSuccess: () => {
       clearAuth();
       queryClient.clear();
-      navigate('/auth');
+      navigate('/signin');
     },
   });
 };

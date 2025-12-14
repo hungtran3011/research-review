@@ -69,7 +69,7 @@ class JwtServiceImpl(
     override fun validateAccessToken(token: String): Jwt = jwtDecoder.decode(token)
 
     @Throws(RuntimeException::class)
-    override fun refreshTokens(userId: String, providedRefreshToken: String): Tokens {
+    override fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String>): Tokens {
         val key = refreshRedisKey(userId)
         val storedHash = redisTemplate.opsForValue().get(key) ?: throw RuntimeException("Refresh token not found")
         val providedHash = JwtUtil.hashToken(providedRefreshToken)
@@ -80,7 +80,7 @@ class JwtServiceImpl(
         }
 
         // rotate: issue new tokens and replace stored refresh hash
-        val (access, accessExp) = createAccessToken(userId, emptyList())
+        val (access, accessExp) = createAccessToken(userId, authorities)
         val (newRefresh, newRefreshExp) = createRefreshToken(userId)
         val newHash = JwtUtil.hashToken(newRefresh)
         redisTemplate.opsForValue().set(key, newHash, refreshExpiryMillisecs, TimeUnit.MILLISECONDS)

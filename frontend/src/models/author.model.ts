@@ -2,13 +2,13 @@ import type { InstitutionDto } from './institution.model';
 import type { UserDto } from './user.model';
 
 export interface AuthorDto {
-  id: string;
+  id?: string;
   name: string;
   email: string;
-  institution: InstitutionDto;
+  institution: Pick<InstitutionDto, 'id' | 'name' | 'country' | 'website' | 'logo'>;
   user?: UserDto;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }

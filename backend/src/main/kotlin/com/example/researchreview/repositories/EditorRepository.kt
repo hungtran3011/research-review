@@ -11,6 +11,8 @@ interface EditorRepository : JpaRepository<Editor, String> {
 
     fun findByIdAndDeletedFalse(id: String): java.util.Optional<Editor>
 
+    fun findAllByTrackIdAndDeletedFalse(trackId: String): List<Editor>
+
     override fun deleteById(id: String) {
         val editor = findById(id).orElseThrow { Exception("Editor not found") }
         editor.deleted = true

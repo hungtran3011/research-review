@@ -4,6 +4,7 @@ import type {
   BaseResponseDto,
   AuthResponseDto,
   VerifyTokenRequestDto,
+  RefreshTokenRequestDto,
 } from '../models';
 
 /**
@@ -51,5 +52,11 @@ export const resendMagicLink = async (email: string, isSignUp: boolean): Promise
  */
 export const signOut = async (): Promise<AuthResponseDto> => {
   const response = await api.post<AuthResponseDto>('/auth/signout');
+  return response.data;
+};
+
+export const refreshTokens = async (refreshToken: string): Promise<BaseResponseDto<AuthResponseDto>> => {
+  const body = { refreshToken } as RefreshTokenRequestDto;
+  const response = await api.post<BaseResponseDto<AuthResponseDto>>('/auth/refresh', body);
   return response.data;
 };

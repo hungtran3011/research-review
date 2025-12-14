@@ -1,6 +1,7 @@
 package com.example.researchreview.entities
 
 import com.example.researchreview.constants.ArticleStatus
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.ManyToMany
 import jakarta.persistence.ManyToOne
@@ -19,6 +20,7 @@ class Article: BaseEntity() {
     var conclusion: String = "";
 
     @Audited
+    @Column(length = 2048)
     var link: String = "";
 
     @Audited

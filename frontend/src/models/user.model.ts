@@ -15,6 +15,7 @@ export interface UserDto {
   gender: string;
   nationality: string;
   academicStatus: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

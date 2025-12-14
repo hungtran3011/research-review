@@ -10,6 +10,7 @@ import com.example.researchreview.services.AuthService
 import com.example.researchreview.services.EmailService
 import com.example.researchreview.services.JwtService
 import com.example.researchreview.services.UsersService
+import com.example.researchreview.services.Tokens
 import com.example.researchreview.utils.*
 import org.apache.http.client.utils.URIBuilder
 import org.springframework.beans.factory.annotation.Value
@@ -129,7 +130,7 @@ class AuthServiceImpl(
         )
     }
 
-    override fun verifyMagicLink(email: String, token: String, isSignUp: Boolean): Boolean {
+    override fun verifyMagicLink(email: String, token: String, isSignUp: Boolean): Tokens? {
         val eKey = emailKey(email)
         val storedHash = redisTemplate.opsForValue().get(eKey) ?: throw TokenInvalidException()
         val providedHash = CodeGen.sha512(token)
@@ -141,26 +142,29 @@ class AuthServiceImpl(
             throw TokenInvalidException()
         }
 
-        redisTemplate.delete(eKey)
-        redisTemplate.delete(resendKey(email))
-        redisTemplate.delete(resendCountKey(email))
-
-        if (isSignUp) {
+        return if (isSignUp) {
             // Mark email as verified for sign up (7 days)
             redisTemplate.opsForValue().set(verifyKey(email), "verified", 7, TimeUnit.DAYS)
+            redisTemplate.delete(eKey)
+            redisTemplate.delete(resendKey(email))
+            redisTemplate.delete(resendCountKey(email))
+            null
         } else {
             val user = usersService.getByEmail(email) ?: throw TokenInvalidException()
             // issue tokens and set httpOnly cookies on the current response
-            try {
-                val tokens = jwtService.issueTokensForUser(user.id)
-                setCookiesFromTokens(tokens, getCurrentResponse())
+            val tokens = try {
+                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.role))
+                setCookiesFromTokens(issued, getCurrentResponse())
+                redisTemplate.delete(eKey)
+                redisTemplate.delete(resendKey(email))
+                redisTemplate.delete(resendCountKey(email))
+                issued
             } catch (e: Exception) {
                 // fallback: treat any failure as token invalid
                 throw TokenInvalidException()
             }
+            tokens
         }
-
-        return true
     }
 
     override fun signOut() {
@@ -174,19 +178,20 @@ class AuthServiceImpl(
         clearAuthCookies(resp)
     }
 
-    override fun refreshAccessToken(refreshToken: String): String {
+    override fun refreshAccessToken(refreshToken: String): Tokens {
         try {
             // decode provided token to extract subject (user id)
             val jwt: Jwt = jwtService.validateAccessToken(refreshToken)
             val userId = jwt.subject
-            val tokens = jwtService.refreshTokens(userId, refreshToken)
+            val user = usersService.getById(userId)
+            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.role))
             // set new cookies (access + rotated refresh) on response if available
             try {
                 setCookiesFromTokens(tokens, getCurrentResponse())
             } catch (_: Exception) {
                 // ignore if no response available
             }
-            return tokens.accessToken
+            return tokens
         } catch (e: Exception) {
             throw TokenInvalidException()
         }
@@ -208,11 +213,18 @@ class AuthServiceImpl(
     }
 
     private fun setTokensAsCookiesForUser(userId: String?) {
-        if (userId == null) return
-        val tokens = jwtService.issueTokensForUser(userId)
+        if (userId.isNullOrBlank()) return
+        val user = try {
+            usersService.getById(userId)
+        } catch (_: Exception) {
+            null
+        } ?: return
+        val tokens = jwtService.issueTokensForUser(userId, buildAuthorities(user.role))
         val resp = getCurrentResponse() ?: return
         setCookiesFromTokens(tokens, resp)
     }
+
+    private fun buildAuthorities(role: String?): List<String> = role?.let { listOf(it.uppercase()) } ?: emptyList()
 
     private fun setCookiesFromTokens(tokens: com.example.researchreview.services.Tokens, response: HttpServletResponse?) {
         if (response == null) return
