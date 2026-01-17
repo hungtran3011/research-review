@@ -14,6 +14,7 @@ import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("/api/v1")
+@PreAuthorize("isAuthenticated()")
 class AttachmentController(
     private val attachmentService: AttachmentService
 ) {
@@ -46,7 +48,7 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = SpecialErrorCode.INTERNAL_ERROR.value,
                     message = ex.message ?: "Unable to create upload slot"
@@ -72,7 +74,7 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = SpecialErrorCode.INTERNAL_ERROR.value,
                     message = ex.message ?: "Unable to upload attachment"
@@ -96,7 +98,7 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = SpecialErrorCode.INTERNAL_ERROR.value,
                     message = ex.message ?: "Unable to finalize attachment"
@@ -131,7 +133,7 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = SpecialErrorCode.INTERNAL_ERROR.value,
                     message = ex.message ?: "Unable to delete attachment"

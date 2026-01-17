@@ -9,10 +9,12 @@ import com.example.researchreview.services.EditorService
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/editors")
+@PreAuthorize("hasRole('ADMIN')")
 class EditorController(
     private val editorService: EditorService
 ) {
@@ -26,14 +28,14 @@ class EditorController(
                 message = "Errors when creating editor: ${e.message}",
                 data = EditorDto()
             )
-            return ResponseEntity.status(422).body(response)
+            return ResponseEntity.ok(response)
         }
         val response = BaseResponseDto(
             code = EditorBusinessCode.EDITOR_CREATED_SUCCESSFULLY.value,
             message = "Editor created successfully",
             data = created
         )
-        return ResponseEntity.status(201).body(response)
+        return ResponseEntity.ok(response)
     }
 
     @GetMapping("/")
@@ -63,7 +65,7 @@ class EditorController(
                 message = "Errors when updating editor: ${e.message}",
                 data = EditorDto()
             )
-            return ResponseEntity.status(422).body(response)
+            return ResponseEntity.ok(response)
         }
         val response = BaseResponseDto(
             code = EditorBusinessCode.EDITOR_FOUND.value,

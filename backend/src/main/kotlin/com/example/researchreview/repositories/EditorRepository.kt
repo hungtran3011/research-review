@@ -11,6 +11,8 @@ interface EditorRepository : JpaRepository<Editor, String> {
 
     fun findByIdAndDeletedFalse(id: String): java.util.Optional<Editor>
 
+    fun findByUserIdAndDeletedFalse(userId: String): java.util.Optional<Editor>
+
     fun findAllByTrackIdAndDeletedFalse(trackId: String): List<Editor>
 
     override fun deleteById(id: String) {
@@ -18,5 +20,7 @@ interface EditorRepository : JpaRepository<Editor, String> {
         editor.deleted = true
         save(editor)
     }
+
+    fun findEditorByUserIdAndDeleted(userId: String, deleted: Boolean): MutableList<Editor>
 }
 

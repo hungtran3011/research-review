@@ -12,6 +12,12 @@ object CodeGen{
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 
+    fun sha256(input: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
+        return Base64.getEncoder().withoutPadding().encodeToString(digest)
+    }
+
     fun sha512(input: String): String {
         val md = MessageDigest.getInstance("SHA-512")
         val digest = md.digest(input.toByteArray(Charsets.UTF_8))

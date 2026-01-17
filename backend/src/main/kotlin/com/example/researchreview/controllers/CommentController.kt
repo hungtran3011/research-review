@@ -10,6 +10,7 @@ import com.example.researchreview.services.CommentService
 import jakarta.persistence.EntityNotFoundException
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/v1")
+@PreAuthorize("isAuthenticated()")
 class CommentController(
     private val commentService: CommentService
 ) {
@@ -42,7 +44,7 @@ class CommentController(
         @Valid @RequestBody request: CommentCreateRequestDto
     ): ResponseEntity<BaseResponseDto<CommentThreadDto>> {
         val created = commentService.createThread(articleId, request)
-        return ResponseEntity.status(201).body(
+        return ResponseEntity.ok(
             BaseResponseDto(
                 code = CommentBusinessCode.COMMENT_THREAD_CREATED.value,
                 message = "Comment added",
@@ -66,7 +68,7 @@ class CommentController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.status(404).body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = CommentBusinessCode.COMMENT_THREAD_NOT_FOUND.value,
                     message = ex.message ?: "Thread not found"
@@ -90,7 +92,7 @@ class CommentController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.status(404).body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = CommentBusinessCode.COMMENT_THREAD_NOT_FOUND.value,
                     message = ex.message ?: "Thread not found"

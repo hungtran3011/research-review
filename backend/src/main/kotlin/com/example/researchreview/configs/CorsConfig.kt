@@ -43,7 +43,13 @@ class CorsConfig {
             allowedOriginPatterns = patterns.toList()
             allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
             allowedHeaders = listOf("*")
-            exposedHeaders = listOf("Content-Disposition")
+            exposedHeaders = listOf(
+                "Content-Disposition",
+                "Accept-Ranges",
+                "Content-Range",
+                "Content-Length",
+                "ETag"
+            )
             allowCredentials = true
             maxAge = 3600
         }

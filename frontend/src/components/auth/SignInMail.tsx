@@ -5,6 +5,7 @@ import { makeStyles } from '@fluentui/react-components';
 import { useSignIn } from '../../hooks/useAuth';
 import { AxiosError } from 'axios';
 import { AuthBusinessCode, EmailBusinessCode } from '../../constants/business-code';
+import { useAuthStore } from '../../stores/authStore';
 
 const useStyles = makeStyles({
   root: {
@@ -57,9 +58,16 @@ const useStyles = makeStyles({
 function SignInMail() {
   const classes = useStyles();
   const [email, setEmail] = React.useState('');
+  const storedEmail = useAuthStore((state) => state.email);
   const { mutate: signIn, isPending, error } = useSignIn();
 
   document.title = "Đăng nhập - Research Review";
+
+  React.useEffect(() => {
+    if (storedEmail) {
+      setEmail(storedEmail);
+    }
+  }, [storedEmail]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

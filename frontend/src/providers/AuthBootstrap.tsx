@@ -3,9 +3,9 @@ import { useAuthStore } from '../stores/authStore'
 import { refreshTokens } from '../services/auth.service'
 
 function AuthBootstrap() {
-  const refreshToken = useAuthStore((state) => state.refreshToken)
   const setTokens = useAuthStore((state) => state.setTokens)
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
+  const setBootstrapped = useAuthStore((state) => state.setBootstrapped)
   const clearAuth = useAuthStore((state) => state.clearAuth)
   const hasBootstrapped = useRef(false)
 
@@ -16,25 +16,24 @@ function AuthBootstrap() {
     hasBootstrapped.current = true
 
     const hydrate = async () => {
-      if (!refreshToken) {
-        return
-      }
       try {
-        const response = await refreshTokens(refreshToken)
+        const response = await refreshTokens()
         const payload = response.data
-        if (payload?.accessToken && payload?.refreshToken) {
-          setTokens(payload.accessToken, payload.refreshToken)
+        if (payload?.accessToken) {
+          setTokens(payload.accessToken, null)
           setAuthenticated(true)
         } else {
           clearAuth()
         }
       } catch {
         clearAuth()
+      } finally {
+        setBootstrapped(true)
       }
     }
 
     void hydrate()
-  }, [clearAuth, refreshToken, setAuthenticated, setTokens])
+  }, [clearAuth, setAuthenticated, setBootstrapped, setTokens])
 
   return null
 }

@@ -47,9 +47,118 @@ export const EmailBusinessCode = {
 
 export type EmailBusinessCodeType = typeof EmailBusinessCode[keyof typeof EmailBusinessCode];
 
+export const UserBusinessCode = {
+  USER_NOT_FOUND: 6001,
+  USER_FOUND: 6002,
+  USER_CREATED_SUCCESSFULLY: 6003,
+  USER_CREATION_FAILED: 6004,
+  USER_UPDATED_SUCCESSFULLY: 6005,
+  USER_UPDATE_FAILED: 6006,
+  USER_ALREADY_EXISTS: 6007,
+} as const;
+
+export type UserBusinessCodeType = typeof UserBusinessCode[keyof typeof UserBusinessCode];
+
+export const ArticleBusinessCode = {
+  ARTICLE_CREATED_SUCCESSFULLY: 7001,
+  ARTICLE_CREATED_FAIL: 7002,
+  ARTICLE_FOUND: 7003,
+  ARTICLE_NOT_FOUND: 7004,
+  ARTICLE_UPDATED_SUCCESSFULLY: 7005,
+  ARTICLE_STATUS_UPDATED: 7006,
+} as const;
+
+export type ArticleBusinessCodeType = typeof ArticleBusinessCode[keyof typeof ArticleBusinessCode];
+
+export const ReviewerBusinessCode = {
+  REVIEWER_CONTACTED: 8001,
+  REVIEWER_CONTACT_FAILED: 8002,
+  REVIEWER_UNASSIGNED: 8003,
+} as const;
+
+export type ReviewerBusinessCodeType = typeof ReviewerBusinessCode[keyof typeof ReviewerBusinessCode];
+
+export const CommentBusinessCode = {
+  COMMENT_THREAD_CREATED: 9001,
+  COMMENT_THREAD_FOUND: 9002,
+  COMMENT_THREAD_UPDATED: 9003,
+  COMMENT_THREAD_NOT_FOUND: 9004,
+} as const;
+
+export type CommentBusinessCodeType = typeof CommentBusinessCode[keyof typeof CommentBusinessCode];
+
+export const NotificationBusinessCode = {
+  NOTIFICATION_FOUND: 10001,
+  NOTIFICATION_UPDATED: 10002,
+} as const;
+
+export type NotificationBusinessCodeType =
+  typeof NotificationBusinessCode[keyof typeof NotificationBusinessCode];
+
+export const AttachmentBusinessCode = {
+  ATTACHMENT_UPLOAD_SLOT_CREATED: 11001,
+  ATTACHMENT_FINALIZED: 11002,
+  ATTACHMENT_LIST_FOUND: 11003,
+  ATTACHMENT_DELETED: 11004,
+} as const;
+
+export type AttachmentBusinessCodeType =
+  typeof AttachmentBusinessCode[keyof typeof AttachmentBusinessCode];
+
+export const UploadBusinessCode = {
+  SUBMISSION_FILE_UPLOADED: 12001,
+} as const;
+
+export type UploadBusinessCodeType = typeof UploadBusinessCode[keyof typeof UploadBusinessCode];
+
 export const SpecialErrorCode = {
   GENERAL_ERROR: 99999,
-  INTERNAL_ERROR: 500
+  INTERNAL_ERROR: 500,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
 } as const;
 
 export type SpecialErrorCodeType = typeof SpecialErrorCode[keyof typeof SpecialErrorCode];
+
+const BUSINESS_CODE_GROUPS = [
+  AuthBusinessCode,
+  ValidationErrorCode,
+  TemplateBusinessCode,
+  EditorBusinessCode,
+  EmailBusinessCode,
+  UserBusinessCode,
+  ArticleBusinessCode,
+  ReviewerBusinessCode,
+  CommentBusinessCode,
+  NotificationBusinessCode,
+  AttachmentBusinessCode,
+  UploadBusinessCode,
+  SpecialErrorCode,
+] as const;
+
+const BUSINESS_CODE_KEY_BY_VALUE = (() => {
+  const map = new Map<number, string>();
+  for (const group of BUSINESS_CODE_GROUPS) {
+    for (const [key, value] of Object.entries(group)) {
+      if (typeof value === 'number' && !map.has(value)) {
+        map.set(value, key);
+      }
+    }
+  }
+  return map;
+})();
+
+const ERROR_KEY_RE =
+  /(^|_)(FAIL|FAILED|NOT_FOUND|INVALID|NOT_VERIFIED|UNAUTHORIZED|FORBIDDEN|ALREADY_EXISTS|CREATION_FAILED|UPDATE_FAILED)($|_)/;
+
+export const isBusinessErrorCode = (code: number): boolean => {
+  const key = BUSINESS_CODE_KEY_BY_VALUE.get(code);
+  if (key) {
+    return ERROR_KEY_RE.test(key) || code === SpecialErrorCode.GENERAL_ERROR;
+  }
+
+  // Fallback for codes not present in the constant tables.
+  return code === SpecialErrorCode.GENERAL_ERROR || (code >= 400 && code < 600);
+};

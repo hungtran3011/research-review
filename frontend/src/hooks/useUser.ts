@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { userService } from '../services/user.service';
 import { useAuthStore } from '../stores/authStore';
-import { useBasicToast } from './useBasicToast';
+import { useBusinessToast } from './businessToast';
 import type {
+  AdminCreateUserRequestDto,
   UserRequestDto,
   UserRoleUpdateRequestDto,
   UserStatusUpdateRequestDto,
@@ -18,19 +19,23 @@ import type { AxiosError } from 'axios';
  */
 export const useCompleteUserInfo = () => {
   const navigate = useNavigate();
-  const { success, error } = useBasicToast();
-  const { setAuthenticated } = useAuthStore();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { setAuthenticated, setInviteToken, inviteToken } = useAuthStore();
 
   return useMutation({
     mutationFn: (data: UserRequestDto) => userService.completeUserInfo(data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       setAuthenticated(true);
-      success('Hoàn tất đăng ký thành công!');
-      navigate('/');
+      showSuccess(response, 'Hoàn tất đăng ký thành công!');
+      if (inviteToken) {
+        navigate(`/reviewer-invite?token=${encodeURIComponent(inviteToken)}`);
+      } else {
+        navigate('/');
+      }
+      setInviteToken(undefined);
     },
     onError: (err: AxiosError<BaseResponseDto<null>>) => {
-      const message = err.response?.data?.message || 'Có lỗi xảy ra khi hoàn tất đăng ký';
-      error(message);
+      showErrorFromAxios(err, 'Có lỗi xảy ra khi hoàn tất đăng ký');
     },
   });
 };
@@ -38,22 +43,50 @@ export const useCompleteUserInfo = () => {
 /**
  * Hook for fetching current user
  */
-export const useCurrentUser = (email: string, enabled: boolean = true) => {
+export const useCurrentUser = (enabled: boolean = true) => {
   return useQuery({
-    queryKey: ['currentUser', email],
-    queryFn: () => userService.getCurrentUser(email),
-    enabled: enabled && !!email,
+    queryKey: ['currentUser'],
+    queryFn: () => userService.getCurrentUser(),
+    enabled,
   });
 };
 
 /**
- * Hook for fetching paginated users (admin)
+ * Hook for fetching paginated users (admin) with optional filters
  */
-export const useUsers = (page: number = 0, size: number = 20, enabled: boolean = true) => {
+export const useUsers = (
+  page: number = 0,
+  size: number = 20,
+  filters: Partial<{ name: string; email: string; institutionName: string; role: string; status: string }> = {},
+  enabled: boolean = true
+) => {
+  const hasFilters = Object.values(filters).some((v) => (v ?? '').toString().trim().length > 0);
   return useQuery<BaseResponseDto<PageResponseDto<UserDto>> | undefined>({
-    queryKey: ['adminUsers', page, size],
-    queryFn: () => userService.getUsers({ page, size }),
+    queryKey: ['adminUsers', page, size, filters],
+    queryFn: () =>
+      hasFilters
+        ? userService.searchUsers({ page, size, ...filters })
+        : userService.getUsers({ page, size }),
     enabled,
+  });
+};
+
+/**
+ * Hook for creating a user (admin)
+ */
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+
+  return useMutation({
+    mutationFn: (data: AdminCreateUserRequestDto) => userService.createUserAsAdmin(data),
+    onSuccess: (response) => {
+      showSuccess(response, 'Tạo người dùng thành công!', [200, 6003]);
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+    },
+    onError: (err: AxiosError<BaseResponseDto<null>>) => {
+      showErrorFromAxios(err, 'Có lỗi xảy ra khi tạo người dùng');
+    },
   });
 };
 
@@ -61,17 +94,16 @@ export const useUsers = (page: number = 0, size: number = 20, enabled: boolean =
  * Hook for updating user info
  */
 export const useUpdateUser = () => {
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UserRequestDto }) =>
       userService.updateUser(id, data),
-    onSuccess: () => {
-      success('Cập nhật thông tin thành công!');
+    onSuccess: (response) => {
+      showSuccess(response, 'Cập nhật thông tin thành công!', [200, 6005]);
     },
     onError: (err: AxiosError<BaseResponseDto<null>>) => {
-      const message = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin';
-      error(message);
+      showErrorFromAxios(err, 'Có lỗi xảy ra khi cập nhật thông tin');
     },
   });
 };
@@ -81,18 +113,17 @@ export const useUpdateUser = () => {
  */
 export const useUpdateUserRole = () => {
   const queryClient = useQueryClient();
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UserRoleUpdateRequestDto }) =>
       userService.updateUserRole(id, data),
-    onSuccess: () => {
-      success('Cập nhật vai trò người dùng thành công!');
+    onSuccess: (response) => {
+      showSuccess(response, 'Cập nhật vai trò người dùng thành công!', [200, 6005]);
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
     },
     onError: (err: AxiosError<BaseResponseDto<null>>) => {
-      const message = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật vai trò';
-      error(message);
+      showErrorFromAxios(err, 'Có lỗi xảy ra khi cập nhật vai trò');
     },
   });
 };
@@ -102,18 +133,17 @@ export const useUpdateUserRole = () => {
  */
 export const useUpdateUserStatus = () => {
   const queryClient = useQueryClient();
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UserStatusUpdateRequestDto }) =>
       userService.updateUserStatus(id, data),
-    onSuccess: () => {
-      success('Cập nhật trạng thái người dùng thành công!');
+    onSuccess: (response) => {
+      showSuccess(response, 'Cập nhật trạng thái người dùng thành công!', [200, 6005]);
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
     },
     onError: (err: AxiosError<BaseResponseDto<null>>) => {
-      const message = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái';
-      error(message);
+      showErrorFromAxios(err, 'Có lỗi xảy ra khi cập nhật trạng thái');
     },
   });
 };
@@ -123,17 +153,16 @@ export const useUpdateUserStatus = () => {
  */
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: (id: string) => userService.deleteUser(id),
-    onSuccess: () => {
-      success('Xóa người dùng thành công!');
+    onSuccess: (response) => {
+      showSuccess(response, 'Xóa người dùng thành công!', [200]);
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
     },
     onError: (err: AxiosError<BaseResponseDto<null>>) => {
-      const message = err.response?.data?.message || 'Có lỗi xảy ra khi xóa người dùng';
-      error(message);
+      showErrorFromAxios(err, 'Có lỗi xảy ra khi xóa người dùng');
     },
   });
 };

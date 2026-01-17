@@ -151,9 +151,9 @@ class AuthServiceImpl(
             null
         } else {
             val user = usersService.getByEmail(email) ?: throw TokenInvalidException()
-            // issue tokens and set httpOnly cookies on the current response
+            // issue tokens and set refresh httpOnly cookie on the current response
             val tokens = try {
-                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.role))
+                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.role, user.roles))
                 setCookiesFromTokens(issued, getCurrentResponse())
                 redisTemplate.delete(eKey)
                 redisTemplate.delete(resendKey(email))
@@ -178,14 +178,20 @@ class AuthServiceImpl(
         clearAuthCookies(resp)
     }
 
-    override fun refreshAccessToken(refreshToken: String): Tokens {
+    override fun refreshAccessToken(): Tokens {
         try {
-            // decode provided token to extract subject (user id)
+            // read refresh token from cookie
+            val respAttrs = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes
+            val request = respAttrs?.request ?: throw TokenInvalidException()
+            val refreshToken = request.cookies?.firstOrNull { it.name == "refresh_token" }?.value
+                ?: throw TokenInvalidException()
+
+            // decode refresh token to extract subject (user id)
             val jwt: Jwt = jwtService.validateAccessToken(refreshToken)
             val userId = jwt.subject
             val user = usersService.getById(userId)
-            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.role))
-            // set new cookies (access + rotated refresh) on response if available
+            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.role, user.roles))
+            // set rotated refresh cookie on response if available
             try {
                 setCookiesFromTokens(tokens, getCurrentResponse())
             } catch (_: Exception) {
@@ -219,47 +225,37 @@ class AuthServiceImpl(
         } catch (_: Exception) {
             null
         } ?: return
-        val tokens = jwtService.issueTokensForUser(userId, buildAuthorities(user.role))
+        val tokens = jwtService.issueTokensForUser(userId, buildAuthorities(user.role, user.roles))
         val resp = getCurrentResponse() ?: return
         setCookiesFromTokens(tokens, resp)
     }
 
-    private fun buildAuthorities(role: String?): List<String> = role?.let { listOf(it.uppercase()) } ?: emptyList()
+    private fun buildAuthorities(role: String?, roles: List<String>? = null): List<String> {
+        val base = roles?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+            ?: role?.takeIf { it.isNotBlank() }?.let { listOf(it) }
+            ?: emptyList()
+        return base.map { it.uppercase() }.distinct()
+    }
 
     private fun setCookiesFromTokens(tokens: com.example.researchreview.services.Tokens, response: HttpServletResponse?) {
         if (response == null) return
-        // access cookie
-        val accessCookie = Cookie("access_token", tokens.accessToken)
-        accessCookie.isHttpOnly = true
-        accessCookie.secure = true
-        accessCookie.path = "/"
-        accessCookie.maxAge = (tokens.accessExpiresAt.epochSecond - java.time.Instant.now().epochSecond).toInt()
-
+        // only set refresh cookie (HttpOnly) — access token will be returned in response body for FE store
         val refreshCookie = Cookie("refresh_token", tokens.refreshToken)
         refreshCookie.isHttpOnly = true
         refreshCookie.secure = true
         refreshCookie.path = "/"
         refreshCookie.maxAge = (tokens.refreshExpiresAt.epochSecond - java.time.Instant.now().epochSecond).toInt()
-
-        response.addCookie(accessCookie)
         response.addCookie(refreshCookie)
     }
 
     private fun clearAuthCookies(response: HttpServletResponse?) {
         if (response == null) return
-        val accessCookie = Cookie("access_token", "")
-        accessCookie.path = "/"
-        accessCookie.maxAge = 0
-        accessCookie.isHttpOnly = true
-        accessCookie.secure = true
-
+        // clear refresh cookie
         val refreshCookie = Cookie("refresh_token", "")
         refreshCookie.path = "/"
         refreshCookie.maxAge = 0
         refreshCookie.isHttpOnly = true
         refreshCookie.secure = true
-
-        response.addCookie(accessCookie)
         response.addCookie(refreshCookie)
     }
 }

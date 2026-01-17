@@ -21,4 +21,5 @@ interface AttachmentService {
     fun deleteAttachment(attachmentId: String)
     fun downloadAttachment(attachmentId: String): AttachmentDownloadDto
     fun downloadUrl(attachmentId: String, expirationSeconds: Long = 900): String
+    fun saveAttachment(articleId: String, file: MultipartFile, kind: String): AttachmentDto
 }

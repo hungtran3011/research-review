@@ -18,15 +18,19 @@ interface ArticleRepository: JpaRepository<Article, String> {
 		"SELECT DISTINCT a FROM Article a " +
 			"JOIN ReviewerArticle ra ON ra.article = a " +
 			"JOIN Reviewer r ON ra.reviewer = r " +
-			"JOIN User u ON r.user = u " +
-			"WHERE a.deleted = false AND ra.deleted = false AND u.id = :userId",
+			"LEFT JOIN User u ON r.user = u " +
+			"WHERE a.deleted = false AND ra.deleted = false AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))",
 		countQuery = "SELECT COUNT(DISTINCT a.id) FROM Article a " +
 			"JOIN ReviewerArticle ra ON ra.article = a " +
 			"JOIN Reviewer r ON ra.reviewer = r " +
-			"JOIN User u ON r.user = u " +
-			"WHERE a.deleted = false AND ra.deleted = false AND u.id = :userId"
+			"LEFT JOIN User u ON r.user = u " +
+			"WHERE a.deleted = false AND ra.deleted = false AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))"
 	)
-	fun findAllByReviewerUserId(@Param("userId") userId: String, pageable: Pageable): Page<Article>
+	fun findAllByReviewerUserIdOrEmail(
+		@Param("userId") userId: String,
+		@Param("email") email: String,
+		pageable: Pageable
+	): Page<Article>
 
 	@Query(
 		"SELECT DISTINCT a FROM Article a " +
@@ -46,12 +50,13 @@ interface ArticleRepository: JpaRepository<Article, String> {
 		"SELECT a FROM Article a " +
 			"JOIN ReviewerArticle ra ON ra.article = a " +
 			"JOIN Reviewer r ON ra.reviewer = r " +
-			"JOIN User u ON r.user = u " +
-			"WHERE a.deleted = false AND ra.deleted = false AND a.id = :articleId AND u.id = :userId"
+			"LEFT JOIN User u ON r.user = u " +
+			"WHERE a.deleted = false AND ra.deleted = false AND a.id = :articleId AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))"
 	)
-	fun findByIdForReviewer(
+	fun findByIdForReviewerOrEmail(
 		@Param("articleId") articleId: String,
-		@Param("userId") userId: String
+		@Param("userId") userId: String,
+		@Param("email") email: String
 	): Optional<Article>
 
 	@Query(
@@ -62,6 +67,15 @@ interface ArticleRepository: JpaRepository<Article, String> {
 			"WHERE a.deleted = false AND aa.deleted = false AND a.id = :articleId AND u.id = :userId"
 	)
 	fun findByIdForAuthor(
+		@Param("articleId") articleId: String,
+		@Param("userId") userId: String
+	): Optional<Article>
+
+	@Query(
+		"SELECT a FROM Article a " +
+			"WHERE a.deleted = false AND a.id = :articleId AND a.createdBy = :userId"
+	)
+	fun findByIdAndCreator(
 		@Param("articleId") articleId: String,
 		@Param("userId") userId: String
 	): Optional<Article>

@@ -6,6 +6,7 @@ import com.example.researchreview.dtos.TrackRequestDto
 import com.example.researchreview.services.TrackService
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -26,7 +27,7 @@ class TrackController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -48,7 +49,7 @@ class TrackController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(404).body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 404,
                     message = e.message ?: "Track not found",
@@ -56,7 +57,7 @@ class TrackController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -67,6 +68,7 @@ class TrackController(
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     fun createTrack(@Valid @RequestBody request: TrackRequestDto): ResponseEntity<BaseResponseDto<TrackDto>> {
         return try {
             val track = trackService.create(request)
@@ -78,7 +80,7 @@ class TrackController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -86,7 +88,7 @@ class TrackController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -97,6 +99,7 @@ class TrackController(
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     fun updateTrack(
         @PathVariable id: String,
         @Valid @RequestBody request: TrackRequestDto
@@ -111,7 +114,7 @@ class TrackController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -119,7 +122,7 @@ class TrackController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -130,6 +133,7 @@ class TrackController(
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     fun deleteTrack(@PathVariable id: String): ResponseEntity<BaseResponseDto<String>> {
         return try {
             val message = trackService.delete(id)
@@ -141,7 +145,7 @@ class TrackController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(404).body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 404,
                     message = e.message ?: "Track not found",
@@ -149,7 +153,7 @@ class TrackController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",

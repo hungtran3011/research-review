@@ -1,7 +1,12 @@
 Hệ thống nộp và phản biện bài báo khoa học
 ===========================================
 
-# Chạy thử nghiệm
+Chạy thử nghiệm
+-------------
+
+Hướng dẫn test chi tiết (setup, mock data, test cases):
+
+- [doc_assets/testing_guide.md](doc_assets/testing_guide.md)
 
 Backend:
 
@@ -17,9 +22,12 @@ cd frontend
 yarn && yarn dev
 ```
 
-# Biểu đồ ca sử dụng
+Biểu đồ ca sử dụng
+-----------------
 
 ![usecase.png](doc_assets/usecase.png)
 
-# Flow đăng ký thông tin
+Flow đăng ký thông tin
+---------------------
+
 ![sign-up-flow](doc_assets/sign-up-flow.png)

@@ -21,8 +21,8 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ allowedRoles = [], children, redirectTo = '/signin' }: ProtectedRouteProps) => {
   const classes = useStyles();
-  const { isAuthenticated, email } = useAuthStore();
-  const { data, isLoading, isError } = useCurrentUser(email || '', isAuthenticated);
+  const { isAuthenticated } = useAuthStore();
+  const { data, isLoading, isError } = useCurrentUser(isAuthenticated);
 
   if (!isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
@@ -40,8 +40,12 @@ const ProtectedRoute = ({ allowedRoles = [], children, redirectTo = '/signin' }:
     return <Navigate to={redirectTo} replace />;
   }
 
-  const currentRole = data?.data?.role;
-  if (allowedRoles.length > 0 && (!currentRole || !allowedRoles.includes(currentRole))) {
+  const currentRoles = data?.data?.roles?.length
+    ? data.data.roles
+    : data?.data?.role
+      ? [data.data.role]
+      : [];
+  if (allowedRoles.length > 0 && !allowedRoles.some((r) => currentRoles.includes(r))) {
     return <Navigate to="/unauthorized" replace />;
   }
 

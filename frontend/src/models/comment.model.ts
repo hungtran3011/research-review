@@ -13,6 +13,7 @@ export interface CommentThreadDto {
   id: string
   articleId: string
   reviewerId?: string | null
+  reviewerLabel?: string | null
   version: number
   pageNumber: number
   x: number

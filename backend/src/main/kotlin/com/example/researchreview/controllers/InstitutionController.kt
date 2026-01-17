@@ -7,6 +7,7 @@ import com.example.researchreview.services.InstitutionService
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.*
 class InstitutionController(
     private val institutionService: InstitutionService
 ) {
-
     @GetMapping
     fun getAllInstitutions(pageable: Pageable): ResponseEntity<BaseResponseDto<PageResponseDto<InstitutionDto>>> {
         return try {
@@ -29,7 +29,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -51,7 +51,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(404).body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 404,
                     message = e.message ?: "Institution not found",
@@ -59,7 +59,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -70,6 +70,7 @@ class InstitutionController(
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     fun createInstitution(@Valid @RequestBody request: InstitutionDto): ResponseEntity<BaseResponseDto<InstitutionDto>> {
         return try {
             val institution = institutionService.create(request)
@@ -81,7 +82,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -89,7 +90,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -100,6 +101,7 @@ class InstitutionController(
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     fun updateInstitution(
         @PathVariable id: String,
         @Valid @RequestBody request: InstitutionDto
@@ -114,7 +116,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -122,7 +124,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -133,6 +135,7 @@ class InstitutionController(
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     fun deleteInstitution(@PathVariable id: String): ResponseEntity<BaseResponseDto<String>> {
         return try {
             institutionService.delete(id)
@@ -144,7 +147,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(404).body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 404,
                     message = e.message ?: "Institution not found",
@@ -152,7 +155,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
+            ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",

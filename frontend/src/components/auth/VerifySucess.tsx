@@ -36,7 +36,7 @@ function VerifySucess() {
   const location = useLocation()
   const navigate = useNavigate()
   const fromVerify = location.state?.fromVerify
-  const { isSignUp } = useAuthStore()
+  const { isSignUp, inviteToken } = useAuthStore()
 
   document.title = isSignUp 
     ? "Xác thực email thành công - Research Review"
@@ -51,8 +51,12 @@ function VerifySucess() {
         // Sign up flow: go to info page to complete profile
         navigate('/info')
       } else {
-        // Sign in flow: go to home page
-        navigate('/')
+        // Sign in flow: if coming from reviewer invite, continue the flow
+        if (inviteToken) {
+          navigate(`/reviewer-invite?token=${encodeURIComponent(inviteToken)}`)
+        } else {
+          navigate('/')
+        }
       }
     }, 5000)
 

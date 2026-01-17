@@ -22,5 +22,8 @@ data class UserRequestDto(
     // new fields for user profile
     var gender: String = "",
     var nationality: String = "",
-    var academicStatus: String = ""
+    var academicStatus: String = "",
+
+    // optional opaque reviewer-invite token
+    var inviteToken: String? = null
 )

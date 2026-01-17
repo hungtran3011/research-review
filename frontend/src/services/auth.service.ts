@@ -4,7 +4,6 @@ import type {
   BaseResponseDto,
   AuthResponseDto,
   VerifyTokenRequestDto,
-  RefreshTokenRequestDto,
 } from '../models';
 
 /**
@@ -55,8 +54,7 @@ export const signOut = async (): Promise<AuthResponseDto> => {
   return response.data;
 };
 
-export const refreshTokens = async (refreshToken: string): Promise<BaseResponseDto<AuthResponseDto>> => {
-  const body = { refreshToken } as RefreshTokenRequestDto;
-  const response = await api.post<BaseResponseDto<AuthResponseDto>>('/auth/refresh', body);
+export const refreshTokens = async (): Promise<BaseResponseDto<AuthResponseDto>> => {
+  const response = await api.post<BaseResponseDto<AuthResponseDto>>('/auth/refresh');
   return response.data;
 };

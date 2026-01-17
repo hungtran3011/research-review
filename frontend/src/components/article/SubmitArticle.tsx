@@ -1,5 +1,5 @@
 import { Field, Input, Button, Text, makeStyles, Textarea, Dropdown, Option } from '@fluentui/react-components'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { DocumentRegular, Dismiss24Regular } from '@fluentui/react-icons'
 import { PdfViewer } from '../common/PdfViewer'
@@ -9,6 +9,8 @@ import { attachmentService } from '../../services/attachment.service'
 import { AttachmentKind } from '../../constants/attachment-kind'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 import { useBasicToast } from '../../hooks/useBasicToast'
+import { useCurrentUser } from '../../hooks/useUser'
+import { useAuthStore } from '../../stores/authStore'
 import type { InstitutionDto } from '../../models'
 
 const useStyles = makeStyles({
@@ -142,9 +144,33 @@ function SubmitArticle() {
     const [pdfUrl, setPdfUrl] = useState<string | null>(null)
     const [uploading, setUploading] = useState(false)
     const navigate = useNavigate()
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+    const { data: currentUserResponse } = useCurrentUser(Boolean(isAuthenticated))
+    const currentUser = currentUserResponse?.data
     const { data: tracksData } = useTracks()
     const { data: institutionsData } = useInstitutions(0, 100)
     const { error } = useBasicToast()
+
+    useEffect(() => {
+        if (!currentUser) return
+        setAuthors((prev) => {
+            if (prev.length === 0) return prev
+
+            const first = prev[0]
+            const isFirstBlank = !first.name.trim() && !first.email.trim() && !first.institutionId.trim()
+            if (!isFirstBlank) return prev
+
+            return [
+                {
+                    ...first,
+                    name: currentUser.name ?? '',
+                    email: currentUser.email ?? '',
+                    institutionId: currentUser.institution?.id ?? '',
+                },
+                ...prev.slice(1),
+            ]
+        })
+    }, [currentUser])
 
     const tracks = useMemo(() => tracksData?.data ?? [], [tracksData])
     const institutions = useMemo(() => institutionsData?.data?.content ?? [], [institutionsData])
@@ -227,6 +253,8 @@ function SubmitArticle() {
         void (async function submitArticle() {
             setUploading(true)
             try {
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+
                 // create article first with empty link (if file present) or provided link
                 const createResp = await articleService.create({
                     title: formData.title,
@@ -252,12 +280,8 @@ function SubmitArticle() {
                         throw new Error('Attachment upload failed')
                     }
 
-                    const downloadResp = await attachmentService.downloadUrl(attachment.id)
-                    const downloadUrl = downloadResp.data
-                    if (downloadUrl) {
-                        // update article link
-                        await articleService.updateLink(articleId, downloadUrl)
-                    }
+                    // Persist a stable same-origin proxy URL (not a presigned S3 URL, which expires).
+                    await articleService.updateLink(articleId, `${apiBaseUrl}/articles/${articleId}/pdf`)
                 }
 
                 // navigate to created article

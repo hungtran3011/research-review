@@ -9,5 +9,5 @@ interface AuthService {
     fun sendMagicLink(email: String, isSignUp: Boolean)
     fun verifyMagicLink(email: String, token: String, isSignUp: Boolean): Tokens?
     fun signOut()
-    fun refreshAccessToken(refreshToken: String): Tokens
+    fun refreshAccessToken(): Tokens
 }

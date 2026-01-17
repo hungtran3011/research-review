@@ -2,10 +2,12 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.dtos.EditorDto
 import com.example.researchreview.dtos.EditorRequestDto
+import com.example.researchreview.dtos.UserDto
+import com.example.researchreview.dtos.TrackDto
+import com.example.researchreview.dtos.InstitutionDto
 import com.example.researchreview.entities.Editor
 import com.example.researchreview.entities.Track
 import com.example.researchreview.entities.User
-import com.example.researchreview.mappers.EditorMapper
 import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.TrackRepository
 import com.example.researchreview.repositories.UserRepository
@@ -20,21 +22,20 @@ import org.springframework.transaction.annotation.Transactional
 class EditorServiceImpl(
     private val editorRepository: EditorRepository,
     private val trackRepository: TrackRepository,
-    private val userRepository: UserRepository,
-    private val editorMapper: EditorMapper
+    private val userRepository: UserRepository
 ): EditorService {
 
     @Transactional(readOnly = true)
     override fun getAll(pageable: Pageable): Page<EditorDto> {
         val editors = editorRepository.findAllByDeletedFalse(pageable)
-        return editors.map { editor -> editorMapper.toDto(editor) }
+        return editors.map { editor -> toDto(editor) }
     }
 
     @Transactional(readOnly = true)
     override fun getById(id: String): EditorDto {
         val editor = editorRepository.findByIdAndDeletedFalse(id)
             .orElseThrow { EntityNotFoundException("Editor not found with id $id") }
-        return editorMapper.toDto(editor)
+        return toDto(editor)
     }
 
     @Transactional
@@ -44,7 +45,7 @@ class EditorServiceImpl(
             user = findUserOrThrow(request.userId)
         }
         val saved = editorRepository.save(editor)
-        return editorMapper.toDto(saved)
+        return toDto(saved)
     }
 
     @Transactional
@@ -61,7 +62,7 @@ class EditorServiceImpl(
         }
 
         val saved = editorRepository.save(existing)
-        return editorMapper.toDto(saved)
+        return toDto(saved)
     }
 
     @Transactional
@@ -83,5 +84,57 @@ class EditorServiceImpl(
         }
         return userRepository.findByIdAndDeletedFalse(userId)
             .orElseThrow { EntityNotFoundException("User not found with id $userId") }
+    }
+
+    private fun toDto(editor: Editor): EditorDto {
+        return EditorDto(
+            id = editor.id,
+            track = TrackDto(
+                id = editor.track.id,
+                name = editor.track.name,
+                editors = emptyList(),
+                description = null,
+                isActive = true,
+                createdBy = null,
+                updatedBy = null
+            ),
+            user = userToDto(editor.user),
+            createdAt = editor.createdAt,
+            createdBy = editor.createdBy,
+            updatedAt = editor.updatedAt,
+            updatedBy = editor.updatedBy
+        )
+    }
+
+    private fun userToDto(user: User): UserDto {
+        return UserDto(
+            id = user.id,
+            name = user.name,
+            role = user.role.name,
+            roles = user.effectiveRoles.map { it.name },
+            email = user.email,
+            institution = user.institution?.let {
+                InstitutionDto(
+                    id = it.id,
+                    name = it.name,
+                    country = it.country
+                )
+            },
+            track = user.track?.let {
+                TrackDto(
+                    id = it.id,
+                    name = it.name,
+                    editors = emptyList(),
+                    description = null,
+                    isActive = true,
+                    createdBy = null,
+                    updatedBy = null
+                )
+            },
+            gender = user.gender,
+            nationality = user.nationality,
+            academicStatus = user.academicStatus,
+            status = user.status.name
+        )
     }
 }

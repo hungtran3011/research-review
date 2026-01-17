@@ -50,6 +50,18 @@ export const attachmentService = {
     );
     return response.data;
   },
+  listArticleAttachments: async (
+    articleId: string,
+    version?: number,
+  ): Promise<BaseResponseDto<AttachmentDto[]>> => {
+    const response = await api.get<BaseResponseDto<AttachmentDto[]>>(
+      `/articles/${articleId}/attachments`,
+      {
+        params: version != null ? { version } : undefined,
+      },
+    )
+    return response.data
+  },
   downloadUrl: async (attachmentId: string): Promise<BaseResponseDto<string>> => {
     const response = await api.get<BaseResponseDto<string>>(`/attachments/${attachmentId}/download-url`)
     return response.data

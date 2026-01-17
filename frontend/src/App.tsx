@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import './App.css'
 import { Button, Text, Card, CardHeader, CardPreview, Badge, Spinner } from '@fluentui/react-components'
 import { makeStyles } from '@fluentui/react-components'
@@ -57,9 +57,15 @@ function App() {
   const classes = useStyles();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userEmail = useAuthStore((state) => state.email);
-  const { data, isLoading, isError } = useArticles(0, 5);
+  const [page, setPage] = useState(0);
+  const pageSize = 5;
+  const { data, isLoading, isError } = useArticles(page, pageSize);
 
-  const articles = useMemo(() => data?.data?.content ?? [], [data]);
+  const pageData = data?.data;
+  const totalPages = pageData?.totalPages ?? 0;
+  const currentPage = pageData?.pageNumber ?? page;
+
+  const articles = useMemo(() => pageData?.content ?? [], [pageData]);
 
   const statusLabelMap: Record<string, { label: string; color: 'brand' | 'informative' | 'important' | 'success' }> = {
     [ArticleStatus.SUBMITTED]: { label: 'Chờ xử lý', color: 'informative' },
@@ -141,7 +147,53 @@ function App() {
             </CardPreview>
             {!isLoading && !isError && articles.length > 0 && (
               <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                  <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Trang {currentPage + 1}{totalPages > 0 ? ` / ${totalPages}` : ''}
+                  </Text>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                      appearance="secondary"
+                      size="small"
+                      disabled={isLoading || currentPage <= 0}
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    >
+                      Trang trước
+                    </Button>
+                    <Button
+                      appearance="secondary"
+                      size="small"
+                      disabled={isLoading || (totalPages > 0 && currentPage >= totalPages - 1)}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      Trang sau
+                    </Button>
+                  </div>
+                </div>
                 {articles.map(renderArticle)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                    Trang {currentPage + 1}{totalPages > 0 ? ` / ${totalPages}` : ''}
+                  </Text>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                      appearance="secondary"
+                      size="small"
+                      disabled={isLoading || currentPage <= 0}
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    >
+                      Trang trước
+                    </Button>
+                    <Button
+                      appearance="secondary"
+                      size="small"
+                      disabled={isLoading || (totalPages > 0 && currentPage >= totalPages - 1)}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      Trang sau
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </Card>

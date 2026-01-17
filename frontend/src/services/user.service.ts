@@ -1,5 +1,6 @@
 import { api } from './api';
 import type {
+  AdminCreateUserRequestDto,
   UserRequestDto,
   BaseResponseDto,
   UserDto,
@@ -21,10 +22,10 @@ export const userService = {
   },
 
   /**
-   * Get current user by email
+   * Get current authenticated user
    */
-  getCurrentUser: async (email: string): Promise<BaseResponseDto<UserDto>> => {
-    const response = await api.get<BaseResponseDto<UserDto>>(`/users/me?email=${email}`);
+  getCurrentUser: async (): Promise<BaseResponseDto<UserDto>> => {
+    const response = await api.get<BaseResponseDto<UserDto>>(`/users/me`);
     return response.data;
   },
 
@@ -37,6 +38,33 @@ export const userService = {
     const response = await api.get<BaseResponseDto<PageResponseDto<UserDto>>>(`/users`, {
       params,
     });
+    return response.data;
+  },
+
+  searchUsers: async (
+    params: {
+      page?: number;
+      size?: number;
+      name?: string;
+      email?: string;
+      institutionName?: string;
+      role?: string;
+      status?: string;
+    } = {}
+  ): Promise<BaseResponseDto<PageResponseDto<UserDto>>> => {
+    const response = await api.get<BaseResponseDto<PageResponseDto<UserDto>>>(`/users/search`, {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Create a new user (admin only)
+   */
+  createUserAsAdmin: async (
+    data: AdminCreateUserRequestDto
+  ): Promise<BaseResponseDto<UserDto>> => {
+    const response = await api.post<BaseResponseDto<UserDto>>(`/users`, data);
     return response.data;
   },
 

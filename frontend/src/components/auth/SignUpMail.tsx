@@ -8,6 +8,7 @@ import { useSignUp } from '../../hooks/useAuth';
 import { useBasicToast } from '../../hooks/useBasicToast';
 import { AxiosError } from 'axios';
 import { AuthBusinessCode, EmailBusinessCode } from '../../constants/business-code';
+import { useAuthStore } from '../../stores/authStore';
 
 const useStyles = makeStyles({
   root: {
@@ -56,6 +57,7 @@ const useStyles = makeStyles({
 function SignUpMail() {
   const classes = useStyles();
   const [email, setEmail] = React.useState('');
+  const storedEmail = useAuthStore((state) => state.email);
   const { mutate: signUp, isPending, error } = useSignUp();
   const { error: showErrorToast } = useBasicToast();
 
@@ -74,6 +76,12 @@ function SignUpMail() {
       showErrorToast('Đăng ký thất bại', errorMessage);
     }
   }, [error, showErrorToast]);
+
+  React.useEffect(() => {
+    if (storedEmail) {
+      setEmail(storedEmail);
+    }
+  }, [storedEmail]);
 
   const getErrorMessage = (err: AxiosError | null) => {
     if (!err || !err.response?.data) return 'Có lỗi xảy ra. Vui lòng thử lại.';

@@ -17,7 +17,7 @@ class Attachment : BaseEntity() {
     @ManyToOne
     @JoinColumn(name = "article_id")
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
-    var article: Article = Article()
+    lateinit var article: Article
 
     @ManyToOne
     @JoinColumn(name = "uploaded_by")

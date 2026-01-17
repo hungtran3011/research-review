@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useSignOut } from '../../hooks/useAuth';
 import { useCurrentUser } from '../../hooks/useUser';
 import { NavLink, useNavigate } from 'react-router';
+import { NotificationCenter } from './NotificationCenter';
 import {
   WeatherSunny16Regular,
   WeatherSunny16Filled,
@@ -81,22 +82,30 @@ function Nav() {
   const email = useAuthStore((state) => state.email);
   const navigate = useNavigate();
   const { mutate: signOut } = useSignOut();
-  const { data: currentUserResponse } = useCurrentUser(email || '', Boolean(isAuthenticated && email));
-  const role = currentUserResponse?.data?.role;
-  const isAdmin = role === 'ADMIN';
+  const { data: currentUserResponse } = useCurrentUser(Boolean(isAuthenticated));
+  const roles = currentUserResponse?.data?.roles?.length
+    ? currentUserResponse.data.roles
+    : currentUserResponse?.data?.role
+      ? [currentUserResponse.data.role]
+      : [];
+  const isAdmin = roles.includes('ADMIN');
+  const isResearcher = roles.includes('RESEARCHER');
 
   const commonLinks = [
     { to: '/', label: 'Trang chủ', icon: <Home12Regular /> },
-    { to: '/articles/submit', label: 'Nộp bài báo', icon: <Add16Regular /> },
     { to: '/help', label: 'Trợ giúp', icon: <Document16Regular /> },
   ];
+
+  const researcherLinks = isAuthenticated && isResearcher
+    ? [{ to: '/articles/submit', label: 'Nộp bài báo', icon: <Add16Regular /> }]
+    : [];
 
   const authenticatedLinks = [
     { to: '/profile', label: 'Hồ sơ của tôi', icon: <Person20Regular /> },
   ];
 
   const adminLinks = isAdmin
-    ? [{ to: '/admin/users', label: 'Quản trị', icon: <Document16Regular /> }]
+    ? [{ to: '/admin', label: 'Quản trị', icon: <Document16Regular /> }]
     : [];
 
   const handleSignOut = () => {
@@ -110,7 +119,7 @@ function Nav() {
         <div>Research Review</div>
       </div>
       <div className={classes.navLinks}>
-  {[...commonLinks, ...(isAuthenticated ? [...authenticatedLinks, ...adminLinks] : [])].map((link) => (
+  {[...commonLinks, ...researcherLinks, ...(isAuthenticated ? [...authenticatedLinks, ...adminLinks] : [])].map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
@@ -122,6 +131,7 @@ function Nav() {
         ))}
       </div>
       <div className={classes.navActions}>
+        {isAuthenticated && <NotificationCenter />}
         {isAuthenticated ? (
           <Menu>
             <MenuTrigger disableButtonEnhancement>
@@ -129,7 +139,7 @@ function Nav() {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem icon={<Person20Regular />} onClick={() => navigate('/info')}>
+                <MenuItem icon={<Person20Regular />} onClick={() => navigate('/profile')}>
                   Thông tin cá nhân
                 </MenuItem>
                 <MenuItem icon={<SignOut20Regular />} onClick={handleSignOut}>

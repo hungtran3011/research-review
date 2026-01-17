@@ -1,0 +1,15 @@
+{
+  // Avoid noisy/stale diagnostics from build outputs
+  "files.exclude": {
+    "**/target/**": true
+  },
+  "files.watcherExclude": {
+    "**/target/**": true
+  },
+
+  // Java language server: don't import/scan build output folders as sources
+  "java.import.exclusions": [
+    "**/target/**"
+],
+"java.configuration.updateBuildConfiguration": "interactive"
+}

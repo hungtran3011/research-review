@@ -5,6 +5,9 @@ enum class ArticleStatus(val value: Short){
     REJECTED(1), // Bị từ chối
     PENDING_REVIEW(2), // chờ review
     IN_REVIEW(3), // đang review
-    REJECT_REQUESTED(4), // đề nghị loại bỏ
-    ACCEPTED(5), // đã chấp nhận
+    REVISIONS_REQUESTED(4), // yêu cầu sửa chữa
+    REVISIONS(5), // đang sửa chữa
+    ACCEPTED(6), // đã chấp nhận
+    REJECT_REQUESTED(7), // Đề nghị loại bỏ
+    ACCEPT_REQUESTED(8), // Đề nghị chấp thuận
 }

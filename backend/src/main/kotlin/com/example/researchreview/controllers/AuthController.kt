@@ -6,7 +6,6 @@ import com.example.researchreview.dtos.AuthRequestDto
 import com.example.researchreview.dtos.AuthResponseDto
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.VerifyTokenRequestDto
-import com.example.researchreview.dtos.RefreshTokenRequestDto
 import com.example.researchreview.exceptions.EmailExistedException
 import com.example.researchreview.exceptions.InternalErrorException
 import com.example.researchreview.exceptions.SendEmailFailedException
@@ -42,12 +41,13 @@ class AuthController(
                 )
             )
         } catch (_: Exception) {
-            return ResponseEntity.internalServerError().body(
+            return ResponseEntity.ok(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error",
                     data = AuthResponseDto(success = false, message = "Internal server error")
-                ))
+                )
+            )
         }
         return ResponseEntity.ok(
             BaseResponseDto(
@@ -90,7 +90,7 @@ class AuthController(
             )
             resp to 400
         }
-        return if (statusCode == 200) ResponseEntity.ok(response) else ResponseEntity.status(statusCode).body(response)
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/verify")
@@ -105,7 +105,7 @@ class AuthController(
                     success = success,
                     message = if (success) "Token verified successfully" else "Invalid token",
                     accessToken = issuedTokens?.accessToken,
-                    refreshToken = issuedTokens?.refreshToken
+                    refreshToken = null
                 )
             )
             resp to if (success) 200 else 400
@@ -125,13 +125,13 @@ class AuthController(
             resp to 500
         }
 
-        return if (statusCode == 200) ResponseEntity.ok(response) else ResponseEntity.status(statusCode).body(response)
+        return ResponseEntity.ok(response)
     }
 
-    @PostMapping("/refresh")
-    fun refreshTokens(@Valid @RequestBody request: RefreshTokenRequestDto): ResponseEntity<BaseResponseDto<AuthResponseDto>> {
+    @PostMapping("/refresh", consumes = ["*/*"])
+    fun refreshTokens(): ResponseEntity<BaseResponseDto<AuthResponseDto>> {
         val (response, statusCode) = try {
-            val tokens = authService.refreshAccessToken(request.refreshToken)
+            val tokens = authService.refreshAccessToken()
             val resp = BaseResponseDto(
                 code = AuthBusinessCode.VERIFICATION_SUCCESS.value,
                 message = "Tokens refreshed successfully",
@@ -139,7 +139,7 @@ class AuthController(
                     success = true,
                     message = "Tokens refreshed successfully",
                     accessToken = tokens.accessToken,
-                    refreshToken = tokens.refreshToken
+                    refreshToken = null
                 )
             )
             resp to 200
@@ -152,7 +152,7 @@ class AuthController(
             resp to 401
         }
 
-        return if (statusCode == 200) ResponseEntity.ok(response) else ResponseEntity.status(statusCode).body(response)
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/resend-code")
@@ -181,7 +181,7 @@ class AuthController(
             resp to 500
         }
 
-        return if (statusCode == 200) ResponseEntity.ok(response) else ResponseEntity.status(statusCode).body(response)
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/signout")

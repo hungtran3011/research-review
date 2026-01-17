@@ -44,7 +44,8 @@ class JwtServiceImpl(
 
     override fun createRefreshToken(subject: String): Pair<String, Instant> {
         val now = Instant.now()
-        val exp = now.plusMillis(refreshExpiryMillisecs)
+        // refreshExpiryMillisecs is configured in seconds; use plusSeconds for consistency
+        val exp = now.plusSeconds(refreshExpiryMillisecs)
         val claims = JwtClaimsSet.builder()
             .issuer("research-review")
             .issuedAt(now)

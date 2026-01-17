@@ -2,6 +2,7 @@ import { Button, Text, makeStyles, SpinButton } from '@fluentui/react-components
 import { useCallback, useState, useRef, useEffect } from 'react'
 import { ZoomIn20Regular, ZoomOut20Regular, DocumentRegular } from '@fluentui/react-icons'
 import { Document, Page, pdfjs } from 'react-pdf'
+import { useAuthStore } from '../../stores/authStore'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -82,12 +83,97 @@ export function PdfViewer({
     onPageChange 
 }: PdfViewerProps) {
     const classes = useStyles()
+
+    const accessToken = useAuthStore((s) => s.accessToken)
+
+    const isBlobLikeUrl = !!fileUrl && (fileUrl.startsWith('blob:') || fileUrl.startsWith('data:'))
+    const isProxyUrl = (() => {
+        if (!fileUrl) return false
+        try {
+            const url = new URL(fileUrl, window.location.origin)
+            return url.pathname.includes('/api/v1/articles/') && url.pathname.endsWith('/pdf')
+        } catch {
+            // Fallback for odd/relative URLs: ignore query/hash when checking path
+            const withoutQueryOrHash = fileUrl.split(/[?#]/)[0]
+            return (
+                withoutQueryOrHash.includes('/api/v1/articles/') &&
+                withoutQueryOrHash.endsWith('/pdf')
+            )
+        }
+    })()
+    
+    // State for blob URL (for proxy-fetched PDFs)
+    const [blobUrl, setBlobUrl] = useState<string | null>(null)
+    const [isBlobLoading, setIsBlobLoading] = useState<boolean>(false)
+
+    // Reset any prior load error when switching documents.
+    useEffect(() => {
+        setLoadError(null)
+    }, [fileUrl])
+
+    // Fetch PDF as blob for proxy URLs
+    useEffect(() => {
+        if (!isProxyUrl || !fileUrl) return
+
+        setBlobUrl(null)
+        setIsBlobLoading(true)
+
+        const fetchPdfBlob = async () => {
+            try {
+                const response = await fetch(fileUrl, {
+                    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+                    credentials: 'include',
+                })
+                if (!response.ok) {
+                    console.error('PDF fetch failed:', response.status, response.statusText)
+                    setIsBlobLoading(false)
+                    setLoadError(`PDF fetch failed: ${response.status}`)
+                    return
+                }
+
+                const contentType = response.headers.get('content-type') || ''
+                if (!contentType.toLowerCase().includes('pdf')) {
+                    console.warn('Unexpected content type for PDF fetch:', contentType)
+                    setIsBlobLoading(false)
+                    setLoadError('Máy chủ trả về nội dung không phải PDF')
+                    return
+                }
+
+                const blob = await response.blob()
+                
+                // Ensure blob has correct MIME type
+                const typedBlob = new Blob([blob], { type: 'application/pdf' })
+                const url = URL.createObjectURL(typedBlob)
+                
+                console.log('PDF blob loaded successfully:', url, 'size:', blob.size)
+                setBlobUrl(url)
+            } catch (err) {
+                console.error('Failed to fetch PDF blob:', err)
+                setLoadError('Không thể tải PDF')
+            } finally {
+                setIsBlobLoading(false)
+            }
+        }
+
+        fetchPdfBlob()
+
+        // Cleanup blob URL on unmount or URL change
+        return () => {
+            setBlobUrl((prev) => {
+                if (prev) {
+                    URL.revokeObjectURL(prev)
+                }
+                return null
+            })
+        }
+    }, [fileUrl, isProxyUrl, accessToken])
     
     // PDF viewer state
     const [numPages, setNumPages] = useState<number>(0)
     const [pdfWidth, setPdfWidth] = useState<number>(800)
     const [scale, setScale] = useState<number>(1.0)
     const [currentPage, setCurrentPage] = useState<number>(1)
+    const [loadError, setLoadError] = useState<string | null>(null)
     const pdfContainerRef = useRef<HTMLDivElement>(null)
     const pdfViewerRef = useRef<HTMLDivElement>(null)
     const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({})
@@ -101,6 +187,7 @@ export function PdfViewer({
         setNumPages(pdfDoc.numPages)
         setCurrentPage(1)
         pageRefs.current = {}
+        setLoadError(null)
 
         // Call parent callback if provided
         if (onDocumentLoadSuccess) {
@@ -231,6 +318,7 @@ export function PdfViewer({
                                     min={1}
                                     max={numPages}
                                     step={1}
+                                    disabled={!!loadError}
                                     onChange={(_, data) => {
                                         // Clear any pending scroll timeout
                                         if (scrollTimeoutRef.current) {
@@ -281,48 +369,95 @@ export function PdfViewer({
                         <div className={classes.pdfControlsRight}>
                             <Button
                                 appearance="subtle"
+                                size="small"
+                                onClick={() => window.open(fileUrl, '_blank', 'noopener,noreferrer')}
+                            >
+                                Mở tab mới
+                            </Button>
+                            <Button
+                                appearance="subtle"
                                 icon={<ZoomOut20Regular />}
                                 onClick={handleZoomOut}
-                                disabled={scale <= 0.5}
+                                disabled={!!loadError || scale <= 0.5}
                             />
                             <Text size={300}>{Math.round(scale * 100)}%</Text>
                             <Button
                                 appearance="subtle"
                                 icon={<ZoomIn20Regular />}
                                 onClick={handleZoomIn}
-                                disabled={scale >= 3.0}
+                                disabled={!!loadError || scale >= 3.0}
                             />
                             <Button
                                 appearance="subtle"
                                 size="small"
                                 onClick={handleResetZoom}
+                                disabled={!!loadError}
                             >
                                 Reset
                             </Button>
                         </div>
                     </div>
                     <div className={classes.pdfViewer} ref={pdfViewerRef}>
-                        <Document
-                            file={fileUrl}
-                            onLoadSuccess={onDocumentLoadSuccessInternal}
-                            loading={<Text>Đang tải PDF...</Text>}
-                            error={<Text>Lỗi khi tải PDF</Text>}
-                        >
-                            {Array.from(new Array(numPages), (_, index) => (
-                                <div
-                                    key={`page_${index + 1}`}
-                                    ref={(el) => { pageRefs.current[index + 1] = el }}
-                                >
-                                    <Page
-                                        pageNumber={index + 1}
-                                        className={classes.pdfPage}
-                                        renderTextLayer={true}
-                                        renderAnnotationLayer={true}
-                                        width={pdfWidth}
+                        {loadError ? (
+                            <>
+                                <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                    Không thể tải PDF trong trang (thường do CORS với link presigned). Bạn vẫn có thể xem bằng chế độ nhúng hoặc mở tab mới.
+                                </Text>
+                                <div style={{ width: '100%', flex: 1, minHeight: '600px' }}>
+                                    <iframe
+                                        title="pdf-preview"
+                                        src={fileUrl}
+                                        style={{ width: '100%', height: '100%', border: 0 }}
                                     />
                                 </div>
-                            ))}
-                        </Document>
+                            </>
+                        ) : isProxyUrl && !blobUrl ? (
+                            <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                {isBlobLoading ? 'Đang tải PDF...' : 'Không thể tải PDF từ máy chủ' }
+                            </Text>
+                        ) : (
+                            <Document
+                                file={
+                                    isProxyUrl && blobUrl
+                                        ? blobUrl  // Use blob URL for proxy-fetched PDFs
+                                        : isBlobLikeUrl
+                                        ? fileUrl
+                                        : { url: fileUrl }
+                                }
+                                options={
+                                    isProxyUrl || isBlobLikeUrl
+                                        ? undefined
+                                        : {
+                                              httpHeaders: accessToken
+                                                  ? { Authorization: `Bearer ${accessToken}` }
+                                                  : undefined,
+                                              withCredentials: true,
+                                          }
+                                }
+                                onLoadSuccess={onDocumentLoadSuccessInternal}
+                                onLoadError={(err) => {
+                                    const message = err instanceof Error ? err.message : String(err)
+                                    setLoadError(message)
+                                }}
+                                loading={<Text>Đang tải PDF...</Text>}
+                                error={<Text>Lỗi khi tải PDF</Text>}
+                            >
+                                {Array.from(new Array(numPages), (_, index) => (
+                                    <div
+                                        key={`page_${index + 1}`}
+                                        ref={(el) => { pageRefs.current[index + 1] = el }}
+                                    >
+                                        <Page
+                                            pageNumber={index + 1}
+                                            className={classes.pdfPage}
+                                            renderTextLayer={true}
+                                            renderAnnotationLayer={true}
+                                            width={pdfWidth}
+                                        />
+                                    </div>
+                                ))}
+                            </Document>
+                        )}
                     </div>
                 </>
             ) : (

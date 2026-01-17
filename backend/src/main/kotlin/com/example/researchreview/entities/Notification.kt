@@ -19,8 +19,13 @@ class Notification : BaseEntity() {
     @Enumerated(EnumType.STRING)
     var type: NotificationType = NotificationType.COMMENT_ACTIVITY
 
+    @jakarta.persistence.Column(columnDefinition = "TEXT")
     var payload: String? = null
+    
+    @jakarta.persistence.Column(length = 500)
     var contextId: String? = null
+    
+    @jakarta.persistence.Column(length = 100)
     var contextType: String? = null
     var readAt: LocalDateTime? = null
 }

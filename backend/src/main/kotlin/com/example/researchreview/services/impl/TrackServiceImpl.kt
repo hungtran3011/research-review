@@ -1,10 +1,14 @@
 package com.example.researchreview.services.impl
 
+import com.example.researchreview.configs.CacheNames
 import com.example.researchreview.dtos.TrackDto
 import com.example.researchreview.dtos.TrackRequestDto
 import com.example.researchreview.entities.Track
 import com.example.researchreview.repositories.TrackRepository
 import com.example.researchreview.services.TrackService
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -14,12 +18,14 @@ class TrackServiceImpl(
 ): TrackService {
 
     @Transactional
+    @Cacheable(cacheNames = [CacheNames.TRACKS_ALL], key = "'all'")
     override fun getAll(): List<TrackDto> {
         val tracks = trackRepository.findAll()
         return tracks.map { toDto(it) }
     }
 
     @Transactional
+    @Cacheable(cacheNames = [CacheNames.TRACK_BY_ID], key = "#id")
     override fun getById(id: String): String {
         val track = trackRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Track not found with id: $id") }
@@ -27,6 +33,7 @@ class TrackServiceImpl(
     }
 
     @Transactional
+    @CacheEvict(cacheNames = [CacheNames.TRACKS_ALL], allEntries = true)
     override fun create(track: TrackRequestDto): TrackDto {
         val entity = toEntity(track)
         val savedTrack = trackRepository.save(entity)
@@ -34,6 +41,12 @@ class TrackServiceImpl(
     }
 
     @Transactional
+    @Caching(
+        evict = [
+            CacheEvict(cacheNames = [CacheNames.TRACKS_ALL], allEntries = true),
+            CacheEvict(cacheNames = [CacheNames.TRACK_BY_ID], key = "#id"),
+        ]
+    )
     override fun update(id: String, track: TrackRequestDto): TrackDto {
         val entity = trackRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Track not found with id: $id") }
@@ -47,6 +60,12 @@ class TrackServiceImpl(
     }
 
     @Transactional
+    @Caching(
+        evict = [
+            CacheEvict(cacheNames = [CacheNames.TRACKS_ALL], allEntries = true),
+            CacheEvict(cacheNames = [CacheNames.TRACK_BY_ID], key = "#id"),
+        ]
+    )
     override fun delete(id: String): String {
         val track = trackRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Track not found with id: $id") }

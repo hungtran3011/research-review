@@ -7,6 +7,7 @@ export interface ReviewerDto {
   email: string;
   institution: InstitutionDto;
   user?: UserDto;
+  displayIndex?: number; // For anonymization: Reviewer 1, Reviewer 2, etc.
   createdAt: string;
   updatedAt: string;
   createdBy: string;

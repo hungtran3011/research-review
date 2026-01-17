@@ -1,9 +1,13 @@
 package com.example.researchreview.services.impl
 
+import com.example.researchreview.configs.CacheNames
 import com.example.researchreview.dtos.InstitutionDto
 import com.example.researchreview.entities.Institution
 import com.example.researchreview.repositories.InstitutionRepository
 import com.example.researchreview.services.InstitutionService
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.CachePut
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -21,6 +25,7 @@ class InstitutionServiceImpl(
     }
 
     @Transactional
+    @Cacheable(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#id")
     override fun getById(id: String): InstitutionDto {
         val institution = institutionRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Institution not found with id: $id") }
@@ -28,6 +33,7 @@ class InstitutionServiceImpl(
     }
 
     @Transactional
+    @CachePut(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#result.id")
     override fun create(institutionDto: InstitutionDto): InstitutionDto {
         val institution = toEntity(institutionDto)
         val savedInstitution = institutionRepository.save(institution)
@@ -35,6 +41,7 @@ class InstitutionServiceImpl(
     }
 
     @Transactional
+    @CachePut(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#id")
     override fun update(id: String, institutionDto: InstitutionDto): InstitutionDto {
         val institution = institutionRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Institution not found with id: $id") }
@@ -49,6 +56,7 @@ class InstitutionServiceImpl(
     }
 
     @Transactional
+    @CacheEvict(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#id")
     override fun delete(id: String) {
         val institution = institutionRepository.findById(id)
             .orElseThrow { IllegalArgumentException("Institution not found with id: $id") }

@@ -9,4 +9,5 @@ export interface UserRequestDto {
   gender?: string;
   nationality?: string;
   academicStatus?: string;
+  inviteToken?: string;
 }

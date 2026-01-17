@@ -1,7 +1,6 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.AttachmentKind
-import com.example.researchreview.constants.AttachmentStatus
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.AttachmentDownloadDto
@@ -56,7 +55,7 @@ class AttachmentServiceImpl(
             this.mimeType = request.mimeType
             this.kind = request.kind
             this.s3Key = key
-            this.status = AttachmentStatus.PENDING_UPLOAD
+            this.status = com.example.researchreview.constants.AttachmentStatus.PENDING_UPLOAD
         }
         val saved = attachmentRepository.save(attachment)
         val uploadUrl = s3Service.createUploadUrl(bucketName, key, uploadExpirationSeconds)
@@ -89,13 +88,19 @@ class AttachmentServiceImpl(
             this.mimeType = mimeType
             this.kind = kind
             this.s3Key = key
-            this.status = AttachmentStatus.PENDING_UPLOAD
+            this.status = com.example.researchreview.constants.AttachmentStatus.PENDING_UPLOAD
         }
-        s3Service.upload(bucketName, key, file)
-        attachment.status = AttachmentStatus.AVAILABLE
+        // Persist early to obtain attachment id for logging/context
         val saved = attachmentRepository.save(attachment)
-        notifyUpload(saved)
-        return saved.toDto()
+
+        // Pass context so S3Service can log attachment/article IDs when uploading
+        val context = mapOf("attachmentId" to saved.id, "articleId" to articleId)
+
+        s3Service.upload(bucketName, key, file, context)
+        saved.status = com.example.researchreview.constants.AttachmentStatus.AVAILABLE
+        val finalSaved = attachmentRepository.save(saved)
+        notifyUpload(finalSaved)
+        return finalSaved.toDto()
     }
 
     @Transactional
@@ -105,7 +110,7 @@ class AttachmentServiceImpl(
         val user = currentUserService.requireUser()
         ensureAttachmentPermission(user.id, attachment)
         attachment.checksum = request.checksum
-        attachment.status = AttachmentStatus.AVAILABLE
+        attachment.status = com.example.researchreview.constants.AttachmentStatus.AVAILABLE
         val saved = attachmentRepository.save(attachment)
         notifyUpload(saved)
         return saved.toDto()
@@ -119,7 +124,7 @@ class AttachmentServiceImpl(
         } else {
             attachmentRepository.findAllByArticleIdAndDeletedFalse(articleId)
         }
-        return attachments.filter { it.status != AttachmentStatus.DELETED }.map { it.toDto() }
+        return attachments.filter { it.status != com.example.researchreview.constants.AttachmentStatus.DELETED }.map { it.toDto() }
     }
 
     @Transactional
@@ -128,7 +133,7 @@ class AttachmentServiceImpl(
             .orElseThrow { EntityNotFoundException("Attachment not found") }
         val user = currentUserService.requireUser()
         ensureAttachmentPermission(user.id, attachment)
-        attachment.status = AttachmentStatus.DELETED
+        attachment.status = com.example.researchreview.constants.AttachmentStatus.DELETED
         attachmentRepository.save(attachment)
     }
 
@@ -176,9 +181,9 @@ class AttachmentServiceImpl(
     private fun ensureAttachmentPermission(userId: String, attachment: Attachment) {
         val user = currentUserService.currentUser()
             ?: throw AccessDeniedException("User not found")
-        when (user.role) {
-            Role.ADMIN -> return
-            Role.EDITOR -> {
+        when {
+            user.hasRole(Role.ADMIN) -> return
+            user.hasRole(Role.EDITOR) -> {
                 val trackId = user.track?.id ?: throw AccessDeniedException("Editor track missing")
                 if (attachment.article.track.id != trackId) {
                     throw AccessDeniedException("Editor cannot modify this attachment")
@@ -215,5 +220,15 @@ class AttachmentServiceImpl(
             contextId = attachment.id,
             contextType = "ATTACHMENT"
         )
+    }
+
+    @Transactional
+    override fun saveAttachment(articleId: String, file: MultipartFile, kind: String): AttachmentDto {
+        val kindEnum = try {
+            AttachmentKind.valueOf(kind)
+        } catch (ex: IllegalArgumentException) {
+            AttachmentKind.SUBMISSION
+        }
+        return uploadAttachment(articleId, file, version = 1, kind = kindEnum)
     }
 }

@@ -11,11 +11,13 @@ import com.example.researchreview.dtos.CommentThreadDto
 import com.example.researchreview.entities.Comment
 import com.example.researchreview.entities.CommentThread
 import com.example.researchreview.entities.Reviewer
+import com.example.researchreview.entities.User
 import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.CommentRepository
 import com.example.researchreview.repositories.CommentThreadRepository
 import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.ReviewerArticleRepository
+import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.services.ArticleAccessGuard
 import com.example.researchreview.services.CommentService
 import com.example.researchreview.services.CurrentUserService
@@ -36,8 +38,17 @@ class CommentServiceImpl(
     private val notificationService: NotificationService,
     private val articleAuthorRepository: ArticleAuthorRepository,
     private val editorRepository: EditorRepository,
-    private val reviewerArticleRepository: ReviewerArticleRepository
+    private val reviewerArticleRepository: ReviewerArticleRepository,
+    private val reviewerRepository: ReviewerRepository
 ) : CommentService {
+
+    private fun shouldMaskReviewerIdentity(viewer: User?): Boolean {
+        if (viewer == null) return false
+        if (viewer.hasRole(Role.ADMIN) || viewer.hasRole(Role.EDITOR)) return false
+        // Preserve old behavior: researchers should not see reviewer identity.
+        // If a user is both REVIEWER and RESEARCHER, do not mask.
+        return viewer.hasRole(Role.RESEARCHER) && !viewer.hasRole(Role.REVIEWER)
+    }
 
     @Transactional(readOnly = true)
     override fun listThreads(articleId: String): List<CommentThreadDto> {
@@ -45,17 +56,20 @@ class CommentServiceImpl(
         val viewer = currentUserService.currentUser()
         val reviewerLabels = reviewerArticleManager.reviewerLabels(articleId)
         val threads = commentThreadRepository.findAllByArticleId(articleId)
-        val filtered = when (viewer?.role) {
-            Role.REVIEWER -> threads.filter { thread -> threadBelongsToReviewer(thread, viewer.id) }
-            Role.ADMIN, Role.EDITOR, Role.RESEARCHER -> threads
-            else -> threads
-        }
-        return filtered.map { it.toDto(viewer?.role, reviewerLabels) }
+            // Reviewers can only see their own comment threads
+            val filtered = when {
+                viewer?.hasRole(Role.REVIEWER) == true && !viewer.hasRole(Role.ADMIN) && !viewer.hasRole(Role.EDITOR) ->
+                    threads.filter { thread -> threadBelongsToReviewer(thread, viewer.id) }
+                else -> threads
+            }
+        val maskReviewer = shouldMaskReviewerIdentity(viewer)
+            return filtered.map { it.toDto(maskReviewer, reviewerLabels) }
     }
 
     @Transactional
     override fun createThread(articleId: String, request: CommentCreateRequestDto): CommentThreadDto {
         val article = articleAccessGuard.fetchAccessibleArticle(articleId)
+        val creator = currentUserService.currentUser()
         val thread = CommentThread().apply {
             this.article = article
             version = request.version
@@ -67,6 +81,13 @@ class CommentServiceImpl(
             selectedText = request.selectedText
             section = request.section
             status = CommentStatus.OPEN
+            // Associate thread with reviewer if creator is a reviewer
+            if (creator?.hasRole(Role.REVIEWER) == true && !creator.hasRole(Role.ADMIN) && !creator.hasRole(Role.EDITOR)) {
+                val reviewer = reviewerRepository.findByUserId(creator.id)
+                if (reviewer != null) {
+                    this.reviewer = reviewer
+                }
+            }
         }
         val comment = Comment().apply {
             content = request.content
@@ -77,7 +98,7 @@ class CommentServiceImpl(
         thread.comments.add(comment)
         val saved = commentThreadRepository.save(thread)
         notifyCommentActivity(saved, comment, CommentActivityAction.THREAD_CREATED)
-        return saved.toDto(currentUserService.currentUser()?.role, reviewerArticleManager.reviewerLabels(articleId))
+        return saved.toDto(shouldMaskReviewerIdentity(creator), reviewerArticleManager.reviewerLabels(articleId))
     }
 
     @Transactional
@@ -92,10 +113,13 @@ class CommentServiceImpl(
             authorId = request.authorId ?: ""
             this.thread = thread
         }
-        thread.comments.add(comment)
-        commentRepository.save(comment)
+        val saved = commentRepository.save(comment)
+        // Keep the in-memory model in sync for the response.
+        // (Avoid persisting via both cascade + repository.save which can lead to duplicate inserts.)
+        thread.comments.add(saved)
         notifyCommentActivity(thread, comment, CommentActivityAction.COMMENT_REPLIED)
-        return thread.toDto(currentUserService.currentUser()?.role, reviewerArticleManager.reviewerLabels(thread.article.id))
+        val viewer = currentUserService.currentUser()
+        return thread.toDto(shouldMaskReviewerIdentity(viewer), reviewerArticleManager.reviewerLabels(thread.article.id))
     }
 
     @Transactional
@@ -107,19 +131,19 @@ class CommentServiceImpl(
         thread.status = request.status
         val saved = commentThreadRepository.save(thread)
         notifyCommentActivity(saved, null, CommentActivityAction.STATUS_UPDATED)
-        return saved.toDto(currentUserService.currentUser()?.role, reviewerArticleManager.reviewerLabels(thread.article.id))
+        val viewer = currentUserService.currentUser()
+        return saved.toDto(shouldMaskReviewerIdentity(viewer), reviewerArticleManager.reviewerLabels(thread.article.id))
     }
 
     private fun CommentThread.toDto(
-        viewerRole: Role?,
+        maskReviewerIdentity: Boolean,
         reviewerLabels: Map<String, String>
     ): CommentThreadDto {
         val reviewerLabel = this.reviewer?.id?.let { reviewerLabels[it] }
-        val maskReviewer = viewerRole == Role.RESEARCHER
         return CommentThreadDto(
         id = this.id,
         articleId = this.article.id,
-        reviewerId = this.reviewer?.id.takeUnless { maskReviewer },
+        reviewerId = this.reviewer?.id.takeUnless { maskReviewerIdentity },
         reviewerLabel = reviewerLabel,
         version = this.version,
         pageNumber = this.pageNumber,
@@ -130,7 +154,11 @@ class CommentServiceImpl(
         selectedText = this.selectedText,
         section = this.section,
         status = this.status,
-        comments = this.comments.sortedBy { it.createdAt }.map { it.toDto(maskReviewer, reviewerLabel, this.reviewer) },
+        comments = this.comments
+            .filter { !it.deleted }  // Filter deleted comments in application code
+            .distinctBy { it.id }
+            .sortedBy { it.createdAt }
+            .map { it.toDto(maskReviewerIdentity, reviewerLabel, this.reviewer) },
         createdAt = this.createdAt,
         updatedAt = this.updatedAt
         )
@@ -168,20 +196,20 @@ class CommentServiceImpl(
 
     private fun ensureThreadPermission(thread: CommentThread) {
         val viewer = currentUserService.currentUser() ?: throw AccessDeniedException("Access denied")
-        when (viewer.role) {
-            Role.ADMIN -> return
-            Role.EDITOR -> {
+        when {
+            viewer.hasRole(Role.ADMIN) -> return
+            viewer.hasRole(Role.EDITOR) -> {
                 val trackId = viewer.track?.id ?: throw AccessDeniedException("Editor track missing")
                 if (thread.article.track.id != trackId) {
                     throw AccessDeniedException("Editor cannot access this thread")
                 }
             }
-            Role.REVIEWER -> {
+            viewer.hasRole(Role.REVIEWER) -> {
                 if (!threadBelongsToReviewer(thread, viewer.id)) {
                     throw AccessDeniedException("Reviewer cannot access this thread")
                 }
             }
-            Role.RESEARCHER -> {
+            viewer.hasRole(Role.RESEARCHER) -> {
                 // articleAccessGuard.fetchAccessibleArticle already ensures ownership; nothing extra
             }
             else -> throw AccessDeniedException("Access denied")

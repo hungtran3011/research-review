@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { commentService } from '../services/comment.service';
-import { useBasicToast } from './useBasicToast';
+import { useBusinessToast } from './businessToast';
+import { CommentBusinessCode } from '../constants/business-code';
 import type {
   BaseResponseDto,
   CommentCreateRequestDto,
@@ -20,53 +21,50 @@ export const useArticleComments = (articleId?: string, enabled: boolean = true) 
 
 export const useCreateComment = (articleId: string) => {
   const queryClient = useQueryClient();
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: (data: CommentCreateRequestDto) => commentService.create(articleId, data),
-    onSuccess: () => {
-      success('Đã thêm nhận xét.');
+    onSuccess: (response) => {
+      showSuccess(response, 'Đã thêm nhận xét.', [CommentBusinessCode.COMMENT_THREAD_CREATED, CommentBusinessCode.COMMENT_THREAD_UPDATED]);
       queryClient.invalidateQueries({ queryKey: ['article-comments', articleId] });
     },
     onError: (err: AxiosError<BaseResponseDto<CommentThreadDto>>) => {
-      const message = err.response?.data?.message || 'Không thể thêm nhận xét.';
-      error(message);
+      showErrorFromAxios(err, 'Không thể thêm nhận xét.');
     },
   });
 };
 
 export const useReplyComment = (articleId: string) => {
   const queryClient = useQueryClient();
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: ({ threadId, data }: { threadId: string; data: CommentReplyRequestDto }) =>
       commentService.reply(threadId, data),
-    onSuccess: () => {
-      success('Đã phản hồi nhận xét.');
+    onSuccess: (response) => {
+      showSuccess(response, 'Đã phản hồi nhận xét.', [CommentBusinessCode.COMMENT_THREAD_UPDATED]);
       queryClient.invalidateQueries({ queryKey: ['article-comments', articleId] });
     },
     onError: (err: AxiosError<BaseResponseDto<CommentThreadDto>>) => {
-      const message = err.response?.data?.message || 'Không thể phản hồi nhận xét.';
-      error(message);
+      showErrorFromAxios(err, 'Không thể phản hồi nhận xét.');
     },
   });
 };
 
 export const useUpdateCommentStatus = (articleId: string) => {
   const queryClient = useQueryClient();
-  const { success, error } = useBasicToast();
+  const { showSuccess, showErrorFromAxios } = useBusinessToast();
 
   return useMutation({
     mutationFn: ({ threadId, data }: { threadId: string; data: CommentStatusUpdateRequestDto }) =>
       commentService.updateStatus(threadId, data),
-    onSuccess: () => {
-      success('Đã cập nhật trạng thái nhận xét.');
+    onSuccess: (response) => {
+      showSuccess(response, 'Đã cập nhật trạng thái nhận xét.', [CommentBusinessCode.COMMENT_THREAD_UPDATED]);
       queryClient.invalidateQueries({ queryKey: ['article-comments', articleId] });
     },
     onError: (err: AxiosError<BaseResponseDto<CommentThreadDto>>) => {
-      const message = err.response?.data?.message || 'Không thể cập nhật trạng thái nhận xét.';
-      error(message);
+      showErrorFromAxios(err, 'Không thể cập nhật trạng thái nhận xét.');
     },
   });
 };

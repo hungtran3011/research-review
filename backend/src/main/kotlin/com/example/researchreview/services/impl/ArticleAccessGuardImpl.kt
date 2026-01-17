@@ -18,28 +18,43 @@ class ArticleAccessGuardImpl(
 
     override fun listAccessibleArticles(pageable: Pageable): Page<Article> {
         val user = currentUserService.currentUser() ?: return articleRepository.findAllByDeletedFalse(pageable)
-        return when (user.role) {
-            Role.ADMIN -> articleRepository.findAllByDeletedFalse(pageable)
-            Role.EDITOR -> user.track?.id?.let { trackId ->
+        return when {
+            user.hasRole(Role.ADMIN) -> articleRepository.findAllByDeletedFalse(pageable)
+            user.hasRole(Role.EDITOR) -> user.track?.id?.let { trackId ->
                 articleRepository.findAllByDeletedFalseAndTrackId(trackId, pageable)
             } ?: Page.empty(pageable)
-            Role.REVIEWER -> articleRepository.findAllByReviewerUserId(user.id, pageable)
-            Role.RESEARCHER -> articleRepository.findAllByAuthorUserId(user.id, pageable)
+            user.hasRole(Role.REVIEWER) -> articleRepository.findAllByReviewerUserIdOrEmail(user.id, user.email, pageable)
+            user.hasRole(Role.RESEARCHER) -> articleRepository.findAllByAuthorUserId(user.id, pageable)
             else -> Page.empty(pageable)
         }
     }
 
     override fun fetchAccessibleArticle(articleId: String): Article {
         val user = currentUserService.currentUser()
-        val article = when (user?.role) {
-            null, Role.ADMIN -> articleRepository.findByIdAndDeletedFalse(articleId)
-            Role.EDITOR -> user.track?.id?.let { trackId ->
-                articleRepository.findByIdAndDeletedFalseAndTrackId(articleId, trackId)
+        val article = when {
+            user == null || user.hasRole(Role.ADMIN) -> {
+                articleRepository.findByIdAndDeletedFalse(articleId).orElse(null)
             }
-            Role.REVIEWER -> articleRepository.findByIdForReviewer(articleId, user.id)
-            Role.RESEARCHER -> articleRepository.findByIdForAuthor(articleId, user.id)
-            else -> articleRepository.findByIdAndDeletedFalse(articleId)
-        }?.orElse(null)
+            user.hasRole(Role.EDITOR) -> {
+                user.track?.id?.let { trackId ->
+                    articleRepository.findByIdAndDeletedFalseAndTrackId(articleId, trackId)
+                }?.orElse(null)
+            }
+            else -> {
+                val reviewerHit = if (user.hasRole(Role.REVIEWER)) {
+                    articleRepository.findByIdForReviewerOrEmail(articleId, user.id, user.email)?.orElse(null)
+                } else {
+                    null
+                }
+                reviewerHit ?: if (user.hasRole(Role.RESEARCHER)) {
+                    // Check if user is author OR creator of the article
+                    articleRepository.findByIdForAuthor(articleId, user.id)?.orElse(null)
+                        ?: articleRepository.findByIdAndCreator(articleId, user.id).orElse(null)
+                } else {
+                    null
+                }
+            }
+        }
 
         return article ?: throw EntityNotFoundException("Article not found or access denied")
     }

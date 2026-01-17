@@ -16,17 +16,19 @@ data class UserDto(
     @field:NotBlank(message = "Role is required")
     var role: String = "",
 
+    var roles: List<String> = emptyList(),
+
     @field:NotBlank(message = "Email is required")
     @field:Email(message = "Invalid email")
     var email: String = "",
 
-    var avatarId: String = "",
-    var institution: InstitutionDto = InstitutionDto(),
-    var track: TrackDto = TrackDto(),
-    var gender: Gender = Gender.OTHER,
-    var nationality: String = "",
-    var academicStatus: AcademicStatus = AcademicStatus.TS,
-    var status: AccountStatus = AccountStatus.INACTIVE,
+    var avatarId: String? = "",
+    var institution: InstitutionDto? = InstitutionDto(),
+    var track: TrackDto? = TrackDto(),
+    var gender: Gender? = Gender.OTHER,
+    var nationality: String? = "",
+    var academicStatus: AcademicStatus? = AcademicStatus.TS,
+    var status: String = "INACTIVE",
     var createdAt: LocalDateTime? = LocalDateTime.now(),
     var updatedAt: LocalDateTime? = LocalDateTime.now(),
     var createdBy: String? = "",

@@ -1,0 +1,862 @@
+{
+  "info": {
+    "_postman_id": "b9f9c50b-2df9-4d46-9c3b-8b4bb2b0a1b9",
+    "name": "Research Review API (Local)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Local API collection for research-review.\n\nNotes:\n- Magic-link auth: you must copy the token from the email (MailHog, logs, etc.) into {{magicToken}} before calling Verify.\n- RBAC: /articles/{id}/initial-review and /articles/{id}/reviewers/contact require an EDITOR access token.\n- Reviewer invite flow: you must paste the invite link token into {{inviteToken}} (it is emailed to the reviewer)."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "apiPrefix", "value": "api/v1" },
+
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+
+    { "key": "emailResearcher", "value": "researcher1@example.com" },
+    { "key": "emailEditor", "value": "editor1@example.com" },
+    { "key": "emailAdmin", "value": "admin@example.com" },
+    { "key": "emailReviewer", "value": "reviewer1@example.com" },
+
+    { "key": "magicToken", "value": "" },
+    { "key": "inviteToken", "value": "" },
+
+    { "key": "institutionId", "value": "" },
+    { "key": "trackId", "value": "" },
+    { "key": "articleId", "value": "" },
+    { "key": "commentThreadId", "value": "" },
+
+    { "key": "inviteEmail", "value": "" },
+    { "key": "inviteArticleId", "value": "" },
+
+    { "key": "userId", "value": "" },
+    { "key": "editorId", "value": "" },
+    { "key": "templateId", "value": "" },
+    { "key": "attachmentId", "value": "" },
+    { "key": "notificationId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "00 - Smoke",
+      "item": [
+        {
+          "name": "GET /test (Hello World)",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/test"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth (Magic Link)",
+      "item": [
+        {
+          "name": "POST /auth/signup (send magic link)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/signup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailResearcher}}\",\n  \"isSignUp\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/verify (verify signup token; usually no JWT)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailResearcher}}\",\n  \"token\": \"{{magicToken}}\",\n  \"isSignUp\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/signin (send magic link)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/signin",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailResearcher}}\",\n  \"isSignUp\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/verify (verify signin token; saves accessToken/refreshToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const access = json?.data?.accessToken;",
+                  "const refresh = json?.data?.refreshToken;",
+                  "if (access) pm.environment.set('accessToken', access);",
+                  "if (refresh) pm.environment.set('refreshToken', refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailResearcher}}\",\n  \"token\": \"{{magicToken}}\",\n  \"isSignUp\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/refresh (rotate tokens)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const access = json?.data?.accessToken;",
+                  "const refresh = json?.data?.refreshToken;",
+                  "if (access) pm.environment.set('accessToken', access);",
+                  "if (refresh) pm.environment.set('refreshToken', refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/resend-code (send magic link again)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/resend-code",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailResearcher}}\",\n  \"isSignUp\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/signout",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/{{apiPrefix}}/auth/signout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Reference Data (Institution / Track)",
+      "item": [
+        {
+          "name": "POST /institutions (create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.environment.set('institutionId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/institutions",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo University\",\n  \"country\": \"VN\",\n  \"website\": \"https://example.com\",\n  \"logo\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /tracks (create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.environment.set('trackId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/tracks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AI Track\",\n  \"description\": \"Demo track\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /institutions (list)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/institutions?page=0&size=20"
+          }
+        },
+        {
+          "name": "GET /institutions/{id}",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/institutions/{{institutionId}}"
+          }
+        },
+        {
+          "name": "PUT /institutions/{id} [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/institutions/{{institutionId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{institutionId}}\",\n  \"name\": \"Demo University (Updated)\",\n  \"country\": \"VN\",\n  \"website\": \"https://example.com\",\n  \"logo\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /institutions/{id} [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/institutions/{{institutionId}}"
+          }
+        },
+        {
+          "name": "GET /tracks (list)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tracks"
+          }
+        },
+        {
+          "name": "GET /tracks/{id}",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tracks/{{trackId}}"
+          }
+        },
+        {
+          "name": "PUT /tracks/{id} [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/tracks/{{trackId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AI Track (Updated)\",\n  \"description\": \"Demo track\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /tracks/{id} [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/tracks/{{trackId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Users",
+      "item": [
+        {
+          "name": "POST /users/complete-info (create RESEARCHER profile)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/complete-info",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Researcher One\",\n  \"email\": \"{{emailResearcher}}\",\n  \"role\": \"RESEARCHER\",\n  \"avatarId\": \"\",\n  \"institutionId\": \"{{institutionId}}\",\n  \"institutionName\": \"Demo University\",\n  \"trackId\": \"{{trackId}}\",\n  \"gender\": \"\",\n  \"nationality\": \"\",\n  \"academicStatus\": \"\"\n}"
+            }
+          },
+          "description": "After creating/updating the user profile, you typically need to re-run Auth signin+verify so that JWT roles reflect the new role (RESEARCHER)."
+        },
+        {
+          "name": "GET /users/me",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/me"
+          }
+        },
+        {
+          "name": "GET /users (list) [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users?page=0&size=20"
+          }
+        },
+        {
+          "name": "PUT /users/{id} [ADMIN or self]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"{{emailResearcher}}\",\n  \"role\": \"RESEARCHER\",\n  \"avatarId\": \"\",\n  \"institutionId\": \"{{institutionId}}\",\n  \"institutionName\": \"Demo University\",\n  \"trackId\": \"{{trackId}}\",\n  \"gender\": \"MALE\",\n  \"nationality\": \"VN\",\n  \"academicStatus\": \"TS\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /users/{id}/role [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{userId}}/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"RESEARCHER\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /users/{id}/status [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{userId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /users/{id} [ADMIN]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Articles (Workflow)",
+      "item": [
+        {
+          "name": "POST /articles (submit) [RESEARCHER]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.environment.set('articleId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Demo Paper Title\",\n  \"abstract\": \"Short abstract...\",\n  \"conclusion\": \"Short conclusion...\",\n  \"link\": \"\",\n  \"trackId\": \"{{trackId}}\",\n  \"authors\": [\n    {\n      \"id\": \"\",\n      \"name\": \"Alice Author\",\n      \"email\": \"alice.author@example.com\",\n      \"institution\": {\n        \"id\": \"{{institutionId}}\",\n        \"name\": \"Demo University\",\n        \"country\": \"VN\",\n        \"website\": \"\",\n        \"logo\": \"\"\n      },\n      \"user\": null\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /articles (list)",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles?page=0&size=20"
+          }
+        },
+        {
+          "name": "GET /articles/{id} (fetch)",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}"
+          }
+        },
+        {
+          "name": "PUT /articles/{id} (update) [RESEARCHER]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{articleId}}\",\n  \"title\": \"Demo Paper Title (Updated)\",\n  \"abstract\": \"Short abstract...\",\n  \"conclusion\": \"Short conclusion...\",\n  \"link\": \"\",\n  \"trackId\": \"{{trackId}}\",\n  \"authors\": [\n    {\n      \"id\": \"\",\n      \"name\": \"Alice Author\",\n      \"email\": \"alice.author@example.com\",\n      \"institution\": {\n        \"id\": \"{{institutionId}}\",\n        \"name\": \"Demo University\",\n        \"country\": \"VN\",\n        \"website\": \"\",\n        \"logo\": \"\"\n      },\n      \"user\": null\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT /articles/{id}/link [RESEARCHER]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/link",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"link\": \"https://example.com/paper.pdf\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /articles/{id} [RESEARCHER]",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}"
+          }
+        },
+        {
+          "name": "POST /articles/{id}/initial-review [EDITOR]",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/initial-review",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"SEND_TO_REVIEW\",\n  \"note\": \"Initial review passed\",\n  \"nextSteps\": \"Contact reviewers\"\n}"
+            }
+          },
+          "description": "Requires EDITOR JWT (roles claim contains EDITOR). Admin is backoffice only; do not use Admin token for this workflow."
+        },
+        {
+          "name": "POST /articles/{id}/reviewers/contact [EDITOR]",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/reviewers/contact",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Review request\",\n  \"message\": \"Please review this submission.\",\n  \"reviewerIds\": [],\n  \"newReviewers\": [\n    {\n      \"name\": \"Reviewer One\",\n      \"email\": \"{{emailReviewer}}\",\n      \"institutionId\": \"{{institutionId}}\",\n      \"userId\": null,\n      \"articleId\": \"{{articleId}}\"\n    }\n  ]\n}"
+            }
+          },
+          "description": "Only valid after initial review sets the article to PENDING_REVIEW. This call emails a per-reviewer invite link containing an opaque token."
+        },
+        {
+          "name": "GET /articles/{id}/reviewers",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/reviewers"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Reviewer Invite (Opaque Token)",
+      "item": [
+        {
+          "name": "GET /reviewer-invites/resolve?token=...",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const email = json?.data?.email;",
+                  "const articleId = json?.data?.articleId;",
+                  "if (email) pm.environment.set('inviteEmail', email);",
+                  "if (articleId) pm.environment.set('inviteArticleId', articleId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/reviewer-invites/resolve?token={{inviteToken}}"
+          },
+          "description": "Paste the token from the emailed invite link into {{inviteToken}} before calling this."
+        },
+        {
+          "name": "POST /users/complete-info (reviewer signup via inviteToken)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/users/complete-info",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Reviewer One\",\n  \"email\": \"{{inviteEmail}}\",\n  \"role\": \"REVIEWER\",\n  \"avatarId\": \"\",\n  \"institutionId\": \"{{institutionId}}\",\n  \"institutionName\": \"Demo University\",\n  \"trackId\": \"\",\n  \"gender\": \"\",\n  \"nationality\": \"\",\n  \"academicStatus\": \"\",\n  \"inviteToken\": \"{{inviteToken}}\"\n}"
+            }
+          },
+          "description": "This consumes the invite token (single-use) and forces email+role to REVIEWER server-side."
+        }
+      ]
+    },
+    {
+      "name": "06 - Comments",
+      "item": [
+        {
+          "name": "GET /articles/{articleId}/comments",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/comments"
+          }
+        },
+        {
+          "name": "POST /articles/{articleId}/comments (create thread)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.environment.set('commentThreadId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/comments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Please clarify this section.\",\n  \"authorName\": \"Reviewer One\",\n  \"authorId\": null,\n  \"version\": 1,\n  \"pageNumber\": 1,\n  \"x\": 100,\n  \"y\": 200,\n  \"width\": 300,\n  \"height\": 40,\n  \"selectedText\": \"selected text...\",\n  \"section\": \"Abstract\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /comments/{threadId}/replies",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/comments/{{commentThreadId}}/replies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Thanks, updated.\",\n  \"authorName\": \"Researcher One\",\n  \"authorId\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /comments/{threadId}/status (RESOLVED)",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/comments/{{commentThreadId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RESOLVED\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Attachments",
+      "item": [
+        {
+          "name": "POST /articles/{articleId}/attachments/upload-slot",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/attachments/upload-slot",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"demo.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"size\": 12345,\n  \"kind\": \"SUBMISSION\",\n  \"version\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /articles/{articleId}/attachments (multipart upload)",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/attachments?kind=SUBMISSION&version=1",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            }
+          },
+          "description": "Select a file for form-data key 'file'. This returns AttachmentDto and may include an id you can store in {{attachmentId}}."
+        },
+        {
+          "name": "POST /attachments/{attachmentId}/finalize",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/attachments/{{attachmentId}}/finalize",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storageKey\": \"\",\n  \"etag\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /articles/{articleId}/attachments",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/articles/{{articleId}}/attachments"
+          }
+        },
+        {
+          "name": "DELETE /attachments/{attachmentId}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/attachments/{{attachmentId}}"
+          }
+        },
+        {
+          "name": "GET /attachments/{attachmentId}/download (binary)",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/attachments/{{attachmentId}}/download"
+          },
+          "description": "Binary response (ByteArrayResource). Not a BaseResponseDto."
+        },
+        {
+          "name": "GET /attachments/{attachmentId}/download-url",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/attachments/{{attachmentId}}/download-url"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Editors (Admin)",
+      "item": [
+        {
+          "name": "POST /editors/",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.environment.set('editorId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/editors/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Editor\",\n  \"email\": \"{{emailEditor}}\",\n  \"phoneNumber\": \"\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /editors/",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/editors/?page=0&size=20"
+          }
+        },
+        {
+          "name": "GET /editors/{id}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/editors/{{editorId}}"
+          }
+        },
+        {
+          "name": "PUT /editors/{id}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/editors/{{editorId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Editor (Updated)\",\n  \"email\": \"{{emailEditor}}\",\n  \"phoneNumber\": \"\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /editors/{id}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/editors/{{editorId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Templates (Admin)",
+      "item": [
+        {
+          "name": "POST /templates/",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?.id;",
+                  "if (id) pm.environment.set('templateId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/templates/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Template\",\n  \"subject\": \"Hello\",\n  \"content\": \"<p>Hi</p>\",\n  \"description\": \"\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /templates/",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/templates/?page=0&size=20"
+          }
+        },
+        {
+          "name": "GET /templates/{id}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/templates/{{templateId}}"
+          }
+        },
+        {
+          "name": "PUT /templates/{id}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/{{apiPrefix}}/templates/{{templateId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Template (Updated)\",\n  \"subject\": \"Hello\",\n  \"content\": \"<p>Hi</p>\",\n  \"description\": \"\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /templates/{id}",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/{{apiPrefix}}/templates/{{templateId}}"
+          }
+        },
+        {
+          "name": "GET /templates/{id}/content",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/templates/{{templateId}}/content"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Notifications",
+      "item": [
+        {
+          "name": "GET /notifications",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "GET",
+            "url": "{{baseUrl}}/{{apiPrefix}}/notifications?page=0&size=20"
+          }
+        },
+        {
+          "name": "POST /notifications/{id}/read",
+          "request": {
+            "auth": { "type": "inherit" },
+            "method": "POST",
+            "url": "{{baseUrl}}/{{apiPrefix}}/notifications/{{notificationId}}/read"
+          }
+        }
+      ]
+    }
+  ]
+}

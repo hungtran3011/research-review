@@ -6,7 +6,7 @@ import { getWorldData } from '../../services/country.service'
 import { useQuery } from '@tanstack/react-query'
 import type { UserRequestDto } from '../../models'
 import { useCurrentUser, useUpdateUser } from '../../hooks/useUser'
-import { Gender, AcademicStatus, GenderMap } from '../../constants'
+import { Gender, AcademicStatus, Role, RoleOptions, type RoleType } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 import { Navigate } from 'react-router'
 
@@ -70,7 +70,7 @@ function Profile() {
         queryKey: ['worldData'],
         queryFn: getWorldData
     })
-    const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser(email || '')
+    const { data: currentUserResponse, isLoading: userLoading } = useCurrentUser(Boolean(isAuthenticated))
     const { data: institutionsResponse, isLoading: institutionsLoading } = useInstitutions()
     const { data: tracksResponse, isLoading: tracksLoading } = useTracks()
     const updateUser = useUpdateUser()
@@ -78,6 +78,10 @@ function Profile() {
     const institutions = institutionsResponse?.data?.content || []
     const tracks = tracksResponse?.data || []
     const currentUser = currentUserResponse?.data
+
+    const effectiveRoles = (currentUser?.roles?.length ? currentUser.roles : [currentUser?.role]).filter(Boolean)
+    const isAdmin = effectiveRoles.includes(Role.ADMIN)
+    const roleOptions = RoleOptions.filter(({ value }) => isAdmin || value !== Role.ADMIN)
     
     const [form, setForm] = useState<UserRequestDto>({
         email: email || '',
@@ -91,6 +95,30 @@ function Profile() {
         nationality: '',
         academicStatus: '',
     })
+
+    const roleLabel = roleOptions.find(({ value }) => value === form.role)?.label || ''
+    const genderLabel = (() => {
+        if (!form.gender) return ''
+        switch (form.gender) {
+            case Gender.MALE: return 'Nam'
+            case Gender.FEMALE: return 'Nữ'
+            case Gender.OTHER: return 'Khác'
+            default: return ''
+        }
+    })()
+    const nationalityLabel = form.nationality ? worldData?.find(c => c.alpha2 === form.nationality)?.name || '' : ''
+    const institutionLabel = form.institutionId ? institutions.find(i => i.id === form.institutionId)?.name || '' : ''
+    const trackLabel = form.trackId ? tracks.find(t => t.id === form.trackId)?.name || '' : ''
+    const academicStatusLabel = (() => {
+        switch (form.academicStatus) {
+            case AcademicStatus.GSTS: return 'Giáo sư - Tiến sĩ'
+            case AcademicStatus.PGSTS: return 'Phó giáo sư - Tiến sĩ'
+            case AcademicStatus.TS: return 'Tiến sĩ'
+            case AcademicStatus.THS: return 'Thạc sĩ'
+            case AcademicStatus.CN: return 'Cử nhân'
+            default: return ''
+        }
+    })()
 
     // Additional form fields not in UserRequestDto
     const [additionalFields, setAdditionalFields] = useState({
@@ -107,14 +135,16 @@ function Profile() {
             const firstName = nameParts.pop() || ''
             const lastName = nameParts.join(' ')
 
+            const primaryRole = (currentUser.roles && currentUser.roles[0]) || currentUser.role
+
             setForm({
                 email: currentUser.email,
                 name: currentUser.name,
-                role: currentUser.role,
+                role: (primaryRole as RoleType) || Role.USER,
                 avatarId: currentUser.avatarId || '',
-                institutionId: currentUser.institutionId || '',
-                institutionName: currentUser.institutionName || currentUser.institution?.name || '',
-                trackId: currentUser.trackId || currentUser.track?.id || '',
+                institutionId: currentUser.institution?.id || '',
+                institutionName: currentUser.institution?.name || '',
+                trackId: currentUser.track?.id || '',
                 gender: currentUser.gender || '',
                 nationality: currentUser.nationality || '',
                 academicStatus: currentUser.academicStatus || '',
@@ -221,11 +251,30 @@ function Profile() {
                     </Field>
                 </div>
                 <div className={classes.row}>
+                    <Field label={"Loại tài khoản"} required hint={"Chọn loại tài khoản của bạn"} className={classes.formField}>
+                        <Combobox
+                            placeholder='Loại tài khoản'
+                            selectedOptions={form.role ? [form.role] : []}
+                            value={roleLabel}
+                            freeform={false}
+                            onOptionSelect={(_e, data) => setForm({ ...form, role: (data.optionValue as RoleType) || Role.USER })}
+                            required
+                            disabled={!isAdmin}
+                        >
+                            {roleOptions.map(({ value, label }) => (
+                                <Option key={value} value={value}>
+                                    {label}
+                                </Option>
+                            ))}
+                        </Combobox>
+                    </Field>
                     <Field label={"Giới tính"} required hint={"Giới tính của bạn"} className={classes.formField}>
                         <Combobox
                             placeholder='Giới tính của bạn'
-                            value={form.gender ? GenderMap[form.gender as keyof typeof GenderMap] : ''}
-                            onOptionSelect={(_e, data) => setForm({ ...form, gender: data.optionValue || '' })}
+                            selectedOptions={form.gender ? [form.gender] : []}
+                            value={genderLabel}
+                            freeform={false}
+                            onOptionSelect={(_e, data) => setForm({ ...form, gender: (data.optionValue as string) || '' })}
                             required
                         >
                             <Option value={Gender.MALE}>Nam</Option>
@@ -236,8 +285,10 @@ function Profile() {
                     <Field label={"Quốc tịch"} required hint={"Quốc tịch của bạn"} className={classes.formField}>
                         <Combobox
                             placeholder='Quốc tịch của bạn'
-                            value={form.nationality ? worldData?.find(c => c.alpha2 === form.nationality)?.name || '' : ''}
-                            onOptionSelect={(_e, data) => setForm({ ...form, nationality: data.optionValue || '' })}
+                            selectedOptions={form.nationality ? [form.nationality] : []}
+                            value={nationalityLabel}
+                            freeform={false}
+                            onOptionSelect={(_e, data) => setForm({ ...form, nationality: (data.optionValue as string) || '' })}
                             required
                         >
                             {
@@ -248,61 +299,71 @@ function Profile() {
                         </Combobox>
                     </Field>
                 </div>
-                <div className={classes.row}>
-                    <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn"} className={classes.formField}>
-                        <Combobox 
-                            placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
-                            value={form.institutionId ? institutions.find(i => i.id === form.institutionId)?.name || '' : ''}
-                            onOptionSelect={(_e, data) => {
-                                const selectedInstitution = institutions.find(i => i.id === data.optionValue)
-                                setForm({ 
-                                    ...form, 
-                                    institutionId: data.optionValue || '',
-                                    institutionName: selectedInstitution?.name || ''
-                                })
-                            }}
-                            disabled={institutionsLoading}
-                            required
-                        >
-                            {institutions.map((institution) => (
-                                <Option key={institution.id} value={institution.id}>
-                                    {institution.name}
-                                </Option>
-                            ))}
-                        </Combobox>
-                    </Field>
-                    <Field label={"Lĩnh vực nghiên cứu (Track)"} required hint={"Lĩnh vực nghiên cứu của bạn"} className={classes.formField}>
-                        <Combobox 
-                            placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
-                            value={form.trackId ? tracks.find(t => t.id === form.trackId)?.name || '' : ''}
-                            onOptionSelect={(_e, data) => setForm({ ...form, trackId: data.optionValue || '' })}
-                            disabled={tracksLoading}
-                            required
-                        >
-                            {tracks.filter(track => track.isActive).map((track) => (
-                                <Option key={track.id} value={track.id}>
-                                    {track.name}
-                                </Option>
-                            ))}
-                        </Combobox>
-                    </Field>
-                </div>
-                <div className={classes.row}>
-                    <Field label={"Học hàm, học vị"} required hint={"Học hàm, học vị của bạn"} className={classes.formField}>
-                        <Combobox 
-                            placeholder='Học hàm, học vị của bạn'
-                            value={form.academicStatus}
-                            onOptionSelect={(_e, data) => setForm({ ...form, academicStatus: data.optionValue || '' })}
-                            required
-                        >
-                            <Option value={AcademicStatus.GSTS}>Giáo sư - Tiến sĩ</Option>
-                            <Option value={AcademicStatus.PGSTS}>Phó giáo sư - Tiến sĩ</Option>
-                            <Option value={AcademicStatus.TS}>Tiến sĩ</Option>
-                            <Option value={AcademicStatus.THS}>Thạc sĩ</Option>
-                            <Option value={AcademicStatus.CN}>Cử nhân</Option>
-                        </Combobox>
-                    </Field>
-                </div>
+                {!isAdmin && (
+                    <div className={classes.row}>
+                        <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn"} className={classes.formField}>
+                            <Combobox
+                                placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
+                                selectedOptions={form.institutionId ? [form.institutionId] : []}
+                                value={institutionLabel}
+                                freeform={false}
+                                onOptionSelect={(_e, data) => {
+                                    const selectedInstitution = institutions.find(i => i.id === data.optionValue)
+                                    setForm({
+                                        ...form,
+                                        institutionId: (data.optionValue as string) || '',
+                                        institutionName: selectedInstitution?.name || ''
+                                    })
+                                }}
+                                disabled={institutionsLoading}
+                                required
+                            >
+                                {institutions.map((institution) => (
+                                    <Option key={institution.id} value={institution.id}>
+                                        {institution.name}
+                                    </Option>
+                                ))}
+                            </Combobox>
+                        </Field>
+                        <Field label={"Lĩnh vực nghiên cứu (Track)"} required hint={"Lĩnh vực nghiên cứu của bạn"} className={classes.formField}>
+                            <Combobox
+                                placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
+                                selectedOptions={form.trackId ? [form.trackId] : []}
+                                value={trackLabel}
+                                freeform={false}
+                                onOptionSelect={(_e, data) => setForm({ ...form, trackId: (data.optionValue as string) || '' })}
+                                disabled={tracksLoading}
+                                required
+                            >
+                                {tracks.filter(track => track.isActive).map((track) => (
+                                    <Option key={track.id} value={track.id}>
+                                        {track.name}
+                                    </Option>
+                                ))}
+                            </Combobox>
+                        </Field>
+                    </div>
+                )}
+                {!isAdmin && (
+                    <div className={classes.row}>
+                        <Field label={"Học hàm, học vị"} required hint={"Học hàm, học vị của bạn"} className={classes.formField}>
+                            <Combobox
+                                placeholder='Học hàm, học vị của bạn'
+                                selectedOptions={form.academicStatus ? [form.academicStatus] : []}
+                                value={academicStatusLabel}
+                                freeform={false}
+                                onOptionSelect={(_e, data) => setForm({ ...form, academicStatus: (data.optionValue as string) || '' })}
+                                required
+                            >
+                                <Option value={AcademicStatus.GSTS}>Giáo sư - Tiến sĩ</Option>
+                                <Option value={AcademicStatus.PGSTS}>Phó giáo sư - Tiến sĩ</Option>
+                                <Option value={AcademicStatus.TS}>Tiến sĩ</Option>
+                                <Option value={AcademicStatus.THS}>Thạc sĩ</Option>
+                                <Option value={AcademicStatus.CN}>Cử nhân</Option>
+                            </Combobox>
+                        </Field>
+                    </div>
+                )}
 
                 <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
                     <Button 

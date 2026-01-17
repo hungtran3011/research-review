@@ -5,6 +5,7 @@ import type {
   BaseResponseDto,
   InitialReviewRequestDto,
   PageResponseDto,
+  ReviewerRequestDto,
 } from '../models';
 
 export const articleService = {
@@ -40,6 +41,52 @@ export const articleService = {
     const response = await api.put<BaseResponseDto<ArticleDto>>(`/articles/${id}/link`, {
       link,
     });
+    return response.data;
+  },
+  assignReviewer: async (
+    id: string,
+    reviewer: ReviewerRequestDto
+  ): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.post<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/reviewers`,
+      reviewer
+    );
+    return response.data;
+  },
+  requestReviewApprove: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.post<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/review-requests/approve`,
+    );
+    return response.data;
+  },
+  requestReviewReject: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.post<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/review-requests/reject`,
+    );
+    return response.data;
+  },
+  requestRevisions: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.post<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/review-requests/revisions`,
+    );
+    return response.data;
+  },
+  startRevisions: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.post<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/revisions/start`,
+    );
+    return response.data;
+  },
+  approve: async (id: string): Promise<BaseResponseDto<null>> => {
+    const response = await api.post<BaseResponseDto<null>>(
+      `/articles/${id}/decision/approve`,
+    );
+    return response.data;
+  },
+  reject: async (id: string): Promise<BaseResponseDto<null>> => {
+    const response = await api.post<BaseResponseDto<null>>(
+      `/articles/${id}/decision/reject`,
+    );
     return response.data;
   },
 };

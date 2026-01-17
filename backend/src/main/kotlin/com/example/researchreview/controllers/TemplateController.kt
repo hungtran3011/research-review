@@ -10,10 +10,12 @@ import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/templates")
+@PreAuthorize("hasRole('ADMIN')")
 class TemplateController(
     private val templateService: TemplateService
 ) {
@@ -27,14 +29,14 @@ class TemplateController(
                 message = "Errors when creating template: ${e.message}",
                 data = TemplateDto()
             )
-            return ResponseEntity.status(422).body(response)
+            return ResponseEntity.ok(response)
         }
         val response = BaseResponseDto(
             code = TemplateBusinessCode.TEMPLATE_CREATED_SUCCESSFULLY.value,
             message = "Template created successfully",
             data = createdTemplate
         )
-        return ResponseEntity.status(201).body(response)
+        return ResponseEntity.ok(response)
     }
 
     @GetMapping("/")
@@ -77,7 +79,7 @@ class TemplateController(
         return if (content != null) {
             ResponseEntity.ok(mapOf("content" to content))
         } else {
-            ResponseEntity.notFound().build()
+            ResponseEntity.ok(mapOf("content" to ""))
         }
     }
 }

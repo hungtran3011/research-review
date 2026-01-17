@@ -6,7 +6,7 @@ import { getWorldData } from '../../services/country.service'
 import { useQuery } from '@tanstack/react-query'
 import type { UserRequestDto } from '../../models'
 import { useCompleteUserInfo } from '../../hooks/useUser'
-import { Gender, AcademicStatus } from '../../constants'
+import { Gender, GenderMap, AcademicStatus, Role } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 
 const useStyles = makeStyles({
@@ -54,7 +54,7 @@ const useStyles = makeStyles({
 
 function Info() {
     const classes = useStyles()
-    const { email } = useAuthStore()
+    const { email, inviteToken } = useAuthStore()
     const { data: worldData } = useQuery({
         queryKey: ['worldData'],
         queryFn: getWorldData
@@ -69,7 +69,7 @@ function Info() {
     const [form, setForm] = useState<UserRequestDto>({
         email: email || '',
         name: '',
-        role: 'USER',
+        role: inviteToken ? 'REVIEWER' : 'USER',
         avatarId: '',
         institutionId: '',
         institutionName: '',
@@ -77,6 +77,7 @@ function Info() {
         gender: '',
         nationality: '',
         academicStatus: '',
+        inviteToken: inviteToken,
     })
 
     // Additional form fields not in UserRequestDto
@@ -162,10 +163,23 @@ function Info() {
                     </Field>
                 </div>
                 <div className={classes.row}>
+                    <Field label={"Loại tài khoản"} required hint={"Chọn loại tài khoản của bạn"} className={classes.formField}>
+                        <Combobox
+                            placeholder='Loại tài khoản'
+                            value={form.role === Role.REVIEWER ? 'Người đánh giá' : form.role === Role.RESEARCHER ? 'Nhà nghiên cứu' : form.role === Role.ADMIN ? 'Quản trị viên' : 'Người dùng'}
+                            onOptionSelect={(_e, data) => setForm({ ...form, role: data.optionValue || Role.USER })}
+                            required
+                            disabled={!!inviteToken}
+                        >
+                            <Option value={Role.USER}>Người dùng</Option>
+                            <Option value={Role.RESEARCHER}>Nhà nghiên cứu</Option>
+                            <Option value={Role.REVIEWER}>Người đánh giá</Option>
+                        </Combobox>
+                    </Field>
                     <Field label={"Giới tính"} required hint={"Giới tính của bạn"} className={classes.formField}>
                         <Combobox
                             placeholder='Giới tính của bạn'
-                            selectedOptions={form.gender ? [form.gender] : []}
+                            value={form.gender ? GenderMap[form.gender as keyof typeof GenderMap] : ''}
                             onOptionSelect={(_e, data) => setForm({ ...form, gender: data.optionValue || '' })}
                             required
                         >
@@ -177,7 +191,7 @@ function Info() {
                     <Field label={"Quốc tịch"} required hint={"Quốc tịch của bạn"} className={classes.formField}>
                         <Combobox
                             placeholder='Quốc tịch của bạn'
-                            selectedOptions={form.nationality ? [form.nationality] : []}
+                            value={form.nationality ? worldData?.find(c => c.alpha2 === form.nationality)?.name || '' : ''}
                             onOptionSelect={(_e, data) => setForm({ ...form, nationality: data.optionValue || '' })}
                             required
                         >
@@ -193,7 +207,7 @@ function Info() {
                     <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn, ví dụ Trường Đại học ABC"} className={classes.formField}>
                         <Combobox 
                             placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
-                            selectedOptions={form.institutionId ? [form.institutionId] : []}
+                            value={form.institutionId ? institutions.find(i => i.id === form.institutionId)?.name || '' : ''}
                             onOptionSelect={(_e, data) => {
                                 const selectedInstitution = institutions.find(i => i.id === data.optionValue)
                                 setForm({ 
@@ -215,7 +229,7 @@ function Info() {
                     <Field label={"Lĩnh vực nghiên cứu (Track)"} required hint={"Lĩnh vực nghiên cứu của bạn"} className={classes.formField}>
                         <Combobox 
                             placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
-                            selectedOptions={form.trackId ? [form.trackId] : []}
+                            value={form.trackId ? tracks.find(t => t.id === form.trackId)?.name || '' : ''}
                             onOptionSelect={(_e, data) => setForm({ ...form, trackId: data.optionValue || '' })}
                             disabled={tracksLoading}
                             required
@@ -232,13 +246,12 @@ function Info() {
                     <Field label={"Học hàm, học vị"} required hint={"Học hàm, học vị của bạn"} className={classes.formField}>
                         <Combobox 
                             placeholder='Học hàm, học vị của bạn'
-                            selectedOptions={form.academicStatus ? [form.academicStatus] : []}
-                            value={form.academicStatus ? academicStatusOptions.find(option => option.label === form.academicStatus)?.value || '' : ''}
+                            value={form.academicStatus ? academicStatusOptions.find(option => option.value === form.academicStatus)?.label || '' : ''}
                             onOptionSelect={(_e, data) => setForm({ ...form, academicStatus: data.optionValue || '' })}
                             required
                         >
                             {academicStatusOptions.map(option => (
-                                <Option key={option.value} value={option.label} text={option.label}>
+                                <Option key={option.value} value={option.value}>
                                     {option.label}
                                 </Option>
                             ))}

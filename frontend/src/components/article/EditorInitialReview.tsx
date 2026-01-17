@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import {
     makeStyles,
     Button,
@@ -13,6 +13,12 @@ import {
     DialogContent,
     tokens,
     Spinner,
+    Combobox,
+    Option,
+    Field,
+    Input,
+    RadioGroup,
+    Radio,
 } from '@fluentui/react-components'
 import {
     CheckmarkCircleRegular,
@@ -23,8 +29,12 @@ import {
 } from '@fluentui/react-icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
-import { useParams } from 'react-router'
+import { useParams, useNavigate } from 'react-router'
 import { useArticle, useInitialReview } from '../../hooks/useArticles'
+import { useUsers } from '../../hooks/useUser'
+import { useInstitutions } from '../../hooks/useInstitutionTrack'
+import { articleService } from '../../services/article.service'
+import { useBasicToast } from '../../hooks/useBasicToast'
 import { InitialReviewDecision, ArticleStatus } from '../../constants'
 
 const useStyles = makeStyles({
@@ -165,15 +175,25 @@ const useStyles = makeStyles({
 
 function EditorInitialReview() {
     const classes = useStyles()
+    const navigate = useNavigate()
+    const { success, error: showError } = useBasicToast()
 
     // State management
     const [tocData, setTocData] = useState<TocItem[]>([])
     const [jumpToPage, setJumpToPage] = useState<number | null>(null)
+
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
     const [rejectReason, setRejectReason] = useState('')
     const [acceptReason, setAcceptReason] = useState('')
     const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
     const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false)
     const [isTocVisible, setIsTocVisible] = useState<boolean>(true)
+    const [selectedReviewers, setSelectedReviewers] = useState<string[]>([])
+    const [isAssigningReviewers, setIsAssigningReviewers] = useState(false)
+    const [reviewerEntryMode, setReviewerEntryMode] = useState<'existing' | 'manual'>('existing')
+    const [manualReviewerName, setManualReviewerName] = useState('')
+    const [manualReviewerEmail, setManualReviewerEmail] = useState('')
+    const [manualReviewerInstitutionId, setManualReviewerInstitutionId] = useState('')
 
     const pdfDocumentRef = useRef<unknown>(null)
     const params = useParams<{ articleId: string }>()
@@ -182,6 +202,15 @@ function EditorInitialReview() {
     const { data: articleResponse, isLoading, isError, error } = useArticle(articleId, !!articleId)
     const article = articleResponse?.data
     const { mutate: submitInitialReview, isPending: isSubmittingDecision } = useInitialReview(safeArticleId)
+    
+    // Fetch users with REVIEWER role
+    const { data: usersResponse } = useUsers(0, 100, { role: 'REVIEWER' })
+    const reviewerUsers = useMemo(() => usersResponse?.data?.content ?? [], [usersResponse])
+    
+    // Fetch institutions for manual reviewer entry
+    const { data: institutionsResponse } = useInstitutions(0, 100)
+    const institutions = useMemo(() => institutionsResponse?.data?.content ?? [], [institutionsResponse])
+    
     const centeredStateStyles = {
         minHeight: '60vh',
         display: 'flex',
@@ -343,16 +372,74 @@ function EditorInitialReview() {
         })
     }
 
-    const handleAccept = () => {
+    const handleAccept = async () => {
         if (!articleId) return
+        
+        // Validation
+        if (reviewerEntryMode === 'existing' && selectedReviewers.length === 0) {
+            showError('Vui lòng chọn ít nhất một phản biện viên')
+            return
+        }
+        
+        if (reviewerEntryMode === 'manual') {
+            if (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId) {
+                showError('Vui lòng điền đầy đủ thông tin phản biện viên')
+                return
+            }
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(manualReviewerEmail.trim())) {
+                showError('Email không hợp lệ')
+                return
+            }
+        }
+        
         const note = acceptReason.trim() || 'Chấp nhận và gửi tới reviewer'
+        
         submitInitialReview({
             decision: InitialReviewDecision.SEND_TO_REVIEW,
             note,
         }, {
-            onSuccess: () => {
-                setIsAcceptDialogOpen(false)
-                setAcceptReason('')
+            onSuccess: async () => {
+                // Assign reviewers
+                setIsAssigningReviewers(true)
+                try {
+                    if (reviewerEntryMode === 'existing') {
+                        // Assign existing users
+                        for (const reviewerId of selectedReviewers) {
+                            const reviewer = reviewerUsers.find(u => u.id === reviewerId)
+                            if (reviewer) {
+                                await articleService.assignReviewer(articleId, {
+                                    name: reviewer.name || reviewer.email,
+                                    email: reviewer.email,
+                                    institutionId: reviewer.institution?.id || '',
+                                    articleId: articleId,
+                                    userId: reviewer.id,
+                                })
+                            }
+                        }
+                    } else {
+                        // Assign manual entry reviewer
+                        await articleService.assignReviewer(articleId, {
+                            name: manualReviewerName.trim(),
+                            email: manualReviewerEmail.trim(),
+                            institutionId: manualReviewerInstitutionId,
+                            articleId: articleId,
+                        })
+                    }
+                    success('Đã phê duyệt và mời phản biện viên thành công')
+                    setIsAcceptDialogOpen(false)
+                    setAcceptReason('')
+                    setSelectedReviewers([])
+                    setManualReviewerName('')
+                    setManualReviewerEmail('')
+                    setManualReviewerInstitutionId('')
+                    navigate(`/articles/${articleId}`)
+                } catch (err) {
+                    showError('Lỗi khi mời phản biện viên: ' + (err as Error).message)
+                } finally {
+                    setIsAssigningReviewers(false)
+                }
             },
         })
     }
@@ -499,6 +586,76 @@ function EditorInitialReview() {
                                         <Text size={300} style={{ display: 'block', marginBottom: '12px' }}>
                                             Bạn đồng ý chấp nhận bài báo này và tìm reviewer phản biện bài báo?
                                         </Text>
+                                        
+                                        <Field label="Phương thức mời phản biện viên" style={{ marginBottom: '16px' }}>
+                                            <RadioGroup
+                                                value={reviewerEntryMode}
+                                                onChange={(_, data) => setReviewerEntryMode(data.value as 'existing' | 'manual')}
+                                            >
+                                                <Radio value="existing" label="Chọn từ danh sách người dùng hiện có" />
+                                                <Radio value="manual" label="Nhập thông tin phản biện viên mới" />
+                                            </RadioGroup>
+                                        </Field>
+                                        
+                                        {reviewerEntryMode === 'existing' ? (
+                                            <Field
+                                                label="Chọn phản biện viên"
+                                                required
+                                                style={{ marginBottom: '12px' }}
+                                            >
+                                                <Combobox
+                                                    multiselect
+                                                    placeholder="Chọn phản biện viên"
+                                                    selectedOptions={selectedReviewers}
+                                                    onOptionSelect={(_, data) => {
+                                                        setSelectedReviewers(data.selectedOptions)
+                                                    }}
+                                                >
+                                                    {reviewerUsers.map((user) => (
+                                                        <Option key={user.id} value={user.id} text={`${user.name} (${user.email})`}>
+                                                            {user.name} ({user.email})
+                                                            {user.institution?.name && ` - ${user.institution.name}`}
+                                                        </Option>
+                                                    ))}
+                                                </Combobox>
+                                            </Field>
+                                        ) : (
+                                            <>
+                                                <Field label="Họ và tên" required style={{ marginBottom: '12px' }}>
+                                                    <Input
+                                                        placeholder="Nhập họ và tên phản biện viên"
+                                                        value={manualReviewerName}
+                                                        onChange={(_, data) => setManualReviewerName(data.value)}
+                                                    />
+                                                </Field>
+                                                
+                                                <Field label="Email" required style={{ marginBottom: '12px' }}>
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="Nhập email phản biện viên"
+                                                        value={manualReviewerEmail}
+                                                        onChange={(_, data) => setManualReviewerEmail(data.value)}
+                                                    />
+                                                </Field>
+                                                
+                                                <Field label="Cơ quan" required style={{ marginBottom: '12px' }}>
+                                                    <Combobox
+                                                        placeholder="Chọn cơ quan"
+                                                        value={institutions.find(i => i.id === manualReviewerInstitutionId)?.name || ''}
+                                                        onOptionSelect={(_, data) => {
+                                                            setManualReviewerInstitutionId(data.optionValue || '')
+                                                        }}
+                                                    >
+                                                        {institutions.map((institution) => (
+                                                            <Option key={institution.id} value={institution.id} text={institution.name}>
+                                                                {institution.name}
+                                                            </Option>
+                                                        ))}
+                                                    </Combobox>
+                                                </Field>
+                                            </>
+                                        )}
+                                        
                                         <Text size={200} style={{ display: 'block', marginBottom: '8px', color: tokens.colorNeutralForeground3 }}>
                                             Ghi chú (không bắt buộc):
                                         </Text>
@@ -511,8 +668,17 @@ function EditorInitialReview() {
                                         />
                                     </DialogContent>
                                     <DialogActions>
-                                        <Button appearance="primary" onClick={handleAccept} disabled={isSubmittingDecision}>
-                                            Đồng ý và tiếp tục tìm người phản biện
+                                        <Button 
+                                            appearance="primary" 
+                                            onClick={handleAccept} 
+                                            disabled={
+                                                isSubmittingDecision || 
+                                                isAssigningReviewers || 
+                                                (reviewerEntryMode === 'existing' && selectedReviewers.length === 0) ||
+                                                (reviewerEntryMode === 'manual' && (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId))
+                                            }
+                                        >
+                                            {isAssigningReviewers ? 'Đang mời phản biện viên...' : 'Xác nhận'}
                                         </Button>
                                         <Button appearance="secondary" onClick={() => setIsAcceptDialogOpen(false)}>
                                             Không, quay lại bước trước
@@ -525,7 +691,15 @@ function EditorInitialReview() {
 
                 {/* PDF Viewer */}
                 <PdfViewer
-                    fileUrl={article.link}
+                    fileUrl={(() => {
+                        if (!article?.id) return null
+                        const proxyUrl = `${apiBaseUrl}/articles/${article.id}/pdf`
+                        const link = (article.link ?? '').trim()
+                        if (!link) return proxyUrl
+                        if (link.includes('X-Amz-') || link.includes('x-amz-')) return proxyUrl
+                        if (link.endsWith(`/articles/${article.id}/pdf`)) return link
+                        return link
+                    })()}
                     emptyMessage="Không có bài báo để xem"
                     onDocumentLoadSuccess={handleDocumentLoadSuccess}
                     jumpToPage={jumpToPage}

@@ -12,15 +12,15 @@ import java.time.LocalDateTime
 @Table(name = "reviewer_article")
 class ReviewerArticle: BaseEntity() {
     @ManyToOne
-    var reviewer: Reviewer = Reviewer();
+    lateinit var reviewer: Reviewer
 
     @ManyToOne
-    var article: Article = Article();
+    lateinit var article: Article
 
     @Enumerated(EnumType.STRING)
-    var status: ReviewerInvitationStatus = ReviewerInvitationStatus.PENDING;
+    var status: ReviewerInvitationStatus = ReviewerInvitationStatus.PENDING
 
-    var invitedAt: LocalDateTime? = null;
+    var invitedAt: LocalDateTime? = null
 
-    var displayIndex: Int = 0;
+    var displayIndex: Int = 0
 }

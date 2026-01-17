@@ -22,17 +22,24 @@ import {
     PanelRightContractRegular,
     PanelRightExpandRegular,
     NavigationRegular,
+    DocumentRegular,
 } from '@fluentui/react-icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
 import type { ArticleVersionDto } from '../../models'
 import { CommentStatus } from '../../constants'
 import type { CommentStatusType } from '../../constants'
+import { ArticleStatus } from '../../constants'
 import { useParams } from 'react-router'
-import { useArticle } from '../../hooks/useArticles'
+import { useArticle, useRequestReviewApprove, useRequestReviewReject, useRequestRevisions } from '../../hooks/useArticles'
 import { useArticleComments, useCreateComment, useUpdateCommentStatus } from '../../hooks/useComments'
+import { useReplyComment } from '../../hooks/useComments'
 import { useAuthStore } from '../../stores/authStore'
+import { useCurrentUser } from '../../hooks/useUser'
 import { Spinner } from '@fluentui/react-components'
+import { attachmentService } from '../../services/attachment.service'
+import { AttachmentKind } from '../../constants/attachment-kind'
+import { AttachmentStatus } from '../../constants/attachment-status'
 
 const useStyles = makeStyles({
     root: {
@@ -298,6 +305,13 @@ function ReviewArticle() {
     } = useArticleComments(articleId, !!articleId)
     const { mutate: createComment, isPending: isCreatingComment } = useCreateComment(safeArticleId)
     const { mutate: updateCommentStatus, isPending: isUpdatingCommentStatus } = useUpdateCommentStatus(safeArticleId)
+    const { mutate: replyToComment, isPending: isReplying } = useReplyComment(safeArticleId)
+    const { mutate: requestReviewApprove, isPending: isRequestingApprove } = useRequestReviewApprove(safeArticleId)
+    const { mutate: requestReviewReject, isPending: isRequestingReject } = useRequestReviewReject(safeArticleId)
+    const { mutate: requestRevisions, isPending: isRequestingRevisions } = useRequestRevisions(safeArticleId)
+    const { data: currentUserData } = useCurrentUser()
+    const currentUserId = currentUserData?.data?.id
+    const currentUserName = currentUserData?.data?.name
     const reviewerName = useAuthStore((state) => state.email) ?? 'Reviewer'
     const [versions, setVersions] = useState<ArticleVersionDto[]>([])
     const [currentVersion, setCurrentVersion] = useState<number>(1)
@@ -306,6 +320,9 @@ function ReviewArticle() {
     const [selectedComment, setSelectedComment] = useState<CommentItem | null>(null)
     const [newCommentText, setNewCommentText] = useState('')
     const [isAddingComment, setIsAddingComment] = useState(false)
+    const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({})
+    const [replyingTo, setReplyingTo] = useState<string | null>(null)
+    const [replyText, setReplyText] = useState('')
     const [selectedPosition, setSelectedPosition] = useState<{ x: number; y: number } | null>(null)
     const [selectedText, setSelectedText] = useState<string>('')
     const [jumpToPage, setJumpToPage] = useState<number | null>(null)
@@ -314,48 +331,153 @@ function ReviewArticle() {
     const [isCommentsVisible, setIsCommentsVisible] = useState<boolean>(true)
     const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 1024)
 
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+
+    const buildPdfProxyUrl = useCallback((id: string, version?: number) => {
+        const base = `${apiBaseUrl}/articles/${id}/pdf`
+        if (version == null) return base
+        return `${base}?version=${encodeURIComponent(String(version))}`
+    }, [apiBaseUrl])
+
+    const resolvedPdfUrl = useMemo(() => {
+        if (!article?.id) return null
+        const proxyUrl = `${apiBaseUrl}/articles/${article.id}/pdf`
+        const link = (article.link ?? '').trim()
+
+        // Prefer proxy when link is missing or clearly an expiring presigned URL.
+        if (!link) return proxyUrl
+        if (link.includes('X-Amz-') || link.includes('x-amz-')) return proxyUrl
+
+        // If link is already our proxy URL, use it.
+        if (link.endsWith(`/articles/${article.id}/pdf`)) return link
+
+        // Otherwise allow external/manual links.
+        return link
+    }, [article?.id, article?.link, apiBaseUrl])
+
     const pdfDocumentRef = useRef<unknown>(null)
     const commentThreads = useMemo(() => commentsResponse?.data ?? [], [commentsResponse])
     const commentItems = useMemo<CommentItem[]>(() => {
         return commentThreads.map(thread => {
             const latest = thread.comments[thread.comments.length - 1]
             const createdAtSource = latest?.createdAt ?? thread.updatedAt ?? thread.createdAt
+            const isMine = !!currentUserId && (latest?.createdBy === currentUserId || latest?.authorId === currentUserId)
             return {
                 id: thread.id,
                 version: thread.version,
                 pageNumber: thread.pageNumber,
                 status: thread.status,
                 content: latest?.content ?? '',
-                author: latest?.authorName ?? 'Reviewer',
+                author: isMine ? 'Bạn' : (latest?.authorName ?? 'Reviewer'),
                 createdAt: createdAtSource ? new Date(createdAtSource) : new Date(),
                 section: thread.section ?? undefined,
                 selectedText: thread.selectedText ?? undefined,
             }
         })
-    }, [commentThreads])
+    }, [commentThreads, currentUserId])
+
+    const isMyComment = useCallback((comment?: { createdBy?: string | null; authorId?: string | null } | null) => {
+        if (!comment || !currentUserId) return false
+        return comment.createdBy === currentUserId || comment.authorId === currentUserId
+    }, [currentUserId])
+
+    const displayAuthorName = useCallback((comment: { authorName: string; createdBy?: string | null; authorId?: string | null }) => {
+        return isMyComment(comment) ? 'Bạn' : comment.authorName
+    }, [isMyComment])
+
+    const handleReplyToThread = (threadId: string) => {
+        if (!replyText.trim() || !articleId) return
+
+        replyToComment(
+            {
+                threadId,
+                data: {
+                    content: replyText,
+                    authorName: currentUserName ?? reviewerName,
+                    authorId: currentUserId,
+                },
+            },
+            {
+                onSuccess: () => {
+                    setReplyText('')
+                    setReplyingTo(null)
+                    setExpandedThreads((prev) => ({ ...prev, [threadId]: true }))
+                },
+            },
+        )
+    }
 
     useEffect(() => {
-        if (article?.link) {
+        if (!article?.id) return
+
+        let cancelled = false
+
+        ;(async () => {
             const fallbackDate = article.updatedAt ?? article.createdAt ?? new Date().toISOString()
-            const versionList: ArticleVersionDto[] = [
+            const baseVersions: ArticleVersionDto[] = [
                 {
                     version: 1,
-                    fileUrl: article.link,
+                    fileUrl: buildPdfProxyUrl(article.id, 1),
                     uploadedAt: fallbackDate,
                     uploadedBy: article.createdBy ?? 'Hệ thống',
                 },
             ]
-            setVersions(versionList)
-            const latestVersion = versionList[versionList.length - 1]
-            setCurrentVersion(latestVersion?.version ?? 1)
-            setPdfUrl(latestVersion?.fileUrl ?? null)
+
+            try {
+                const attachmentsResp = await attachmentService.listArticleAttachments(article.id)
+                const attachments = attachmentsResp.data ?? []
+
+                const revisionAttachments = attachments
+                    .filter(a => a.kind === AttachmentKind.REVISION && a.status === AttachmentStatus.AVAILABLE)
+                    .sort((a, b) => (a.version ?? 0) - (b.version ?? 0))
+
+                const revisionVersions: ArticleVersionDto[] = []
+                for (const att of revisionAttachments) {
+                    if (!att?.id) continue
+                    revisionVersions.push({
+                        version: att.version,
+                        fileUrl: buildPdfProxyUrl(article.id, att.version),
+                        uploadedAt: att.createdAt ?? fallbackDate,
+                        uploadedBy: att.createdBy ?? 'Hệ thống',
+                    })
+                }
+
+                // Merge and dedupe by version (prefer revision entry when present)
+                const byVersion = new Map<number, ArticleVersionDto>()
+                for (const v of baseVersions) byVersion.set(v.version, v)
+                for (const v of revisionVersions) byVersion.set(v.version, v)
+                const versionList = Array.from(byVersion.values()).sort((a, b) => a.version - b.version)
+
+                if (cancelled) return
+                setVersions(versionList)
+                const latestVersion = versionList[versionList.length - 1]
+                setCurrentVersion(latestVersion?.version ?? 1)
+                setPdfUrl(latestVersion?.fileUrl ?? null)
+            } catch {
+                if (cancelled) return
+                setVersions(baseVersions)
+                setCurrentVersion(1)
+                setPdfUrl(baseVersions[0]?.fileUrl ?? null)
+            }
+        })()
+
+        return () => {
+            cancelled = true
         }
-    }, [article])
+    }, [article?.id, article?.createdAt, article?.updatedAt, article?.createdBy, buildPdfProxyUrl, resolvedPdfUrl])
 
     // Track mobile/desktop view
     useEffect(() => {
         const handleResize = () => {
-            setIsMobile(window.innerWidth <= 1024)
+            const nextIsMobile = window.innerWidth <= 1024
+            setIsMobile(nextIsMobile)
+
+            // On desktop, always restore side panels.
+            // (On mobile we have floating toggles; on desktop those toggles are hidden.)
+            if (!nextIsMobile) {
+                setIsTocVisible(true)
+                setIsCommentsVisible(true)
+            }
         }
 
         window.addEventListener('resize', handleResize)
@@ -442,9 +564,9 @@ function ReviewArticle() {
     const handleVersionChange = (version: number) => {
         setCurrentVersion(version)
         const versionData = versions.find(v => v.version === version)
-        if (versionData) {
-            setPdfUrl(versionData.fileUrl)
-        }
+        if (!versionData) return
+
+        setPdfUrl(versionData.fileUrl)
     }
 
     // Filter comments - show all comments from this version and earlier versions
@@ -460,6 +582,18 @@ function ReviewArticle() {
                 return timeB - timeA
             })
     }, [commentItems, currentVersion])
+
+    const versionThreads = useMemo(() => {
+        return commentThreads
+            .filter((t) => (t.version ?? 0) <= currentVersion)
+            .sort((a, b) => {
+                const versionDiff = (b.version ?? 0) - (a.version ?? 0)
+                if (versionDiff !== 0) return versionDiff
+                const timeA = new Date((a.updatedAt ?? a.createdAt ?? '') || 0).getTime()
+                const timeB = new Date((b.updatedAt ?? b.createdAt ?? '') || 0).getTime()
+                return timeB - timeA
+            })
+    }, [commentThreads, currentVersion])
 
     // Handle adding new comment
     const handleAddComment = () => {
@@ -656,12 +790,20 @@ function ReviewArticle() {
                     <Text style={{ textAlign: 'center', color: tokens.colorPaletteDarkOrangeForeground1 }}>
                         {(commentsError instanceof Error ? commentsError.message : 'Không thể tải nhận xét.')}
                     </Text>
-                ) : versionComments.length === 0 ? (
+                ) : versionThreads.length === 0 ? (
                     <Text style={{ textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
                         Không có nhận xét cho phiên bản này
                     </Text>
                 ) : (
-                    versionComments.map(comment => (
+                    versionComments.map(comment => {
+                        const thread = versionThreads.find((t) => t.id === comment.id)
+                        const rootComment = thread?.comments?.[0]
+                        const displayedAuthor = rootComment ? displayAuthorName(rootComment) : comment.author
+                        const displayedContent = rootComment?.content ?? comment.content
+                        const displayedCreatedAt = rootComment?.createdAt ? new Date(rootComment.createdAt) : comment.createdAt
+                        const repliesCount = thread?.comments?.length ? Math.max(0, thread.comments.length - 1) : 0
+                        const isExpanded = !!expandedThreads[comment.id]
+                        return (
                         <Card
                             key={comment.id}
                             className={`${classes.commentCard} ${
@@ -672,7 +814,7 @@ function ReviewArticle() {
                             <div className={classes.commentHeader}>
                                 <div style={{ flex: 1 }}>
                                     <Text weight="semibold" size={300}>
-                                        {comment.author}
+                                        {displayedAuthor}
                                     </Text>
                                     <Badge
                                         appearance="outline"
@@ -704,7 +846,7 @@ function ReviewArticle() {
                                     •
                                 </Text>
                                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    {comment.createdAt?.toLocaleString('vi-VN')}
+                                    {displayedCreatedAt?.toLocaleString('vi-VN')}
                                 </Text>
                             </div>
 
@@ -722,8 +864,108 @@ function ReviewArticle() {
                             )}
 
                             <div className={classes.commentContent}>
-                                <Text size={300}>{comment.content}</Text>
+                                <Text size={300}>{displayedContent}</Text>
                             </div>
+
+                            {thread && (
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                    <Button
+                                        size="small"
+                                        appearance="subtle"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setExpandedThreads((prev) => ({ ...prev, [comment.id]: !prev[comment.id] }))
+                                        }}
+                                    >
+                                        {isExpanded ? 'Ẩn phản hồi' : repliesCount > 0 ? `Xem phản hồi (${repliesCount})` : 'Xem phản hồi'}
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        appearance="subtle"
+                                        icon={<CommentRegular />}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setExpandedThreads((prev) => ({ ...prev, [comment.id]: true }))
+                                            setReplyingTo(comment.id)
+                                        }}
+                                    >
+                                        Trả lời
+                                    </Button>
+                                </div>
+                            )}
+
+                            {thread && isExpanded && (
+                                <div style={{ marginTop: '12px' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '8px',
+                                        paddingLeft: '12px',
+                                        borderLeft: `2px solid ${tokens.colorNeutralStroke2}`,
+                                    }}>
+                                        {(thread.comments ?? []).slice(1).length === 0 ? (
+                                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                                Chưa có phản hồi
+                                            </Text>
+                                        ) : (
+                                            (thread.comments ?? []).slice(1).map((c) => (
+                                                <div
+                                                    key={c.id}
+                                                    style={{
+                                                        padding: '8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: tokens.colorNeutralBackground1,
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                                                        <Text weight="semibold" size={200}>
+                                                            {displayAuthorName(c)}
+                                                        </Text>
+                                                        {c.createdAt && (
+                                                            <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                                                                {new Date(c.createdAt).toLocaleString('vi-VN')}
+                                                            </Text>
+                                                        )}
+                                                    </div>
+                                                    <Text size={300} style={{ display: 'block', marginTop: '4px' }}>
+                                                        {c.content}
+                                                    </Text>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    {replyingTo === thread.id && (
+                                        <div className={classes.newCommentForm} style={{ marginTop: '12px' }}>
+                                            <Text weight="semibold" size={300}>Phản hồi</Text>
+                                            <Textarea
+                                                placeholder="Viết phản hồi của bạn..."
+                                                value={replyText}
+                                                onChange={(_, data) => setReplyText(data.value)}
+                                                rows={3}
+                                            />
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <Button
+                                                    appearance="primary"
+                                                    onClick={() => handleReplyToThread(thread.id)}
+                                                    disabled={!replyText.trim() || isReplying}
+                                                >
+                                                    {isReplying ? 'Đang gửi...' : 'Gửi'}
+                                                </Button>
+                                                <Button
+                                                    appearance="subtle"
+                                                    onClick={() => {
+                                                        setReplyingTo(null)
+                                                        setReplyText('')
+                                                    }}
+                                                >
+                                                    Hủy
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className={classes.commentActions}>
                                 <Button
@@ -752,7 +994,8 @@ function ReviewArticle() {
                                 </Button>
                             </div>
                         </Card>
-                    ))
+                        )
+                    })
                 )}
             </div>
 
@@ -851,6 +1094,66 @@ function ReviewArticle() {
                         }}
                     >
                         Thêm nhận xét
+                    </Button>
+                    <Button
+                        appearance="secondary"
+                        icon={<CheckmarkRegular />}
+                        disabled={
+                            isRequestingApprove ||
+                            isRequestingReject ||
+                            isRequestingRevisions ||
+                            isArticleLoading ||
+                            !article ||
+                            article.status !== ArticleStatus.IN_REVIEW
+                        }
+                        onClick={() => {
+                            if (!article || article.status !== ArticleStatus.IN_REVIEW) return
+                            const ok = window.confirm('Gửi đề nghị chấp thuận bài báo tới ban biên tập?')
+                            if (!ok) return
+                            requestReviewApprove()
+                        }}
+                    >
+                        {isRequestingApprove ? 'Đang gửi...' : 'Đề nghị chấp thuận'}
+                    </Button>
+                    <Button
+                        appearance="secondary"
+                        icon={<DocumentRegular />}
+                        disabled={
+                            isRequestingApprove ||
+                            isRequestingReject ||
+                            isRequestingRevisions ||
+                            isArticleLoading ||
+                            !article ||
+                            article.status !== ArticleStatus.IN_REVIEW
+                        }
+                        onClick={() => {
+                            if (!article || article.status !== ArticleStatus.IN_REVIEW) return
+                            const ok = window.confirm('Yêu cầu tác giả sửa chữa và nộp lại bản sửa?')
+                            if (!ok) return
+                            requestRevisions()
+                        }}
+                    >
+                        {isRequestingRevisions ? 'Đang gửi...' : 'Yêu cầu sửa chữa'}
+                    </Button>
+                    <Button
+                        appearance="secondary"
+                        icon={<DismissRegular />}
+                        disabled={
+                            isRequestingApprove ||
+                            isRequestingReject ||
+                            isRequestingRevisions ||
+                            isArticleLoading ||
+                            !article ||
+                            article.status !== ArticleStatus.IN_REVIEW
+                        }
+                        onClick={() => {
+                            if (!article || article.status !== ArticleStatus.IN_REVIEW) return
+                            const ok = window.confirm('Gửi yêu cầu loại bỏ bài báo tới ban biên tập?')
+                            if (!ok) return
+                            requestReviewReject()
+                        }}
+                    >
+                        {isRequestingReject ? 'Đang gửi...' : 'Yêu cầu loại bỏ'}
                     </Button>
                     <Button
                         className={classes.commentsToggleButton}

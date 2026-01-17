@@ -59,9 +59,11 @@ enum class ArticleBusinessCode(val value: Int) {
 }
 
 enum class ReviewerBusinessCode(val value: Int) {
+    REVIEWER_ASSIGNED(8000),
     REVIEWER_CONTACTED(8001),
     REVIEWER_CONTACT_FAILED(8002),
     REVIEWER_UNASSIGNED(8003),
+    REVIEWER_ASSIGNMENT_FAILED(8004),
 }
 
 enum class CommentBusinessCode(val value: Int) {
