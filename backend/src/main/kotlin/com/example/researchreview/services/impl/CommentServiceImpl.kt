@@ -2,6 +2,7 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.CommentStatus
 import com.example.researchreview.constants.NotificationType
+import com.example.researchreview.constants.ReviewerInvitationStatus
 import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.CommentCreateRequestDto
 import com.example.researchreview.dtos.CommentDto
@@ -69,7 +70,23 @@ class CommentServiceImpl(
     @Transactional
     override fun createThread(articleId: String, request: CommentCreateRequestDto): CommentThreadDto {
         val article = articleAccessGuard.fetchAccessibleArticle(articleId)
-        val creator = currentUserService.currentUser()
+        val creator = currentUserService.requireUser()
+
+        // Only accepted reviewers may create review threads.
+        // Authors/researchers should reply to existing threads instead.
+        val reviewer = if (creator.hasRole(Role.REVIEWER) && !creator.hasRole(Role.ADMIN) && !creator.hasRole(Role.EDITOR)) {
+            reviewerRepository.findByUserId(creator.id)
+        } else {
+            null
+        }
+        if (reviewer == null) {
+            throw AccessDeniedException("Only reviewers can create comment threads")
+        }
+        val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(articleId, reviewer.id)
+        if (relation == null || relation.deleted || relation.status != ReviewerInvitationStatus.ACCEPTED) {
+            throw AccessDeniedException("Reviewer must accept the invitation before commenting")
+        }
+
         val thread = CommentThread().apply {
             this.article = article
             version = request.version
@@ -81,13 +98,7 @@ class CommentServiceImpl(
             selectedText = request.selectedText
             section = request.section
             status = CommentStatus.OPEN
-            // Associate thread with reviewer if creator is a reviewer
-            if (creator?.hasRole(Role.REVIEWER) == true && !creator.hasRole(Role.ADMIN) && !creator.hasRole(Role.EDITOR)) {
-                val reviewer = reviewerRepository.findByUserId(creator.id)
-                if (reviewer != null) {
-                    this.reviewer = reviewer
-                }
-            }
+            this.reviewer = reviewer
         }
         val comment = Comment().apply {
             content = request.content
@@ -207,6 +218,12 @@ class CommentServiceImpl(
             viewer.hasRole(Role.REVIEWER) -> {
                 if (!threadBelongsToReviewer(thread, viewer.id)) {
                     throw AccessDeniedException("Reviewer cannot access this thread")
+                }
+
+                val reviewerId = thread.reviewer?.id ?: throw AccessDeniedException("Reviewer cannot access this thread")
+                val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(thread.article.id, reviewerId)
+                if (relation == null || relation.deleted || relation.status != ReviewerInvitationStatus.ACCEPTED) {
+                    throw AccessDeniedException("Reviewer must accept the invitation before commenting")
                 }
             }
             viewer.hasRole(Role.RESEARCHER) -> {

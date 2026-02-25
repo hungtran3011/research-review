@@ -20,6 +20,8 @@ import com.example.researchreview.repositories.InstitutionRepository
 import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.entities.Reviewer
+import com.example.researchreview.entities.User
+import com.example.researchreview.entities.UserRole
 import com.example.researchreview.services.CurrentUserService
 import com.example.researchreview.services.EmailService
 import com.example.researchreview.services.NotificationService
@@ -135,9 +137,24 @@ class ReviewerServiceImpl(
         reviewer.email = dto.email
         reviewer.institution = institution
         if (!dto.userId.isNullOrBlank()) {
-            reviewer.user = userRepository.findById(dto.userId!!).orElse(reviewer.user)
+            val user = userRepository.findById(dto.userId!!).orElse(null)
+            if (user != null) {
+                ensureUserHasRole(user, Role.REVIEWER)
+                reviewer.user = user
+            }
         }
         return reviewerRepository.save(reviewer)
+    }
+
+    private fun ensureUserHasRole(user: User, role: Role) {
+        if (user.hasRole(role)) return
+        if (user.roles.any { it.role == role }) return
+        val ur = UserRole().apply {
+            this.user = user
+            this.role = role
+        }
+        user.roles.add(ur)
+        userRepository.save(user)
     }
 
     private fun linkReviewer(article: Article, reviewer: Reviewer) {
@@ -148,8 +165,12 @@ class ReviewerServiceImpl(
             }
         reviewerArticleManager.ensureDisplayIndexFor(relation)
         relation.deleted = false
-        relation.status = ReviewerInvitationStatus.PENDING
-        relation.invitedAt = LocalDateTime.now()
+        // Preserve acceptance; do not silently downgrade ACCEPTED to PENDING on subsequent invites.
+        // If the editor truly wants to re-invite, they should revoke/re-invite explicitly.
+        if (relation.status != ReviewerInvitationStatus.ACCEPTED) {
+            relation.status = ReviewerInvitationStatus.PENDING
+            relation.invitedAt = LocalDateTime.now()
+        }
         reviewerArticleRepository.save(relation)
     }
 

@@ -1,10 +1,9 @@
 import React from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { Button, Spinner, Text, makeStyles } from '@fluentui/react-components';
 import { reviewerInviteService } from '../../services/reviewerInvite.service';
 import { useAuthStore } from '../../stores/authStore';
 import { useBasicToast } from '../../hooks/useBasicToast';
-import { useArticle } from '../../hooks/useArticles';
 
 const useStyles = makeStyles({
   root: {
@@ -29,41 +28,56 @@ const useStyles = makeStyles({
 
 function ReviewerInvite() {
   const classes = useStyles();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { error: showErrorToast } = useBasicToast();
   const { setEmail, setInviteToken, isAuthenticated } = useAuthStore();
-  const [token, setToken] = React.useState<string | null>(null);
   const [articleId, setArticleId] = React.useState<string | null>(null);
+  const [articleTitle, setArticleTitle] = React.useState<string | null>(null);
+  const [trackName, setTrackName] = React.useState<string | null>(null);
+  const [authors, setAuthors] = React.useState<string[]>([]);
   const [isResolving, setIsResolving] = React.useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
 
-  const { data: articleResponse } = useArticle(articleId ?? undefined, !!articleId && isAuthenticated);
-  const articleTitle = articleResponse?.data?.title;
+  const token = React.useMemo(() => {
+    return new URLSearchParams(location.search).get('token');
+  }, [location.search]);
+
+  const lastResolvedTokenRef = React.useRef<string | null>(null);
 
   document.title = 'Reviewer Invitation - Research Review';
 
   React.useEffect(() => {
-    const t = searchParams.get('token');
-    if (!t) {
+    if (!token) {
       navigate('/signin', { replace: true });
       return;
     }
 
-    setToken(t);
-    setInviteToken(t);
+    // Prevent repeated resolve calls on re-renders.
+    if (lastResolvedTokenRef.current === token) {
+      return;
+    }
+    lastResolvedTokenRef.current = token;
+
+    setInviteToken(token);
 
     (async () => {
       try {
         setIsResolving(true);
-        const resolved = await reviewerInviteService.resolve(t);
+        const resolved = await reviewerInviteService.resolve(token);
         const email = resolved.data?.email;
         const aId = resolved.data?.articleId;
+        const title = resolved.data?.articleTitle;
+        const track = resolved.data?.trackName;
+        const authorList = resolved.data?.authors;
         if (!email || !aId) {
           throw new Error(resolved.message || 'Invalid invitation token');
         }
         setEmail(email);
         setArticleId(aId);
+        setArticleTitle(title ?? null);
+        setTrackName(track ?? null);
+        setAuthors(Array.isArray(authorList) ? authorList.filter((x) => typeof x === 'string') : []);
       } catch (e: unknown) {
         const maybeAxios = e as { response?: { data?: { message?: string } } }
         const maybeError = e as { message?: string }
@@ -76,7 +90,7 @@ function ReviewerInvite() {
         setIsResolving(false);
       }
     })();
-  }, [navigate, searchParams, setEmail, setInviteToken, showErrorToast]);
+  }, [navigate, token, setEmail, setInviteToken, showErrorToast]);
 
   const handleGoSignIn = () => {
     navigate('/signin');
@@ -137,9 +151,16 @@ function ReviewerInvite() {
       ) : (
         <>
           <Text as="h1" weight="bold" size={500}>Lời mời phản biện</Text>
-          <Text align="center">
-            {articleTitle ? `Bạn được mời phản biện bài: ${articleTitle}` : `Bạn được mời phản biện bài (ID: ${articleId})`}
+          <Text align="center">Bạn được mời phản biện bài báo sau:</Text>
+          <Text align="center" weight="semibold">
+            {articleTitle || `ID: ${articleId}`}
           </Text>
+          {authors.length > 0 && (
+            <Text align="center">Tác giả: {authors.join(', ')}</Text>
+          )}
+          {trackName && (
+            <Text align="center">Track: {trackName}</Text>
+          )}
 
           {!isAuthenticated ? (
             <>

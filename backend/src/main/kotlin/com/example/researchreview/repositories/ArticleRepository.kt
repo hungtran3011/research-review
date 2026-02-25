@@ -19,12 +19,14 @@ interface ArticleRepository: JpaRepository<Article, String> {
 			"JOIN ReviewerArticle ra ON ra.article = a " +
 			"JOIN Reviewer r ON ra.reviewer = r " +
 			"LEFT JOIN User u ON r.user = u " +
-			"WHERE a.deleted = false AND ra.deleted = false AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))",
+			"WHERE a.deleted = false AND ra.deleted = false " +
+			"AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))",
 		countQuery = "SELECT COUNT(DISTINCT a.id) FROM Article a " +
 			"JOIN ReviewerArticle ra ON ra.article = a " +
 			"JOIN Reviewer r ON ra.reviewer = r " +
 			"LEFT JOIN User u ON r.user = u " +
-			"WHERE a.deleted = false AND ra.deleted = false AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))"
+			"WHERE a.deleted = false AND ra.deleted = false " +
+			"AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))"
 	)
 	fun findAllByReviewerUserIdOrEmail(
 		@Param("userId") userId: String,
@@ -51,7 +53,8 @@ interface ArticleRepository: JpaRepository<Article, String> {
 			"JOIN ReviewerArticle ra ON ra.article = a " +
 			"JOIN Reviewer r ON ra.reviewer = r " +
 			"LEFT JOIN User u ON r.user = u " +
-			"WHERE a.deleted = false AND ra.deleted = false AND a.id = :articleId AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))"
+			"WHERE a.deleted = false AND ra.deleted = false " +
+			"AND a.id = :articleId AND (u.id = :userId OR LOWER(r.email) = LOWER(:email))"
 	)
 	fun findByIdForReviewerOrEmail(
 		@Param("articleId") articleId: String,

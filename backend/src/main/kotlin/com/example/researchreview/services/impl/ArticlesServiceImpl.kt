@@ -5,6 +5,7 @@ import com.example.researchreview.constants.AttachmentKind
 import com.example.researchreview.constants.InitialReviewDecision
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
+import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.AuthorDto
@@ -18,6 +19,8 @@ import com.example.researchreview.entities.ArticleAuthor
 import com.example.researchreview.entities.Author
 import com.example.researchreview.entities.Reviewer
 import com.example.researchreview.entities.ReviewerArticle
+import com.example.researchreview.entities.User
+import com.example.researchreview.entities.UserRole
 import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.repositories.AuthorRepository
@@ -138,8 +141,11 @@ class ArticlesServiceImpl(
             }
         reviewerArticleManager.ensureDisplayIndexFor(relation)
         relation.deleted = false
-        relation.status = ReviewerInvitationStatus.PENDING
-        relation.invitedAt = LocalDateTime.now()
+        // Preserve acceptance; don't downgrade ACCEPTED to PENDING if already accepted.
+        if (relation.status != ReviewerInvitationStatus.ACCEPTED) {
+            relation.status = ReviewerInvitationStatus.PENDING
+            relation.invitedAt = LocalDateTime.now()
+        }
         val savedRelation = reviewerArticleRepository.save(relation)
         notifyReviewerInvitation(savedRelation)
         return toDto(article)
@@ -293,9 +299,24 @@ class ArticlesServiceImpl(
         reviewer.email = dto.email
         reviewer.institution = institution
         if (!dto.userId.isNullOrBlank()) {
-            reviewer.user = userRepository.findById(dto.userId!!).orElse(reviewer.user)
+            val user = userRepository.findById(dto.userId!!).orElse(null)
+            if (user != null) {
+                ensureUserHasRole(user, Role.REVIEWER)
+                reviewer.user = user
+            }
         }
         return reviewerRepository.save(reviewer)
+    }
+
+    private fun ensureUserHasRole(user: User, role: Role) {
+        if (user.hasRole(role)) return
+        if (user.roles.any { it.role == role }) return
+        val ur = UserRole().apply {
+            this.user = user
+            this.role = role
+        }
+        user.roles.add(ur)
+        userRepository.save(user)
     }
 
     private fun notifyArticleSubmitted(article: Article) {

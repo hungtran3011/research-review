@@ -11,6 +11,9 @@ export interface ReviewerInviteDecisionDto {
 export interface ReviewerInviteResolveDto {
   email: string;
   articleId: string;
+  articleTitle: string;
+  trackName: string;
+  authors: string[];
 }
 
 export const reviewerInviteService = {

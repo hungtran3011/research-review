@@ -127,10 +127,22 @@ export const NotificationCenter = () => {
 
   const handleNotificationClick = useCallback(
     (notification: Notification) => {
-      if (notification.payload.articleId && typeof notification.payload.articleId === 'string') {
+      // Special-case reviewer invite: always go to the invitation page.
+      if (notification.type === 'REVIEWER_INVITED') {
+        const inviteUrl = notification.payload.inviteUrl
+        if (typeof inviteUrl === 'string' && inviteUrl.length > 0) {
+          try {
+            const url = new URL(inviteUrl, window.location.origin)
+            navigate(`${url.pathname}${url.search}`)
+          } catch {
+            // Fallback for relative URLs or malformed strings
+            if (inviteUrl.startsWith('/')) {
+              navigate(inviteUrl)
+            }
+          }
+        }
+      } else if (notification.payload.articleId && typeof notification.payload.articleId === 'string') {
         navigate(`/articles/${notification.payload.articleId}`);
-      } else if (notification.payload.inviteUrl && typeof notification.payload.inviteUrl === 'string') {
-        window.open(notification.payload.inviteUrl, "_blank");
       }
       if (!notification.readAt) {
         handleMarkAsRead(notification.id, { stopPropagation: () => { } } as React.MouseEvent);

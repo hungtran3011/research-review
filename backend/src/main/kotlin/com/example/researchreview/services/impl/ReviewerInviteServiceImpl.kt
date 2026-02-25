@@ -2,6 +2,8 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.dtos.ReviewerInviteResolveDto
 import com.example.researchreview.entities.ReviewerInvite
+import com.example.researchreview.repositories.ArticleAuthorRepository
+import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.repositories.ReviewerInviteRepository
 import com.example.researchreview.services.ReviewerInviteService
 import com.example.researchreview.utils.CodeGen
@@ -11,7 +13,9 @@ import java.time.LocalDateTime
 
 @Service
 class ReviewerInviteServiceImpl(
-    private val reviewerInviteRepository: ReviewerInviteRepository
+    private val reviewerInviteRepository: ReviewerInviteRepository,
+    private val articleRepository: ArticleRepository,
+    private val articleAuthorRepository: ArticleAuthorRepository
 ) : ReviewerInviteService {
 
     private val ttlDays: Long = 7
@@ -34,21 +38,42 @@ class ReviewerInviteServiceImpl(
 
     @Transactional(readOnly = true)
     override fun resolve(token: String): ReviewerInviteResolveDto {
-        val invite = findValidInviteOrThrow(token)
-        return ReviewerInviteResolveDto(email = invite.email, articleId = invite.articleId)
+        val invite = findValidInviteOrThrow(token, forUpdate = false)
+        return toResolveDto(invite)
     }
 
     @Transactional
     override fun consume(token: String): ReviewerInviteResolveDto {
-        val invite = findValidInviteOrThrow(token)
+        val invite = findValidInviteOrThrow(token, forUpdate = true)
         invite.usedAt = LocalDateTime.now()
         reviewerInviteRepository.save(invite)
-        return ReviewerInviteResolveDto(email = invite.email, articleId = invite.articleId)
+        return toResolveDto(invite)
     }
 
-    private fun findValidInviteOrThrow(token: String): ReviewerInvite {
+    private fun toResolveDto(invite: ReviewerInvite): ReviewerInviteResolveDto {
+        val article = articleRepository.findByIdAndDeletedFalse(invite.articleId)
+            .orElseThrow { IllegalArgumentException("Article not found") }
+
+        val authors = articleAuthorRepository.findAllByArticleIdAndDeletedFalse(invite.articleId)
+            .sortedBy { it.authorOrder }
+            .map { it.author.name }
+
+        return ReviewerInviteResolveDto(
+            email = invite.email,
+            articleId = invite.articleId,
+            articleTitle = article.title,
+            trackName = article.track.name,
+            authors = authors
+        )
+    }
+
+    private fun findValidInviteOrThrow(token: String, forUpdate: Boolean): ReviewerInvite {
         val tokenHash = CodeGen.sha256(token)
-        val invite = reviewerInviteRepository.findByTokenHash(tokenHash)
+        val invite = if (forUpdate) {
+            reviewerInviteRepository.findByTokenHashForUpdate(tokenHash)
+        } else {
+            reviewerInviteRepository.findByTokenHash(tokenHash)
+        }
             ?: throw IllegalArgumentException("Invalid invitation token")
 
         if (invite.usedAt != null) {
