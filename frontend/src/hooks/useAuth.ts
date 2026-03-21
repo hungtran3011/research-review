@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import * as authService from '../services/auth.service';
 import { useAuthStore } from '../stores/authStore';
 import type { AuthResponseDto, BaseResponseDto } from '../models';
-import { AuthBusinessCode, EmailBusinessCode } from '../constants/business-code';
 import { AxiosError } from 'axios';
 import { getApiErrorMessage, getApiSuccessMessage, useBasicToast } from './useBasicToast';
 
@@ -15,18 +14,17 @@ export const useSignUp = () => {
   const { setEmail, setIsSignUp } = useAuthStore();
   const { success, error } = useBasicToast();
 
-  return useMutation<BaseResponseDto<AuthResponseDto>, AxiosError<BaseResponseDto<AuthResponseDto>>, string>({
+  return useMutation<BaseResponseDto<AuthResponseDto>, AxiosError<BaseResponseDto<AuthResponseDto>>, { email: string; deviceFingerprint?: string }>({
     mutationFn: authService.signUp,
-    onSuccess: (data, email) => {
-      if (data.code === EmailBusinessCode.EMAIL_SENT_SUCCESSFULLY) {
-        success(getApiSuccessMessage(data, 'Đã gửi email xác thực.'));
-        setEmail(email);
-        setIsSignUp(true);
-        navigate('/needs-verify');
-      } else if (data.code === AuthBusinessCode.EMAIL_VERIFIED) {
-        success(getApiSuccessMessage(data, 'Email đã được xác thực.'));
-        setEmail(email);
+    onSuccess: (data, params) => {
+      success(getApiSuccessMessage(data, 'Đã gửi email xác thực.'));
+      setEmail(params.email);
+      setIsSignUp(true);
+      // Check if user needs to complete info or verify email
+      if (data.data?.accessToken) {
         navigate('/info');
+      } else {
+        navigate('/needs-verify');
       }
     },
     onError: (err) => {
@@ -43,15 +41,13 @@ export const useSignIn = () => {
   const { setEmail, setIsSignUp } = useAuthStore();
   const { success, error } = useBasicToast();
 
-  return useMutation<BaseResponseDto<AuthResponseDto>, AxiosError<BaseResponseDto<AuthResponseDto>>, string>({
+  return useMutation<BaseResponseDto<AuthResponseDto>, AxiosError<BaseResponseDto<AuthResponseDto>>, { email: string; deviceFingerprint?: string }>({
     mutationFn: authService.signIn,
-    onSuccess: (data, email) => {
-      if (data.code === EmailBusinessCode.EMAIL_SENT_SUCCESSFULLY) {
-        success(getApiSuccessMessage(data, 'Đã gửi email đăng nhập.'));
-        setEmail(email);
-        setIsSignUp(false);
-        navigate('/needs-verify');
-      }
+    onSuccess: (data, params) => {
+      success(getApiSuccessMessage(data, 'Đã gửi email đăng nhập.'));
+      setEmail(params.email);
+      setIsSignUp(false);
+      navigate('/needs-verify');
     },
     onError: (err) => {
       error(getApiErrorMessage(err, 'Không thể đăng nhập. Vui lòng thử lại.'));
@@ -70,26 +66,20 @@ export const useVerifyToken = () => {
   return useMutation<
     BaseResponseDto<AuthResponseDto>,
     AxiosError<BaseResponseDto<AuthResponseDto>>,
-    { email: string; token: string; isSignUp: boolean }
+    { email: string; token: string; isSignUp: boolean; deviceFingerprint?: string }
   >({
-    mutationFn: ({ email, token, isSignUp }) =>
-      authService.verifyToken(email, token, isSignUp),
+    mutationFn: (params) => authService.verifyToken(params),
     onSuccess: (data) => {
-      if (data.code === AuthBusinessCode.VERIFICATION_SUCCESS) {
-        success(getApiSuccessMessage(data, 'Xác thực thành công.'));
-        setVerified(true);
+      success(getApiSuccessMessage(data, 'Xác thực thành công.'));
+      setVerified(true);
+      const accessToken = data.data?.accessToken;
+      if (accessToken) {
         setAuthenticated(true);
-        const accessToken = data.data?.accessToken;
-        if (accessToken) {
-          setTokens(accessToken, null);
-        }
+        setTokens(accessToken, null);
         navigate('/verify-success', { state: { fromVerify: true } });
-      } else if (data.code === AuthBusinessCode.EMAIL_VERIFIED) {
-        success(getApiSuccessMessage(data, 'Email đã được xác thực.'));
-        setVerified(true);
-        navigate('/info');
       } else {
-        navigate('/verify-failed');
+        // User still needs to complete info
+        navigate('/info');
       }
     },
     onError: (err) => {

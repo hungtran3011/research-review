@@ -1,28 +1,13 @@
 import { useMemo, useState } from 'react'
-import {
-    Button,
-    Combobox,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogContent,
-    DialogSurface,
-    DialogTitle,
-    Field,
-    Input,
-    Option,
-    Radio,
-    RadioGroup,
-    Spinner,
-    Text,
-    tokens,
-} from '@fluentui/react-components'
+import { Modal, Button, Typography, Input, Select, Radio, Spin, Form } from 'antd'
 import { useQueryClient } from '@tanstack/react-query'
 import { useUsers } from '../../hooks/useUser'
 import { useInstitutions } from '../../hooks/useInstitutionTrack'
 import { useBasicToast, getApiErrorMessage } from '../../hooks/useBasicToast'
 import { articleService } from '../../services/article.service'
 import type { ReviewerDto, UserDto } from '../../models'
+
+const { Text } = Typography
 
 export interface InviteReviewersDialogProps {
     open: boolean
@@ -105,7 +90,7 @@ export function InviteReviewersDialog({
             if (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId) return
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
             if (!emailRegex.test(manualReviewerEmail.trim())) {
-                error('Email không hợp lệ.', 'Vui lòng kiểm tra lại.')
+                error('Email không hợp lệ. Vui lòng kiểm tra lại.')
                 return
             }
         }
@@ -139,126 +124,113 @@ export function InviteReviewersDialog({
             queryClient.invalidateQueries({ queryKey: ['article', articleId] })
             handleClose()
         } catch (e) {
-            error('Không thể mời phản biện viên.', getApiErrorMessage(e, 'Vui lòng thử lại.'))
+            error(`Không thể mời phản biện viên. ${getApiErrorMessage(e, 'Vui lòng thử lại.')}`)
         } finally {
             setIsSubmitting(false)
         }
     }
 
     return (
-        <Dialog open={open} onOpenChange={(_, data) => onOpenChange(data.open)}>
-            <DialogSurface>
-                <DialogBody>
-                    <DialogTitle>Quản lý reviewer</DialogTitle>
-                    <DialogContent>
-                        <div style={{ marginBottom: '12px' }}>
-                            <Text
-                                size={200}
-                                style={{ display: 'block', marginBottom: '6px', color: tokens.colorNeutralForeground3 }}
-                            >
-                                Phản biện đã được mời:
+        <Modal
+            title="Quản lý reviewer"
+            open={open}
+            onCancel={handleClose}
+            footer={[
+                <Button key="cancel" onClick={handleClose} disabled={isSubmitting}>
+                    Hủy
+                </Button>,
+                <Button
+                    key="submit"
+                    type="primary"
+                    onClick={handleInvite}
+                    loading={isSubmitting}
+                    disabled={
+                        entryMode === 'existing' && selectedReviewerIds.length === 0 ||
+                        entryMode === 'manual' && (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId)
+                    }
+                >
+                    Xác nhận
+                </Button>,
+            ]}
+        >
+            <div style={{ marginBottom: '16px' }}>
+                <Text style={{ display: 'block', marginBottom: '8px', color: '#8c8c8c' }}>
+                    Phản biện đã được mời:
+                </Text>
+                {invitedReviewers.length === 0 ? (
+                    <Text style={{ color: '#8c8c8c' }}>
+                        Chưa có phản biện nào
+                    </Text>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {invitedReviewers.map((r) => (
+                            <Text key={r.id}>
+                                {r.name} ({r.email})
+                                {r.institution?.name ? ` - ${r.institution.name}` : ''}
                             </Text>
-                            {invitedReviewers.length === 0 ? (
-                                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    Chưa có phản biện nào
-                                </Text>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    {invitedReviewers.map((r) => (
-                                        <Text key={r.id} size={300}>
-                                            {r.name} ({r.email})
-                                            {r.institution?.name ? ` - ${r.institution.name}` : ''}
-                                        </Text>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
-                        <Field label="Phương thức mời reviewer" style={{ marginBottom: '12px' }}>
-                            <RadioGroup value={entryMode} onChange={(_, data) => setEntryMode(data.value as 'existing' | 'manual')}>
-                                <Radio value="existing" label="Chọn từ danh sách người dùng hiện có" />
-                                <Radio value="manual" label="Nhập thông tin reviewer mới" />
-                            </RadioGroup>
-                        </Field>
+            <Form.Item label="Phương thức mời reviewer" style={{ marginBottom: '16px' }}>
+                <Radio.Group value={entryMode} onChange={(e) => setEntryMode(e.target.value as 'existing' | 'manual')}>
+                    <Radio value="existing">Chọn từ danh sách người dùng hiện có</Radio>
+                    <Radio value="manual">Nhập thông tin reviewer mới</Radio>
+                </Radio.Group>
+            </Form.Item>
 
-                        {entryMode === 'existing' ? (
-                            <Field label="Chọn reviewer" required>
-                                {isLoadingUsers ? (
-                                    <div style={{ padding: '8px 0' }}>
-                                        <Spinner size="small" />
-                                    </div>
-                                ) : (
-                                    <Combobox
-                                        multiselect
-                                        placeholder="Chọn reviewer"
-                                        selectedOptions={selectedReviewerIds}
-                                        onOptionSelect={(_, data) => setSelectedReviewerIds(data.selectedOptions)}
-                                    >
-                                        {reviewerUsers.map((user) => (
-                                            <Option key={user.id} value={user.id} text={formatReviewerOption(user)}>
-                                                {formatReviewerOption(user)}
-                                            </Option>
-                                        ))}
-                                    </Combobox>
-                                )}
-                            </Field>
+            {entryMode === 'existing' ? (
+                <Form.Item label="Chọn reviewer" required>
+                    {isLoadingUsers ? (
+                        <Spin />
+                    ) : (
+                        <Select
+                            mode="multiple"
+                            placeholder="Chọn reviewer"
+                            value={selectedReviewerIds}
+                            onChange={setSelectedReviewerIds}
+                            options={reviewerUsers.map((user) => ({
+                                value: user.id,
+                                label: formatReviewerOption(user),
+                            }))}
+                        />
+                    )}
+                </Form.Item>
+            ) : (
+                <>
+                    <Form.Item label="Họ và tên" required style={{ marginBottom: '16px' }}>
+                        <Input
+                            placeholder="Nhập họ và tên reviewer"
+                            value={manualReviewerName}
+                            onChange={(e) => setManualReviewerName(e.target.value)}
+                        />
+                    </Form.Item>
+                    <Form.Item label="Email" required style={{ marginBottom: '16px' }}>
+                        <Input
+                            type="email"
+                            placeholder="Nhập email reviewer"
+                            value={manualReviewerEmail}
+                            onChange={(e) => setManualReviewerEmail(e.target.value)}
+                        />
+                    </Form.Item>
+                    <Form.Item label="Cơ quan" required>
+                        {isLoadingInstitutions ? (
+                            <Spin />
                         ) : (
-                            <>
-                                <Field label="Họ và tên" required style={{ marginBottom: '12px' }}>
-                                    <Input
-                                        placeholder="Nhập họ và tên reviewer"
-                                        value={manualReviewerName}
-                                        onChange={(_, data) => setManualReviewerName(data.value)}
-                                    />
-                                </Field>
-                                <Field label="Email" required style={{ marginBottom: '12px' }}>
-                                    <Input
-                                        type="email"
-                                        placeholder="Nhập email reviewer"
-                                        value={manualReviewerEmail}
-                                        onChange={(_, data) => setManualReviewerEmail(data.value)}
-                                    />
-                                </Field>
-                                <Field label="Cơ quan" required>
-                                    {isLoadingInstitutions ? (
-                                        <div style={{ padding: '8px 0' }}>
-                                            <Spinner size="small" />
-                                        </div>
-                                    ) : (
-                                        <Combobox
-                                            placeholder="Chọn cơ quan"
-                                            value={institutions.find((i) => i.id === manualReviewerInstitutionId)?.name || ''}
-                                            onOptionSelect={(_, data) => setManualReviewerInstitutionId(data.optionValue || '')}
-                                        >
-                                            {institutions.map((institution) => (
-                                                <Option key={institution.id} value={institution.id} text={institution.name}>
-                                                    {institution.name}
-                                                </Option>
-                                            ))}
-                                        </Combobox>
-                                    )}
-                                </Field>
-                            </>
+                            <Select
+                                placeholder="Chọn cơ quan"
+                                value={manualReviewerInstitutionId || undefined}
+                                onChange={(value) => setManualReviewerInstitutionId(value)}
+                                options={institutions.map((institution) => ({
+                                    value: institution.id,
+                                    label: institution.name,
+                                }))}
+                            />
                         )}
-                    </DialogContent>
-                    <DialogActions>
-                        <Button
-                            appearance="primary"
-                            onClick={handleInvite}
-                            disabled={
-                                isSubmitting ||
-                                (entryMode === 'existing' && selectedReviewerIds.length === 0) ||
-                                (entryMode === 'manual' && (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId))
-                            }
-                        >
-                            {isSubmitting ? 'Đang mời...' : 'Xác nhận'}
-                        </Button>
-                        <Button appearance="secondary" onClick={handleClose} disabled={isSubmitting}>
-                            Hủy
-                        </Button>
-                    </DialogActions>
-                </DialogBody>
-            </DialogSurface>
-        </Dialog>
+                    </Form.Item>
+                </>
+            )}
+        </Modal>
     )
 }

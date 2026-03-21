@@ -12,10 +12,10 @@ data class Tokens(
 )
 
 interface JwtService {
-    fun createAccessToken(subject: String, authorities: List<String> = emptyList()): Pair<String, Instant>
-    fun createRefreshToken(subject: String): Pair<String, Instant>
-    fun issueTokensForUser(userId: String, authorities: List<String> = emptyList()): Tokens
+    fun createAccessToken(subject: String, authorities: List<String> = emptyList(), deviceFingerprintHash: String? = null): Pair<String, Instant>
+    fun createRefreshToken(subject: String, deviceFingerprintHash: String? = null): Pair<String, Instant>
+    fun issueTokensForUser(userId: String, authorities: List<String> = emptyList(), deviceFingerprintHash: String? = null): Tokens
     fun validateAccessToken(token: String): Jwt
-    fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String> = emptyList()): Tokens
+    fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String> = emptyList(), deviceFingerprintHash: String? = null): Tokens
     fun revokeRefreshForUser(userId: String)
 }

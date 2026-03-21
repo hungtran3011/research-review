@@ -1,91 +1,46 @@
 import { useEffect, useState } from 'react';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHeaderCell,
-  TableBody,
-  TableCell,
-  Dropdown,
-  Option,
-  Button,
-  Input,
-  Spinner,
-  Text,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
-import { Delete16Regular } from '@fluentui/react-icons';
+import { Table, Select, Button, Input, Typography, Card, Row, Col, Pagination, Modal, Form, Space } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import { useUsers, useUpdateUserRole, useUpdateUserStatus, useDeleteUser, useCreateUser } from '../../hooks/useUser';
 import { AccountStatusOptions, RoleOptions } from '../../constants';
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack';
+import type { ColumnsType } from 'antd/es/table';
+import type { UserDto } from '../../models';
 
-const useStyles = makeStyles({
+const { Text } = Typography;
+
+const styles = {
   container: {
     padding: '32px',
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column' as const,
     gap: '16px',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap' as const,
     gap: '12px',
-  },
-  createSection: {
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  pagination: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  tableCard: {
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  filterBar: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '12px',
-    padding: '12px 12px 0 12px',
-  },
-  tableWrapper: {
-    overflowX: 'auto',
-    padding: '0 12px 12px 12px',
   },
   createForm: {
     display: 'flex',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap' as const,
     gap: '12px',
-    alignItems: 'end',
+    alignItems: 'flex-end',
   },
   field: {
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column' as const,
     gap: '6px',
     minWidth: '220px',
     flex: '1 1 220px',
   },
-});
+} as const;
 
 const PAGE_SIZE = 10;
-const NONE_OPTION_VALUE = '__NONE__';
 
 const UserManagement = () => {
-  const classes = useStyles();
   const [page, setPage] = useState(0);
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
@@ -93,7 +48,7 @@ const UserManagement = () => {
   const [filterEmail, setFilterEmail] = useState('');
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
-  const { data, isLoading } = useUsers(
+  const { data, isLoading, isFetching } = useUsers(
     page,
     PAGE_SIZE,
     {
@@ -116,6 +71,8 @@ const UserManagement = () => {
   const [newRole, setNewRole] = useState<string>('USER');
   const [newInstitutionId, setNewInstitutionId] = useState<string>('');
   const [newTrackId, setNewTrackId] = useState<string>('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
 
   const users = data?.data?.content ?? [];
   const pageMeta = data?.data;
@@ -132,6 +89,16 @@ const UserManagement = () => {
 
   const handleDelete = (userId: string) => {
     deleteUser.mutate(userId);
+  };
+
+  const handleOpenDetail = (user: UserDto) => {
+    setSelectedUser(user);
+    setDetailOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailOpen(false);
+    setSelectedUser(null);
   };
 
   const handleCreate = () => {
@@ -187,123 +154,143 @@ const UserManagement = () => {
     return () => clearTimeout(handle);
   }, [inputEmail]);
 
+  const columns: ColumnsType<UserDto> = [
+    {
+      title: 'Họ tên',
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+    },
+    {
+      title: 'Vai trò',
+      key: 'role',
+      render: (_, record) => (
+        <Select
+          size="small"
+          value={record.role}
+          disabled={updateRole.isPending}
+          onChange={(value) => handleRoleChange(record.id, record.role, value)}
+          options={RoleOptions.map((role) => ({ value: role.value, label: role.label }))}
+          style={{ width: '140px' }}
+        />
+      ),
+    },
+    {
+      title: 'Trạng thái',
+      key: 'status',
+      render: (_, record) => (
+        <Select
+          size="small"
+          value={record.status || 'INACTIVE'}
+          disabled={updateStatus.isPending}
+          onChange={(value) => handleStatusChange(record.id, record.status, value)}
+          options={AccountStatusOptions.map((status) => ({ value: status.value, label: status.label }))}
+          style={{ width: '140px' }}
+        />
+      ),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button onClick={() => handleOpenDetail(record)}>Chi tiết</Button>
+          <Button
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+            disabled={deleteUser.isPending}
+          >
+            Xóa
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <div className={classes.container}>
-      <div className={classes.header}>
-        <Text size={600} weight="semibold">
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <Text strong style={{ fontSize: '24px' }}>
           Quản lý người dùng
         </Text>
-        <div className={classes.pagination}>
-          <Button
-            disabled={page === 0 || isLoading || isMutating}
-            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-          >
-            Trang trước
-          </Button>
-          <Text>
-            Trang {page + 1} / {Math.max(pageMeta?.totalPages ?? 1, 1)}
-          </Text>
-          <Button
-            disabled={
-              isLoading ||
-              isMutating ||
-              !pageMeta?.hasNext
-            }
-            onClick={() => setPage((prev) => prev + 1)}
-          >
-            Trang tiếp
-          </Button>
-        </div>
+        <Pagination
+          current={page + 1}
+          total={(pageMeta?.totalPages ?? 1) * PAGE_SIZE}
+          pageSize={PAGE_SIZE}
+          onChange={(newPage) => setPage(newPage - 1)}
+          disabled={isLoading || isMutating}
+          showSizeChanger={false}
+        />
       </div>
 
-      <div className={classes.createSection}>
-        <Text weight="semibold">Tạo người dùng mới</Text>
-        <div className={classes.createForm}>
-          <div className={classes.field}>
-            <Text size={300}>Họ tên</Text>
+      <Card title="Tạo người dùng mới">
+        <div style={styles.createForm}>
+          <div style={styles.field}>
+            <Text>Họ tên</Text>
             <Input
               value={newName}
-              onChange={(_ev, data) => setNewName(data.value)}
+              onChange={(e) => setNewName(e.target.value)}
               placeholder="Nhập họ tên"
               disabled={isMutating}
             />
           </div>
-          <div className={classes.field}>
-            <Text size={300}>Email</Text>
+          <div style={styles.field}>
+            <Text>Email</Text>
             <Input
               value={newEmail}
-              onChange={(_ev, data) => setNewEmail(data.value)}
+              onChange={(e) => setNewEmail(e.target.value)}
               placeholder="Nhập email"
               disabled={isMutating}
             />
           </div>
-          <div className={classes.field}>
-            <Text size={300}>Vai trò</Text>
-            <Dropdown
-              value={RoleOptions.find(r => r.value === newRole)?.label || 'USER'}
-              selectedOptions={[newRole]}
-              onOptionSelect={(_ev, data) => setNewRole(data.optionValue || 'USER')}
+          <div style={styles.field}>
+            <Text>Vai trò</Text>
+            <Select
+              value={newRole}
+              onChange={setNewRole}
               disabled={isMutating}
-            >
-              {RoleOptions.map((role) => (
-                <Option key={role.value} value={role.value}>
-                  {role.label}
-                </Option>
-              ))}
-            </Dropdown>
+              options={RoleOptions.map((role) => ({ value: role.value, label: role.label }))}
+              style={{ width: '100%' }}
+            />
           </div>
-          <div className={classes.field}>
-            <Text size={300}>Nơi công tác (tùy chọn)</Text>
-            <Dropdown
-              value={
-                newInstitutionId
-                  ? institutions.find(i => i.id === newInstitutionId)?.name || 'Chọn nơi công tác'
-                  : '(Không chọn)'
-              }
-              selectedOptions={[newInstitutionId || NONE_OPTION_VALUE]}
-              onOptionSelect={(_ev, data) => {
-                const next = data.optionValue ?? NONE_OPTION_VALUE;
-                setNewInstitutionId(next === NONE_OPTION_VALUE ? '' : next);
-              }}
+          <div style={styles.field}>
+            <Text>Nơi công tác (tùy chọn)</Text>
+            <Select
+              value={newInstitutionId || undefined}
+              onChange={(value) => setNewInstitutionId(value || '')}
               disabled={isMutating || institutionsQuery.isLoading}
               placeholder={institutionsQuery.isLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
-            >
-              <Option value={NONE_OPTION_VALUE}>(Không chọn)</Option>
-              {institutions.map((inst) => (
-                <Option key={inst.id} value={inst.id}>
-                  {inst.name}
-                </Option>
-              ))}
-            </Dropdown>
+              options={[
+                { value: '', label: '(Không chọn)' },
+                ...institutions.map((inst) => ({ value: inst.id, label: inst.name })),
+              ]}
+              style={{ width: '100%' }}
+              allowClear
+            />
           </div>
-          <div className={classes.field}>
-            <Text size={300}>
+          <div style={styles.field}>
+            <Text>
               Track {newRole === 'EDITOR' ? '(bắt buộc cho Editor)' : '(tùy chọn)'}
             </Text>
-            <Dropdown
-              value={
-                newTrackId
-                  ? tracks.find(t => t.id === newTrackId)?.name || 'Chọn track'
-                  : '(Không chọn)'
-              }
-              selectedOptions={[newTrackId || NONE_OPTION_VALUE]}
-              onOptionSelect={(_ev, data) => {
-                const next = data.optionValue ?? NONE_OPTION_VALUE;
-                setNewTrackId(next === NONE_OPTION_VALUE ? '' : next);
-              }}
+            <Select
+              value={newTrackId || undefined}
+              onChange={(value) => setNewTrackId(value || '')}
               disabled={isMutating || tracksQuery.isLoading}
               placeholder={tracksQuery.isLoading ? 'Đang tải...' : 'Chọn track'}
-            >
-              <Option value={NONE_OPTION_VALUE}>(Không chọn)</Option>
-              {tracks.map((track) => (
-                <Option key={track.id} value={track.id}>
-                  {track.name}
-                </Option>
-              ))}
-            </Dropdown>
+              options={[
+                { value: '', label: '(Không chọn)' },
+                ...tracks.map((track) => ({ value: track.id, label: track.name })),
+              ]}
+              style={{ width: '100%' }}
+              allowClear
+            />
           </div>
           <Button
-            appearance="primary"
+            type="primary"
             onClick={handleCreate}
             disabled={
               isMutating ||
@@ -315,153 +302,130 @@ const UserManagement = () => {
             Tạo người dùng
           </Button>
         </div>
-      </div>
+      </Card>
 
-      {isLoading ? (
-        <Spinner label="Đang tải danh sách người dùng..." />
-      ) : (
-        <div className={classes.tableCard}>
-          <div className={classes.filterBar}>
-            <div className={classes.field}>
-              <Text size={300} weight="semibold">Họ tên</Text>
-              <Input
-                size="small"
-                placeholder="Lọc theo tên"
-                value={inputName}
-                onChange={(_e, d) => setInputName(d.value)}
-              />
-            </div>
-            <div className={classes.field}>
-              <Text size={300} weight="semibold">Email</Text>
-              <Input
-                size="small"
-                placeholder="Lọc theo email"
-                value={inputEmail}
-                onChange={(_e, d) => setInputEmail(d.value)}
-              />
-            </div>
-            <div className={classes.field}>
-              <Text size={300} weight="semibold">Vai trò</Text>
-              <Dropdown
-                size="small"
-                value={
-                  filterRole
-                    ? RoleOptions.find(r => r.value === filterRole)?.label || 'Tất cả'
-                    : 'Tất cả'
-                }
-                selectedOptions={[filterRole || NONE_OPTION_VALUE]}
-                onOptionSelect={(_e, d) => {
-                  const next = d.optionValue ?? NONE_OPTION_VALUE;
-                  setFilterRole(next === NONE_OPTION_VALUE ? '' : next);
-                  setPage(0);
-                }}
-              >
-                <Option value={NONE_OPTION_VALUE}>Tất cả</Option>
-                {RoleOptions.map((role) => (
-                  <Option key={role.value} value={role.value}>
-                    {role.label}
-                  </Option>
-                ))}
-              </Dropdown>
-            </div>
-            <div className={classes.field}>
-              <Text size={300} weight="semibold">Trạng thái</Text>
-              <Dropdown
-                size="small"
-                value={
-                  filterStatus
-                    ? AccountStatusOptions.find(s => s.value === filterStatus)?.label || 'Tất cả'
-                    : 'Tất cả'
-                }
-                selectedOptions={[filterStatus || NONE_OPTION_VALUE]}
-                onOptionSelect={(_e, d) => {
-                  const next = d.optionValue ?? NONE_OPTION_VALUE;
-                  setFilterStatus(next === NONE_OPTION_VALUE ? '' : next);
-                  setPage(0);
-                }}
-              >
-                <Option value={NONE_OPTION_VALUE}>Tất cả</Option>
-                {AccountStatusOptions.map((status) => (
-                  <Option key={status.value} value={status.value}>
-                    {status.label}
-                  </Option>
-                ))}
-              </Dropdown>
-            </div>
-          </div>
+      <Card>
+        <Row gutter={[12, 12]} style={{ marginBottom: '16px' }}>
+          <Col xs={24} sm={12} md={6}>
+            <Text strong>Họ tên</Text>
+            <Input
+              size="small"
+              placeholder="Lọc theo tên"
+              value={inputName}
+              onChange={(e) => setInputName(e.target.value)}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Text strong>Email</Text>
+            <Input
+              size="small"
+              placeholder="Lọc theo email"
+              value={inputEmail}
+              onChange={(e) => setInputEmail(e.target.value)}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Text strong>Vai trò</Text>
+            <Select
+              size="small"
+              value={filterRole || undefined}
+              onChange={(value) => {
+                setFilterRole(value || '');
+                setPage(0);
+              }}
+              placeholder="Tất cả"
+              options={[
+                { value: '', label: 'Tất cả' },
+                ...RoleOptions.map((role) => ({ value: role.value, label: role.label })),
+              ]}
+              style={{ width: '100%' }}
+              allowClear
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Text strong>Trạng thái</Text>
+            <Select
+              size="small"
+              value={filterStatus || undefined}
+              onChange={(value) => {
+                setFilterStatus(value || '');
+                setPage(0);
+              }}
+              placeholder="Tất cả"
+              options={[
+                { value: '', label: 'Tất cả' },
+                ...AccountStatusOptions.map((status) => ({ value: status.value, label: status.label })),
+              ]}
+              style={{ width: '100%' }}
+              allowClear
+            />
+          </Col>
+        </Row>
+        <Table
+          columns={columns}
+          dataSource={users}
+          rowKey="id"
+          loading={isLoading || isFetching}
+          locale={{
+            emptyText: 'Không có người dùng nào phù hợp bộ lọc.',
+          }}
+          pagination={false}
+        />
+      </Card>
 
-          <div className={classes.tableWrapper}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Họ tên</TableHeaderCell>
-                  <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>Vai trò</TableHeaderCell>
-                  <TableHeaderCell>Trạng thái</TableHeaderCell>
-                  <TableHeaderCell>Hành động</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Dropdown
-                        size="small"
-                        value={RoleOptions.find(r => r.value === user.role)?.label || user.role}
-                        disabled={updateRole.isPending}
-                        selectedOptions={[user.role]}
-                        onOptionSelect={(_ev, data) =>
-                          handleRoleChange(user.id, user.role, data.optionValue)
-                        }
-                      >
-                        {RoleOptions.map((role) => (
-                          <Option key={role.value} value={role.value}>
-                            {role.label}
-                          </Option>
-                        ))}
-                      </Dropdown>
-                    </TableCell>
-                    <TableCell>
-                      <Dropdown
-                        size="small"
-                        value={AccountStatusOptions.find(s => s.value === user.status)?.label || user.status || 'INACTIVE'}
-                        disabled={updateStatus.isPending}
-                        selectedOptions={[user.status || 'INACTIVE']}
-                        onOptionSelect={(_ev, data) =>
-                          handleStatusChange(user.id, user.status, data.optionValue)
-                        }
-                      >
-                        {AccountStatusOptions.map((status) => (
-                          <Option key={status.value} value={status.value}>
-                            {status.label}
-                          </Option>
-                        ))}
-                      </Dropdown>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        appearance="secondary"
-                        icon={<Delete16Regular />}
-                        onClick={() => handleDelete(user.id)}
-                        disabled={deleteUser.isPending}
-                      >
-                        Xóa
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {users.length === 0 && (
-              <Text style={{ padding: '12px', display: 'block' }}>
-                Không có người dùng nào phù hợp bộ lọc.
-              </Text>
-            )}
-          </div>
-        </div>
-      )}
+      <Modal
+        title="Chi tiết người dùng"
+        open={detailOpen}
+        onCancel={handleCloseDetail}
+        footer={[
+          <Button key="close" onClick={handleCloseDetail}>
+            Đóng
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        <Form layout="vertical" disabled>
+          <Form.Item label="ID">
+            <Input value={selectedUser?.id ?? ''} />
+          </Form.Item>
+          <Form.Item label="Họ tên">
+            <Input value={selectedUser?.name ?? ''} />
+          </Form.Item>
+          <Form.Item label="Email">
+            <Input value={selectedUser?.email ?? ''} />
+          </Form.Item>
+          <Form.Item label="Vai trò chính">
+            <Input value={selectedUser?.role ?? ''} />
+          </Form.Item>
+          <Form.Item label="Tất cả vai trò">
+            <Input value={(selectedUser?.roles ?? []).join(', ')} />
+          </Form.Item>
+          <Form.Item label="Trạng thái">
+            <Input value={selectedUser?.status ?? ''} />
+          </Form.Item>
+          <Form.Item label="Nơi công tác">
+            <Input value={selectedUser?.institution?.name ?? ''} />
+          </Form.Item>
+          <Form.Item label="Track">
+            <Input value={selectedUser?.track?.name ?? ''} />
+          </Form.Item>
+          <Form.Item label="Giới tính">
+            <Input value={selectedUser?.gender ?? ''} />
+          </Form.Item>
+          <Form.Item label="Quốc tịch">
+            <Input value={selectedUser?.nationality ?? ''} />
+          </Form.Item>
+          <Form.Item label="Học hàm/Học vị">
+            <Input value={selectedUser?.academicStatus ?? ''} />
+          </Form.Item>
+          <Form.Item label="Ngày tạo">
+            <Input value={selectedUser?.createdAt ?? ''} />
+          </Form.Item>
+          <Form.Item label="Cập nhật lần cuối">
+            <Input value={selectedUser?.updatedAt ?? ''} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

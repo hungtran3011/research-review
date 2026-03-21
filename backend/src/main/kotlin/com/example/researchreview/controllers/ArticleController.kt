@@ -1,8 +1,5 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.ArticleBusinessCode
-import com.example.researchreview.constants.ReviewerBusinessCode
-import com.example.researchreview.constants.SpecialErrorCode
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.BaseResponseDto
@@ -18,6 +15,7 @@ import jakarta.persistence.EntityNotFoundException
 import jakarta.validation.Valid
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -42,17 +40,17 @@ class ArticleController(
     fun submit(@Valid @RequestBody request: ArticleRequestDto): ResponseEntity<BaseResponseDto<ArticleDto>> {
         return try {
             val created = articlesService.create(request)
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.CREATED).body(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_CREATED_SUCCESSFULLY.value,
+                    code = 201,
                     message = "Article submitted successfully",
                     data = created
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_CREATED_FAIL.value,
+                    code = 500,
                     message = ex.message ?: "Unable to submit article"
                 )
             )
@@ -64,7 +62,7 @@ class ArticleController(
         val articles = articlesService.getAll(pageable)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = ArticleBusinessCode.ARTICLE_FOUND.value,
+                code = 200,
                 message = "Articles retrieved successfully",
                 data = PageResponseDto.from(articles)
             )
@@ -77,7 +75,7 @@ class ArticleController(
             val article = articlesService.getById(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_FOUND.value,
+                    code = 200,
                     message = "Article retrieved",
                     data = article
                 )
@@ -85,7 +83,7 @@ class ArticleController(
         } catch (ex: EntityNotFoundException) {
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_NOT_FOUND.value,
+                    code = 404,
                     message = ex.message ?: "Article not found"
                 )
             )
@@ -100,15 +98,15 @@ class ArticleController(
             val updated = articlesService.update(request)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_UPDATED_SUCCESSFULLY.value,
+                    code = 200,
                     message = "Article updated",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_CREATED_FAIL.value,
+                    code = 500,
                     message = ex.message ?: "Unable to update article"
                 )
             )
@@ -122,14 +120,14 @@ class ArticleController(
             articlesService.delete(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_UPDATED_SUCCESSFULLY.value,
+                    code = 200,
                     message = "Article deleted"
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_NOT_FOUND.value,
+                    code = 404,
                     message = ex.message ?: "Article not found"
                 )
             )
@@ -137,7 +135,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/initial-review")
-    @PreAuthorize("hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
     fun initialReview(
         @PathVariable id: String,
         @Valid @RequestBody request: InitialReviewRequestDto
@@ -146,15 +144,15 @@ class ArticleController(
             val reviewed = articlesService.initialReview(id, request)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
+                    code = 200,
                     message = "Initial review recorded",
                     data = reviewed
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_NOT_FOUND.value,
+                    code = 404,
                     message = ex.message ?: "Article not found"
                 )
             )
@@ -170,7 +168,7 @@ class ArticleController(
         val updated = articlesService.updateLink(id, request.link)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = ArticleBusinessCode.ARTICLE_UPDATED_SUCCESSFULLY.value,
+                code = 200,
                 message = "Article link updated",
                 data = updated
             )
@@ -178,7 +176,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/reviewers")
-    @PreAuthorize("hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
     fun assignReviewer(
         @PathVariable id: String,
         @Valid @RequestBody reviewer: ReviewerRequestDto
@@ -187,78 +185,54 @@ class ArticleController(
             val article = articlesService.assignReviewer(id, reviewer)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ReviewerBusinessCode.REVIEWER_ASSIGNED.value,
+                    code = 200,
                     message = "Reviewer assigned successfully",
                     data = article
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_NOT_FOUND.value,
+                    code = 404,
                     message = ex.message ?: "Article or institution not found"
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
-                    code = ReviewerBusinessCode.REVIEWER_ASSIGNMENT_FAILED.value,
+                    code = 400,
                     message = ex.message ?: "Failed to assign reviewer"
                 )
             )
         }
     }
 
-    @PostMapping("/{id}/review-requests/reject")
-    @PreAuthorize("hasRole('REVIEWER')")
-    fun requestReject(
+    @PostMapping("/{id}/reviews/completed")
+    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
+    fun markReviewsCompleted(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<ArticleDto>> {
         return try {
-            val updated = articlesService.requestRejection(id)
+            val updated = articlesService.markReviewsCompleted(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
-                    message = "Rejection requested",
+                    code = 200,
+                    message = "Article moved to REVIEWS_COMPLETED",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
-                    message = ex.message ?: "Failed to request rejection"
+                    code = 500,
+                    message = ex.message ?: "Failed to mark reviews completed"
                 )
             )
         }
     }
 
-    @PostMapping("/{id}/review-requests/approve")
-    @PreAuthorize("hasRole('REVIEWER')")
-    fun requestApprove(
-        @PathVariable id: String,
-    ): ResponseEntity<BaseResponseDto<ArticleDto>> {
-        return try {
-            val updated = articlesService.requestApproval(id)
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
-                    message = "Approval requested",
-                    data = updated
-                )
-            )
-        } catch (ex: Exception) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
-                    message = ex.message ?: "Failed to request approval"
-                )
-            )
-        }
-    }
-
-    @PostMapping("/{id}/review-requests/revisions")
-    @PreAuthorize("hasRole('REVIEWER')")
+    @PostMapping("/{id}/decision/revisions")
+    @PreAuthorize("hasRole('CHAIR')")
     fun requestRevisions(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<ArticleDto>> {
@@ -266,15 +240,15 @@ class ArticleController(
             val updated = articlesService.requestRevisions(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
+                    code = 200,
                     message = "Revisions requested",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Failed to request revisions"
                 )
             )
@@ -282,7 +256,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/decision/approve")
-    @PreAuthorize("hasRole('EDITOR')")
+    @PreAuthorize("hasRole('CHAIR')")
     fun approve(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
@@ -290,14 +264,14 @@ class ArticleController(
             articlesService.approve(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
+                    code = 200,
                     message = "Article approved"
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Failed to approve article"
                 )
             )
@@ -305,7 +279,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/decision/reject")
-    @PreAuthorize("hasRole('EDITOR')")
+    @PreAuthorize("hasRole('CHAIR')")
     fun reject(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
@@ -313,14 +287,14 @@ class ArticleController(
             articlesService.reject(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
+                    code = 200,
                     message = "Article rejected"
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Failed to reject article"
                 )
             )
@@ -328,7 +302,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/reviewers/contact")
-    @PreAuthorize("hasRole('EDITOR')")
+    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
     fun contactReviewers(
         @PathVariable id: String,
         @Valid @RequestBody request: ReviewerContactRequestDto
@@ -337,15 +311,15 @@ class ArticleController(
             val reviewers = reviewerService.contactReviewers(id, request)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ReviewerBusinessCode.REVIEWER_CONTACTED.value,
+                    code = 200,
                     message = "Reviewers contacted successfully",
                     data = reviewers
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
-                    code = ReviewerBusinessCode.REVIEWER_CONTACT_FAILED.value,
+                    code = 400,
                     message = ex.message ?: "Failed to contact reviewers"
                 )
             )
@@ -357,7 +331,7 @@ class ArticleController(
         val reviewers = articlesService.getReviewers(id)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = ReviewerBusinessCode.REVIEWER_CONTACTED.value,
+                code = 200,
                 message = "Reviewers retrieved",
                 data = reviewers
             )
@@ -375,15 +349,15 @@ class ArticleController(
             val updated = articlesService.submitRevision(id, file, notes)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_UPDATED_SUCCESSFULLY.value,
+                    code = 200,
                     message = "Revision submitted successfully",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Failed to submit revision"
                 )
             )
@@ -399,15 +373,15 @@ class ArticleController(
             val updated = articlesService.startRevisions(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = ArticleBusinessCode.ARTICLE_STATUS_UPDATED.value,
+                    code = 200,
                     message = "Revisions started",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.GENERAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Failed to start revisions"
                 )
             )

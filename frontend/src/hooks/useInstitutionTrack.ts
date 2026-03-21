@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { institutionService } from '../services/institution.service';
 import { trackService } from '../services/track.service';
-import { useBusinessToast } from './businessToast';
+import { useBasicToast, getApiSuccessMessage, getApiErrorMessage } from './useBasicToast';
 import type { BaseResponseDto, InstitutionDto, TrackDto, TrackRequestDto } from '../models';
 import type { AxiosError } from 'axios';
 
@@ -52,7 +52,7 @@ export const useTrack = (id: string, enabled: boolean = true) => {
  */
 export const useCreateTrack = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { success, error } = useBasicToast();
 
   return useMutation<
     BaseResponseDto<TrackDto>,
@@ -62,10 +62,10 @@ export const useCreateTrack = () => {
     mutationFn: (data) => trackService.create(data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['tracks'] });
-      showSuccess(response, 'Tạo track thành công', [200]);
+      success(getApiSuccessMessage(response, 'Tạo track thành công'));
     },
     onError: (err) => {
-      showErrorFromAxios(err, 'Có lỗi xảy ra khi tạo track');
+      error(getApiErrorMessage(err, 'Có lỗi xảy ra khi tạo track'));
     },
   });
 };
@@ -75,7 +75,7 @@ export const useCreateTrack = () => {
  */
 export const useUpdateTrack = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { success, error } = useBasicToast();
 
   return useMutation<
     BaseResponseDto<TrackDto>,
@@ -85,10 +85,10 @@ export const useUpdateTrack = () => {
     mutationFn: ({ id, data }) => trackService.update(id, data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['tracks'] });
-      showSuccess(response, 'Cập nhật track thành công', [200]);
+      success(getApiSuccessMessage(response, 'Cập nhật track thành công'));
     },
     onError: (err) => {
-      showErrorFromAxios(err, 'Có lỗi xảy ra khi cập nhật track');
+      error(getApiErrorMessage(err, 'Có lỗi xảy ra khi cập nhật track'));
     },
   });
 };
@@ -98,7 +98,7 @@ export const useUpdateTrack = () => {
  */
 export const useDeleteTrack = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { success, error } = useBasicToast();
 
   return useMutation<
     BaseResponseDto<string>,
@@ -108,10 +108,10 @@ export const useDeleteTrack = () => {
     mutationFn: (id) => trackService.delete(id),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['tracks'] });
-      showSuccess(response, 'Xóa track thành công', [200]);
+      success(getApiSuccessMessage(response, 'Xóa track thành công'));
     },
     onError: (err) => {
-      showErrorFromAxios(err, 'Có lỗi xảy ra khi xóa track');
+      error(getApiErrorMessage(err, 'Có lỗi xảy ra khi xóa track'));
     },
   });
 };
@@ -121,7 +121,7 @@ export const useDeleteTrack = () => {
  */
 export const useCreateInstitution = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { success, error } = useBasicToast();
 
   return useMutation<
     BaseResponseDto<InstitutionDto>,
@@ -131,10 +131,10 @@ export const useCreateInstitution = () => {
     mutationFn: (data) => institutionService.create(data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
-      showSuccess(response, 'Tạo nơi công tác thành công', [200]);
+      success(getApiSuccessMessage(response, 'Tạo nơi công tác thành công'));
     },
     onError: (err) => {
-      showErrorFromAxios(err, 'Có lỗi xảy ra khi tạo nơi công tác');
+      error(getApiErrorMessage(err, 'Có lỗi xảy ra khi tạo nơi công tác'));
     },
   });
 };
@@ -144,7 +144,7 @@ export const useCreateInstitution = () => {
  */
 export const useUpdateInstitution = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { success, error } = useBasicToast();
 
   return useMutation<
     BaseResponseDto<InstitutionDto>,
@@ -154,10 +154,10 @@ export const useUpdateInstitution = () => {
     mutationFn: ({ id, data }) => institutionService.update(id, data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
-      showSuccess(response, 'Cập nhật nơi công tác thành công', [200]);
+      success(getApiSuccessMessage(response, 'Cập nhật nơi công tác thành công'));
     },
     onError: (err) => {
-      showErrorFromAxios(err, 'Có lỗi xảy ra khi cập nhật nơi công tác');
+      error(getApiErrorMessage(err, 'Có lỗi xảy ra khi cập nhật nơi công tác'));
     },
   });
 };
@@ -167,7 +167,7 @@ export const useUpdateInstitution = () => {
  */
 export const useDeleteInstitution = () => {
   const queryClient = useQueryClient();
-  const { showSuccess, showErrorFromAxios } = useBusinessToast();
+  const { success, error } = useBasicToast();
 
   return useMutation<
     BaseResponseDto<string>,
@@ -177,10 +177,10 @@ export const useDeleteInstitution = () => {
     mutationFn: (id) => institutionService.delete(id),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['institutions'] });
-      showSuccess(response, 'Xóa nơi công tác thành công', [200]);
+      success(getApiSuccessMessage(response, 'Xóa nơi công tác thành công'));
     },
     onError: (err) => {
-      showErrorFromAxios(err, 'Có lỗi xảy ra khi xóa nơi công tác');
+      error(getApiErrorMessage(err, 'Có lỗi xảy ra khi xóa nơi công tác'));
     },
   });
 };

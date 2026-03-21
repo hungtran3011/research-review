@@ -6,6 +6,7 @@ import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.services.InstitutionService
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
@@ -29,7 +30,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -51,7 +52,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
                     message = e.message ?: "Institution not found",
@@ -59,7 +60,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -82,7 +83,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -90,7 +91,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -116,7 +117,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -124,7 +125,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -147,7 +148,7 @@ class InstitutionController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
                     message = e.message ?: "Institution not found",
@@ -155,7 +156,7 @@ class InstitutionController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",

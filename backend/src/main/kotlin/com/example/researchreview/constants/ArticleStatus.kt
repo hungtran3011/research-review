@@ -8,6 +8,9 @@ enum class ArticleStatus(val value: Short){
     REVISIONS_REQUESTED(4), // yêu cầu sửa chữa
     REVISIONS(5), // đang sửa chữa
     ACCEPTED(6), // đã chấp nhận
+    @Deprecated("Legacy status; no longer used in conference-centered flow")
     REJECT_REQUESTED(7), // Đề nghị loại bỏ
+    @Deprecated("Legacy status; no longer used in conference-centered flow")
     ACCEPT_REQUESTED(8), // Đề nghị chấp thuận
+    REVIEWS_COMPLETED(9), // đủ số review hoàn tất, chờ quyết định từ chair
 }

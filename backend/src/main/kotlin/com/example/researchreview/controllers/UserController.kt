@@ -1,23 +1,17 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.Role
-import com.example.researchreview.constants.SpecialErrorCode
-import com.example.researchreview.constants.UserBusinessCode
-import com.example.researchreview.dtos.AdminCreateUserRequestDto
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.UserRequestDto
-import com.example.researchreview.dtos.UserRoleUpdateRequestDto
-import com.example.researchreview.dtos.UserStatusUpdateRequestDto
 import com.example.researchreview.services.UsersService
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.data.domain.PageRequest
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.oauth2.jwt.Jwt
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 
 @RestController
@@ -26,41 +20,8 @@ class UserController(
     private val usersService: UsersService
 ) {
 
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    fun createUserAsAdmin(
-        @Valid @RequestBody request: AdminCreateUserRequestDto
-    ): ResponseEntity<BaseResponseDto<UserDto>> {
-        return try {
-            val user = usersService.createByAdmin(request)
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = 200,
-                    message = "User created successfully",
-                    data = user
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.BAD_REQUEST.value,
-                    message = e.message ?: "Invalid request",
-                    data = null
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
-                    message = "Internal server error: ${e.message}",
-                    data = null
-                )
-            )
-        }
-    }
-
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     fun getUsers(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int
@@ -82,9 +43,9 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = "Failed to fetch users: ${e.message}",
                     data = null
                 )
@@ -93,7 +54,7 @@ class UserController(
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     fun searchUsers(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
@@ -120,9 +81,9 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = "Failed to fetch users: ${e.message}",
                     data = null
                 )
@@ -142,7 +103,7 @@ class UserController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid request",
@@ -150,7 +111,7 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -167,21 +128,21 @@ class UserController(
             val user = usersService.getById(principal.subject)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = UserBusinessCode.USER_FOUND.value,
+                    code = 200,
                     message = "User found",
                     data = user
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
-                    code = UserBusinessCode.USER_NOT_FOUND.value,
+                    code = 404,
                     message = e.message ?: "User not found",
                     data = null
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
                     message = "Internal server error: ${e.message}",
@@ -207,141 +168,21 @@ class UserController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.BAD_REQUEST.value, //
+                    code = 400, //
                     message = e.message ?: "Invalid request",
                     data = null
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = "Internal server error: ${e.message}",
                     data = null
                 )
             )
-        }
-    }
-
-    @PatchMapping("/{id}/role")
-    @PreAuthorize("hasRole('ADMIN')")
-    fun updateUserRole(
-        @PathVariable id: String,
-        @Valid @RequestBody request: UserRoleUpdateRequestDto,
-        @AuthenticationPrincipal principal: Jwt
-    ): ResponseEntity<BaseResponseDto<UserDto>> {
-        return try {
-            val actorRole = extractRole(principal)
-            val updated = usersService.updateRole(id, request.role, actorRole)
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = 200,
-                    message = "User role updated successfully",
-                    data = updated
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.BAD_REQUEST.value,
-                    message = e.message ?: "Invalid request",
-                    data = null
-                )
-            )
-        } catch (_: AccessDeniedException) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = 403,
-                    message = "Access denied",
-                    data = null
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
-                    message = "Internal server error: ${e.message}",
-                    data = null
-                )
-            )
-        }
-    }
-
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    fun updateUserStatus(
-        @PathVariable id: String,
-        @Valid @RequestBody request: UserStatusUpdateRequestDto
-    ): ResponseEntity<BaseResponseDto<UserDto>> {
-        return try {
-            val updated = usersService.updateStatus(id, request.status)
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = 200,
-                    message = "User status updated successfully",
-                    data = updated
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.BAD_REQUEST.value,
-                    message = e.message ?: "Invalid request",
-                    data = null
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
-                    message = "Internal server error: ${e.message}",
-                    data = null
-                )
-            )
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    fun deleteUser(@PathVariable id: String): ResponseEntity<BaseResponseDto<Unit>> {
-        return try {
-            usersService.delete(id)
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = 200,
-                    message = "User deleted successfully",
-                    data = null
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.BAD_REQUEST.value,
-                    message = e.message ?: "Invalid request",
-                    data = null
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.ok(
-                BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
-                    message = "Internal server error: ${e.message}",
-                    data = null
-                )
-            )
-        }
-    }
-
-    private fun extractRole(principal: Jwt): Role {
-        val roles = principal.getClaimAsStringList("roles") ?: emptyList()
-        val roleName = roles.firstOrNull()
-            ?: throw AccessDeniedException("Role information missing")
-        return try {
-            Role.valueOf(roleName)
-        } catch (_: Exception) {
-            throw AccessDeniedException("Invalid role")
         }
     }
 }

@@ -10,4 +10,6 @@ interface TrackRepository: JpaRepository<Track, String> {
     override fun findAll(): List<Track>
 
     fun findByIdAndDeletedFalse(id: String): Optional<Track>
+    fun findAllByConferenceIdAndDeletedFalse(conferenceId: String): List<Track>
+    fun findByIdAndConferenceIdAndDeletedFalse(id: String, conferenceId: String): Optional<Track>
 }

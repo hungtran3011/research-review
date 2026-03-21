@@ -1,12 +1,11 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.NotificationBusinessCode
-import com.example.researchreview.constants.SpecialErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.NotificationDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.services.NotificationService
 import org.springframework.data.domain.PageRequest
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -29,7 +28,7 @@ class NotificationController(
         val notifications = notificationService.getCurrentUserNotifications(pageable)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = NotificationBusinessCode.NOTIFICATION_FOUND.value,
+                code = 200,
                 message = "Notifications retrieved",
                 data = PageResponseDto.from(notifications)
             )
@@ -42,14 +41,14 @@ class NotificationController(
             notificationService.markAsRead(id)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = NotificationBusinessCode.NOTIFICATION_UPDATED.value,
+                    code = 200,
                     message = "Notification marked as read"
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Unable to update notification"
                 )
             )

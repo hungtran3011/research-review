@@ -1,33 +1,15 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Button, Spinner, Text, makeStyles } from '@fluentui/react-components';
+import { Button, Spin, Typography } from 'antd';
+
+const { Text } = Typography;
 import { reviewerInviteService } from '../../services/reviewerInvite.service';
 import { useAuthStore } from '../../stores/authStore';
 import { useBasicToast } from '../../hooks/useBasicToast';
 
-const useStyles = makeStyles({
-  root: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignContent: 'center',
-    gap: '16px',
-    height: '100%',
-    flexGrow: 1,
-    padding: '0 16px',
-  },
-
-  actions: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-});
+const { Title } = Typography;
 
 function ReviewerInvite() {
-  const classes = useStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const { error: showErrorToast } = useBasicToast();
@@ -53,7 +35,6 @@ function ReviewerInvite() {
       return;
     }
 
-    // Prevent repeated resolve calls on re-renders.
     if (lastResolvedTokenRef.current === token) {
       return;
     }
@@ -79,10 +60,9 @@ function ReviewerInvite() {
         setTrackName(track ?? null);
         setAuthors(Array.isArray(authorList) ? authorList.filter((x) => typeof x === 'string') : []);
       } catch (e: unknown) {
-        const maybeAxios = e as { response?: { data?: { message?: string } } }
-        const maybeError = e as { message?: string }
+        const maybeAxios = e as { response?: { data?: { message?: string } } };
+        const maybeError = e as { message?: string };
         showErrorToast(
-          'Invitation invalid',
           maybeAxios.response?.data?.message || maybeError.message || 'Invalid invitation token'
         );
         navigate('/signin', { replace: true });
@@ -112,10 +92,9 @@ function ReviewerInvite() {
         navigate('/', { replace: true });
       }
     } catch (e: unknown) {
-      const maybeAxios = e as { response?: { data?: { message?: string } } }
-      const maybeError = e as { message?: string }
+      const maybeAxios = e as { response?: { data?: { message?: string } } };
+      const maybeError = e as { message?: string };
       showErrorToast(
-        'Không thể chấp nhận lời mời',
         maybeAxios.response?.data?.message || maybeError.message || 'Có lỗi xảy ra'
       );
     } finally {
@@ -130,10 +109,9 @@ function ReviewerInvite() {
       await reviewerInviteService.decline(token);
       navigate('/', { replace: true });
     } catch (e: unknown) {
-      const maybeAxios = e as { response?: { data?: { message?: string } } }
-      const maybeError = e as { message?: string }
+      const maybeAxios = e as { response?: { data?: { message?: string } } };
+      const maybeError = e as { message?: string };
       showErrorToast(
-        'Không thể từ chối lời mời',
         maybeAxios.response?.data?.message || maybeError.message || 'Có lỗi xảy ra'
       );
     } finally {
@@ -142,38 +120,57 @@ function ReviewerInvite() {
   };
 
   return (
-    <div className={classes.root}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '16px',
+      height: '100%',
+      flexGrow: 1,
+      padding: '0 16px',
+    }}>
       {(isResolving || !articleId) ? (
         <>
-          <Spinner size="large" />
+          <Spin size="large" />
           <Text>Đang xử lý lời mời phản biện...</Text>
         </>
       ) : (
         <>
-          <Text as="h1" weight="bold" size={500}>Lời mời phản biện</Text>
-          <Text align="center">Bạn được mời phản biện bài báo sau:</Text>
-          <Text align="center" weight="semibold">
+          <Title level={1}>Lời mời phản biện</Title>
+          <Text>Bạn được mời phản biện bài báo sau:</Text>
+          <Text strong>
             {articleTitle || `ID: ${articleId}`}
           </Text>
           {authors.length > 0 && (
-            <Text align="center">Tác giả: {authors.join(', ')}</Text>
+            <Text>Tác giả: {authors.join(', ')}</Text>
           )}
           {trackName && (
-            <Text align="center">Track: {trackName}</Text>
+            <Text>Track: {trackName}</Text>
           )}
 
           {!isAuthenticated ? (
             <>
-              <Text align="center">Vui lòng đăng nhập hoặc đăng ký để xác nhận.</Text>
-              <div className={classes.actions}>
-                <Button appearance="primary" onClick={handleGoSignIn}>Đăng nhập</Button>
-                <Button appearance="secondary" onClick={handleGoSignUp}>Đăng ký</Button>
+              <Text>Vui lòng đăng nhập hoặc đăng ký để xác nhận.</Text>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}>
+                <Button type="primary" onClick={handleGoSignIn}>Đăng nhập</Button>
+                <Button onClick={handleGoSignUp}>Đăng ký</Button>
               </div>
             </>
           ) : (
-            <div className={classes.actions}>
-              <Button appearance="primary" onClick={handleAccept} disabled={isSubmitting}>Nhận lời phản biện</Button>
-              <Button appearance="secondary" onClick={handleDecline} disabled={isSubmitting}>Từ chối</Button>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+            }}>
+              <Button type="primary" onClick={handleAccept} loading={isSubmitting}>Nhận lời phản biện</Button>
+              <Button onClick={handleDecline} loading={isSubmitting}>Từ chối</Button>
             </div>
           )}
         </>

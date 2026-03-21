@@ -1,37 +1,19 @@
 import React from 'react';
 import { useSearchParams, Navigate } from 'react-router';
-import { Spinner, Text, makeStyles } from '@fluentui/react-components';
+import { Spin, Typography } from 'antd';
 import { useVerifyToken } from '../../hooks/useAuth';
 import { useAuthStore } from '../../stores/authStore';
+import { useDeviceFingerprint } from '../../hooks/useDeviceFingerprint';
 
-const useStyles = makeStyles({
-  root: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignContent: 'center',
-    gap: '16px',
-    height: '100%',
-    flexGrow: 1,
-  },
-
-  titleRegion: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center',
-    gap: '4px',
-  }
-});
+const { Title } = Typography;
 
 function VerifyToken() {
-  const classes = useStyles();
   const [searchParams] = useSearchParams();
   const email = useAuthStore((state) => state.email);
   const isSignUp = useAuthStore((state) => state.isSignUp);
   const { mutate: verifyToken } = useVerifyToken();
   const [hasVerified, setHasVerified] = React.useState(false);
+  const { fingerprint, isLoading: isFingerprintLoading, error: fingerprintError } = useDeviceFingerprint();
 
   document.title = "Đang xác thực - Research Review";
 
@@ -42,11 +24,29 @@ function VerifyToken() {
 
     const emailToUse = emailParam || email;
 
-    if (token && emailToUse && !hasVerified) {
+    // Wait for fingerprint to be ready or failed before verifying
+    if (token && emailToUse && !hasVerified && !isFingerprintLoading) {
       setHasVerified(true);
-      verifyToken({ email: emailToUse, token, isSignUp: isSignUpParam || isSignUp });
+      
+      if (fingerprint) {
+        verifyToken({ 
+          email: emailToUse, 
+          token, 
+          isSignUp: isSignUpParam || isSignUp,
+          deviceFingerprint: fingerprint 
+        });
+      } else if (fingerprintError) {
+        // Graceful degradation: proceed without fingerprint if generation failed
+        console.warn('[VerifyToken] Proceeding without fingerprint due to error');
+        verifyToken({ 
+          email: emailToUse, 
+          token, 
+          isSignUp: isSignUpParam || isSignUp,
+          deviceFingerprint: undefined 
+        });
+      }
     }
-  }, [searchParams, email, isSignUp, verifyToken, hasVerified]);
+  }, [searchParams, email, isSignUp, verifyToken, hasVerified, fingerprint, isFingerprintLoading, fingerprintError]);
 
   // If no token in URL, redirect to auth
   if (!searchParams.get('token')) {
@@ -54,10 +54,24 @@ function VerifyToken() {
   }
 
   return (
-    <div className={classes.root}>
-      <div className={classes.titleRegion}>
-        <Spinner size="large" />
-        <Text>Đang xác thực email của bạn...</Text>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '16px',
+      height: '100%',
+      flexGrow: 1,
+    }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '4px',
+      }}>
+        <Spin size="large" />
+        <Title level={2}>Đang xác thực email của bạn...</Title>
       </div>
     </div>
   );

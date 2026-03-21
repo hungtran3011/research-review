@@ -1,75 +1,93 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
-  Field,
   Input,
-  Spinner,
+  Spin,
   Switch,
   Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
-import { Delete16Regular, Save16Regular, Add16Regular } from '@fluentui/react-icons';
-import type { TrackDto, TrackRequestDto } from '../../models';
-import { useTracks, useCreateTrack, useUpdateTrack, useDeleteTrack } from '../../hooks/useInstitutionTrack';
+  Typography,
+  Space,
+  Card,
+  Select,
+  InputNumber,
+  Alert,
+} from 'antd';
+import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { conferenceService } from '../../services/conference.service';
+import { adminTrackService } from '../../services/admin-track.service';
+import type { ColumnsType } from 'antd/es/table';
+import type {
+  AdminTrackConfigDto,
+  AdminTrackConfigCreateRequestDto,
+  AdminTrackConfigUpdateRequestDto,
+} from '../../models';
+import { useBasicToast } from '../../hooks/useBasicToast';
 
-const useStyles = makeStyles({
+const { Text } = Typography;
+
+const styles = {
   container: {
     padding: '32px',
     display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '12px',
+    flexDirection: 'column' as const,
+    gap: '24px',
   },
   formRow: {
     display: 'grid',
-    gridTemplateColumns: '2fr 3fr 1fr auto',
+    gridTemplateColumns: '2fr 3fr 80px 100px auto',
     gap: '12px',
     alignItems: 'end',
   },
-  tableWrapper: {
-    overflowX: 'auto',
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  actions: {
+  field: {
     display: 'flex',
-    gap: '8px',
-    justifyContent: 'flex-end',
+    flexDirection: 'column' as const,
+    gap: '6px',
   },
-});
+} as const;
 
 type TrackDraft = {
   name: string;
   description: string;
   isActive: boolean;
+  reviewPolicyMinCompletedReviews: number | null;
 };
 
 const TrackManagement = () => {
-  const classes = useStyles();
-  const { data, isLoading } = useTracks();
-  const createTrack = useCreateTrack();
-  const updateTrack = useUpdateTrack();
-  const deleteTrack = useDeleteTrack();
+  const queryClient = useQueryClient();
+  const { success, error } = useBasicToast();
+  const [selectedConferenceId, setSelectedConferenceId] = useState<string>('');
 
-  const tracks = useMemo(() => data?.data ?? [], [data]);
+  // Query for fetching conferences
+  const conferencesQuery = useQuery({
+    queryKey: ['conferences'],
+    queryFn: async () => {
+      const response = await conferenceService.getAll();
+      return response.data || [];
+    },
+  });
+
+  const conferences = conferencesQuery.data || [];
+
+  // Query for fetching tracks for the selected conference
+  const tracksQuery = useQuery({
+    queryKey: ['admin-tracks', selectedConferenceId],
+    queryFn: async () => {
+      if (!selectedConferenceId) return [];
+      const response = await adminTrackService.getAll(selectedConferenceId);
+      return response.data || [];
+    },
+    enabled: !!selectedConferenceId,
+  });
+
+  const tracks = useMemo(() => tracksQuery.data || [], [tracksQuery.data]);
+  const isLoading = tracksQuery.isLoading;
 
   const [createForm, setCreateForm] = useState<TrackDraft>({
     name: '',
     description: '',
     isActive: true,
+    reviewPolicyMinCompletedReviews: null,
   });
 
   const [draftById, setDraftById] = useState<Record<string, TrackDraft>>({});
@@ -84,6 +102,7 @@ const TrackManagement = () => {
             name: t.name ?? '',
             description: t.description ?? '',
             isActive: Boolean(t.isActive),
+            reviewPolicyMinCompletedReviews: t.reviewPolicyMinCompletedReviews ?? null,
           };
         }
       }
@@ -91,166 +110,305 @@ const TrackManagement = () => {
     });
   }, [tracks]);
 
+  // Create mutation
+  const createTrack = useMutation({
+    mutationFn: async (data: AdminTrackConfigCreateRequestDto) => {
+      if (!selectedConferenceId) throw new Error('No conference selected');
+      return await adminTrackService.create(selectedConferenceId, data);
+    },
+    onSuccess: () => {
+      success('Đã tạo track thành công');
+      queryClient.invalidateQueries({ queryKey: ['admin-tracks', selectedConferenceId] });
+      setCreateForm({
+        name: '',
+        description: '',
+        isActive: true,
+        reviewPolicyMinCompletedReviews: null,
+      });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error 
+        ? err.message 
+        : typeof err === 'object' && err !== null && 'response' in err 
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
+        : 'Unknown error';
+      error('Tạo track thất bại: ' + message);
+    },
+  });
+
+  // Update mutation
+  const updateTrack = useMutation({
+    mutationFn: async ({
+      trackId,
+      data,
+    }: {
+      trackId: string;
+      data: AdminTrackConfigUpdateRequestDto;
+    }) => {
+      if (!selectedConferenceId) throw new Error('No conference selected');
+      return await adminTrackService.update(selectedConferenceId, trackId, data);
+    },
+    onSuccess: () => {
+      success('Đã cập nhật track thành công');
+      queryClient.invalidateQueries({ queryKey: ['admin-tracks', selectedConferenceId] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error 
+        ? err.message 
+        : typeof err === 'object' && err !== null && 'response' in err 
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
+        : 'Unknown error';
+      error('Cập nhật track thất bại: ' + message);
+    },
+  });
+
+  // Delete mutation
+  const deleteTrack = useMutation({
+    mutationFn: async (trackId: string) => {
+      if (!selectedConferenceId) throw new Error('No conference selected');
+      return await adminTrackService.delete(selectedConferenceId, trackId);
+    },
+    onSuccess: () => {
+      success('Đã xóa track thành công');
+      queryClient.invalidateQueries({ queryKey: ['admin-tracks', selectedConferenceId] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error 
+        ? err.message 
+        : typeof err === 'object' && err !== null && 'response' in err 
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
+        : 'Unknown error';
+      error('Xóa track thất bại: ' + message);
+    },
+  });
+
   const isMutating = createTrack.isPending || updateTrack.isPending || deleteTrack.isPending;
 
   const handleCreate = () => {
-    const payload: TrackRequestDto = {
+    if (!selectedConferenceId) {
+      error('Vui lòng chọn hội nghị trước');
+      return;
+    }
+    if (!createForm.name.trim()) {
+      error('Tên track là bắt buộc');
+      return;
+    }
+
+    const payload: AdminTrackConfigCreateRequestDto = {
       name: createForm.name.trim(),
-      description: createForm.description.trim(),
+      description: createForm.description.trim() || null,
       isActive: createForm.isActive,
+      reviewPolicyMinCompletedReviews: createForm.reviewPolicyMinCompletedReviews,
     };
-    if (!payload.name) return;
-    createTrack.mutate(payload, {
-      onSuccess: () => {
-        setCreateForm({ name: '', description: '', isActive: true });
-      },
-    });
+
+    createTrack.mutate(payload);
   };
 
   const updateDraft = (id: string, patch: Partial<TrackDraft>) => {
     setDraftById((prev) => ({
       ...prev,
       [id]: {
-        ...(prev[id] ?? { name: '', description: '', isActive: true }),
+        ...(prev[id] ?? {
+          name: '',
+          description: '',
+          isActive: true,
+          reviewPolicyMinCompletedReviews: null,
+        }),
         ...patch,
       },
     }));
   };
 
-  const handleSave = (track: TrackDto) => {
+  const handleSave = (track: AdminTrackConfigDto) => {
     const draft = draftById[track.id];
     if (!draft) return;
 
     updateTrack.mutate({
-      id: track.id,
+      trackId: track.id,
       data: {
         name: draft.name.trim(),
-        description: draft.description.trim(),
-        isActive: draft.isActive,
+        description: draft.description.trim() || null,
+        isActive: draft.isActive ?? true,
+        reviewPolicyMinCompletedReviews: draft.reviewPolicyMinCompletedReviews,
       },
     });
   };
 
-  const handleDelete = (id: string) => {
-    deleteTrack.mutate(id);
+  const handleDelete = (track: AdminTrackConfigDto) => {
+    deleteTrack.mutate(track.id);
   };
 
+  const columns: ColumnsType<AdminTrackConfigDto> = [
+    {
+      title: 'Tên track',
+      key: 'name',
+      render: (_, record) => (
+        <Input
+          value={draftById[record.id]?.name ?? record.name}
+          onChange={(e) => updateDraft(record.id, { name: e.target.value })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Mô tả',
+      key: 'description',
+      render: (_, record) => (
+        <Input
+          value={draftById[record.id]?.description ?? record.description}
+          onChange={(e) => updateDraft(record.id, { description: e.target.value })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Min Reviews',
+      key: 'minReviews',
+      render: (_, record) => (
+        <InputNumber
+          value={draftById[record.id]?.reviewPolicyMinCompletedReviews}
+          onChange={(value) =>
+            updateDraft(record.id, { reviewPolicyMinCompletedReviews: value })
+          }
+          min={1}
+          placeholder="Default"
+          style={{ width: '100%' }}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Hoạt động',
+      key: 'isActive',
+      width: 100,
+      render: (_, record) => (
+        <Switch
+          checked={draftById[record.id]?.isActive ?? record.isActive}
+          onChange={(checked) => updateDraft(record.id, { isActive: checked })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 120,
+      render: (_, record) => (
+        <Space>
+          <Button
+            icon={<SaveOutlined />}
+            onClick={() => handleSave(record)}
+            disabled={isMutating}
+            size="small"
+          >
+            Lưu
+          </Button>
+          <Button
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+            disabled={isMutating}
+            danger
+            size="small"
+          >
+            Xóa
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <div className={classes.container}>
-      <div className={classes.header}>
-        <Text size={600} weight="semibold">
-          Quản lý Track
-        </Text>
-      </div>
-
-      <div className={classes.formRow}>
-        <Field label="Tên track" required>
-          <Input
-            value={createForm.name}
-            onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder="VD: Computer Science"
-          />
-        </Field>
-        <Field label="Mô tả">
-          <Input
-            value={createForm.description}
-            onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
-            placeholder="Mô tả ngắn"
-          />
-        </Field>
-        <Field label="Kích hoạt">
-          <Switch
-            checked={createForm.isActive}
-            onChange={(_e, d) => setCreateForm((p) => ({ ...p, isActive: d.checked }))}
-          />
-        </Field>
-        <Button
-          appearance="primary"
-          icon={<Add16Regular />}
-          disabled={isMutating || !createForm.name.trim()}
-          onClick={handleCreate}
-        >
-          Tạo
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <Spinner label="Đang tải danh sách track..." />
-      ) : (
-        <div className={classes.tableWrapper}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Tên</TableHeaderCell>
-                <TableHeaderCell>Mô tả</TableHeaderCell>
-                <TableHeaderCell>Kích hoạt</TableHeaderCell>
-                <TableHeaderCell>Hành động</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tracks.map((track) => {
-                const draft = draftById[track.id] ?? {
-                  name: track.name ?? '',
-                  description: track.description ?? '',
-                  isActive: Boolean(track.isActive),
-                };
-
-                return (
-                  <TableRow key={track.id}>
-                    <TableCell>
-                      <Input
-                        value={draft.name}
-                        onChange={(e) => updateDraft(track.id, { name: e.target.value })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={draft.description}
-                        onChange={(e) => updateDraft(track.id, { description: e.target.value })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={draft.isActive}
-                        onChange={(_e, d) => updateDraft(track.id, { isActive: d.checked })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className={classes.actions}>
-                        <Button
-                          appearance="primary"
-                          icon={<Save16Regular />}
-                          onClick={() => handleSave(track)}
-                          disabled={isMutating || !draft.name.trim()}
-                        >
-                          Lưu
-                        </Button>
-                        <Button
-                          appearance="secondary"
-                          icon={<Delete16Regular />}
-                          onClick={() => handleDelete(track.id)}
-                          disabled={isMutating}
-                        >
-                          Xóa
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-
-          {tracks.length === 0 && (
-            <Text style={{ padding: '16px', display: 'block' }}>
-              Chưa có track nào.
+    <div style={styles.container}>
+      <Card>
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <div>
+            <Text strong style={{ fontSize: '24px' }}>
+              Quản lý Track
             </Text>
+          </div>
+
+          <div style={styles.field}>
+            <Text strong>Chọn hội nghị *</Text>
+            <Select
+              value={selectedConferenceId || undefined}
+              onChange={setSelectedConferenceId}
+              placeholder="Chọn hội nghị để quản lý tracks"
+              loading={conferencesQuery.isLoading}
+              options={conferences.map((conf) => ({
+                value: conf.id,
+                label: `${conf.name} (${conf.shortName})`,
+              }))}
+              style={{ width: '100%', maxWidth: '600px' }}
+            />
+          </div>
+
+          {!selectedConferenceId && (
+            <Alert
+              message="Vui lòng chọn hội nghị để xem và quản lý các track"
+              type="info"
+              showIcon
+            />
           )}
-        </div>
-      )}
+
+          {selectedConferenceId && (
+            <>
+              <Card title="Tạo track mới" size="small">
+                <div style={styles.formRow}>
+                  <Input
+                    placeholder="Tên track"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                    disabled={isMutating}
+                  />
+                  <Input
+                    placeholder="Mô tả"
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                    disabled={isMutating}
+                  />
+                  <InputNumber
+                    placeholder="Min Rev"
+                    value={createForm.reviewPolicyMinCompletedReviews}
+                    onChange={(value) =>
+                      setCreateForm({ ...createForm, reviewPolicyMinCompletedReviews: value })
+                    }
+                    min={1}
+                    style={{ width: '100%' }}
+                    disabled={isMutating}
+                  />
+                  <Switch
+                    checked={createForm.isActive}
+                    onChange={(checked) => setCreateForm({ ...createForm, isActive: checked })}
+                    disabled={isMutating}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={handleCreate}
+                    disabled={isMutating}
+                  >
+                    Tạo
+                  </Button>
+                </div>
+              </Card>
+
+              {isLoading ? (
+                <Spin size="large" tip="Đang tải danh sách track..." />
+              ) : (
+                <Table
+                  columns={columns}
+                  dataSource={tracks}
+                  rowKey="id"
+                  pagination={{ pageSize: 15 }}
+                  locale={{
+                    emptyText: 'Không có track nào trong hội nghị này',
+                  }}
+                />
+              )}
+            </>
+          )}
+        </Space>
+      </Card>
     </div>
   );
 };

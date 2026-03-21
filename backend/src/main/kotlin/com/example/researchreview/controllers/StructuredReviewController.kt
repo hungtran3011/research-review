@@ -1,0 +1,60 @@
+package com.example.researchreview.controllers
+
+import com.example.researchreview.dtos.BaseResponseDto
+import com.example.researchreview.dtos.StructuredReviewAnonymizedDto
+import com.example.researchreview.dtos.StructuredReviewDto
+import com.example.researchreview.dtos.StructuredReviewSubmitRequestDto
+import com.example.researchreview.services.StructuredReviewService
+import jakarta.validation.Valid
+import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+@RequestMapping("/api/v1/articles/{articleId}/structured-reviews")
+class StructuredReviewController(
+    private val structuredReviewService: StructuredReviewService,
+) {
+
+    @PostMapping
+    @PreAuthorize("hasRole('REVIEWER')")
+    fun saveOrSubmit(
+        @PathVariable articleId: String,
+        @Valid @RequestBody request: StructuredReviewSubmitRequestDto,
+    ): ResponseEntity<BaseResponseDto<StructuredReviewDto>> {
+        val data = structuredReviewService.saveOrSubmit(articleId, request)
+        return ResponseEntity.ok(
+            BaseResponseDto(
+                code = 200,
+                message = if (request.finalSubmit) "Structured review submitted" else "Structured review draft saved",
+                data = data,
+            )
+        )
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('REVIEWER')")
+    fun getMyReview(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<StructuredReviewDto?>> {
+        val data = structuredReviewService.getMyReview(articleId)
+        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "My structured review retrieved", data = data))
+    }
+
+    @GetMapping("/chair-view")
+    @PreAuthorize("hasAnyRole('CHAIR','ADMIN')")
+    fun getChairView(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<StructuredReviewDto>>> {
+        val data = structuredReviewService.getChairView(articleId)
+        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Structured reviews retrieved", data = data))
+    }
+
+    @GetMapping("/anonymized")
+    @PreAuthorize("hasAnyRole('RESEARCHER','EDITOR','CHAIR','ADMIN')")
+    fun getAnonymizedView(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<StructuredReviewAnonymizedDto>>> {
+        val data = structuredReviewService.getAnonymizedView(articleId)
+        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Anonymized structured reviews retrieved", data = data))
+    }
+}

@@ -1,71 +1,14 @@
-import { Button, Text, makeStyles, SpinButton } from '@fluentui/react-components'
+import { Button, Typography, InputNumber } from 'antd'
 import { useCallback, useState, useRef, useEffect } from 'react'
-import { ZoomIn20Regular, ZoomOut20Regular, DocumentRegular } from '@fluentui/react-icons'
+import { ZoomInOutlined, ZoomOutOutlined, FileOutlined } from '@ant-design/icons'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useAuthStore } from '../../stores/authStore'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+const { Text } = Typography
 
-const useStyles = makeStyles({
-    pdfContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        border: '1px solid var(--colorNeutralStroke1)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        backgroundColor: 'var(--colorNeutralBackground1)',
-        height: '100%',
-        width: '100%',
-    },
-    pdfControls: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--colorNeutralStroke1)',
-        backgroundColor: 'var(--colorNeutralBackground2)',
-    },
-    pdfControlsLeft: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-    },
-    pdfControlsRight: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-    },
-    pdfPageInfo: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-    },
-    pdfViewer: {
-        flex: 1,
-        overflow: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '16px',
-        padding: '16px',
-        // backgroundColor: '#525659',
-    },
-    pdfPage: {
-        boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-        marginBottom: '8px',
-    },
-    emptyState: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        gap: '16px',
-        color: 'var(--colorNeutralForeground3)',
-    },
-})
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 interface PdfViewerProps {
     fileUrl: string | null
@@ -82,8 +25,6 @@ export function PdfViewer({
     jumpToPage,
     onPageChange 
 }: PdfViewerProps) {
-    const classes = useStyles()
-
     const accessToken = useAuthStore((s) => s.accessToken)
 
     const isBlobLikeUrl = !!fileUrl && (fileUrl.startsWith('blob:') || fileUrl.startsWith('data:'))
@@ -305,39 +246,51 @@ export function PdfViewer({
     }, [])
 
     return (
-        <div className={classes.pdfContainer} ref={pdfContainerRef}>
+        <div ref={pdfContainerRef} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            border: '1px solid #e0e0e0',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            backgroundColor: '#fafafa',
+            height: '100%',
+            width: '100%',
+        }}>
             {fileUrl ? (
                 <>
-                    <div className={classes.pdfControls}>
-                        <div className={classes.pdfControlsLeft}>
-                            <div className={classes.pdfPageInfo}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                            }}>
                                 <Text>Trang</Text>
-                                <SpinButton
+                                <InputNumber
                                     value={currentPage}
-                                    displayValue={currentPage.toString()}
                                     min={1}
                                     max={numPages}
                                     step={1}
                                     disabled={!!loadError}
-                                    onChange={(_, data) => {
+                                    onChange={(val) => {
                                         // Clear any pending scroll timeout
                                         if (scrollTimeoutRef.current) {
                                             clearTimeout(scrollTimeoutRef.current)
                                         }
                                         
-                                        // Only process if we have a valid value
-                                        let pageNum: number | null = null
-                                        
-                                        if (data.value !== undefined && data.value !== null) {
-                                            pageNum = data.value
-                                        } else if (data.displayValue !== undefined && data.displayValue !== '') {
-                                            const parsed = parseInt(data.displayValue, 10)
-                                            if (!isNaN(parsed)) {
-                                                pageNum = parsed
-                                            }
-                                        }
-                                        
-                                        if (pageNum !== null && pageNum >= 1 && pageNum <= numPages && pageNum !== currentPage) {
+                                        const pageNum = val as number
+                                        if (pageNum >= 1 && pageNum <= numPages && pageNum !== currentPage) {
                                             // Immediately update refs to prevent race conditions
                                             isJumpingRef.current = true
                                             lastJumpedPageRef.current = pageNum
@@ -347,7 +300,7 @@ export function PdfViewer({
                                             
                                             // Use requestAnimationFrame to ensure the page elements are rendered
                                             requestAnimationFrame(() => {
-                                                const pageElement = pageRefs.current[pageNum!]
+                                                const pageElement = pageRefs.current[pageNum]
                                                 const viewer = pdfViewerRef.current
                                                 
                                                 if (pageElement && viewer) {
@@ -366,29 +319,35 @@ export function PdfViewer({
                                 <Text>/ {numPages}</Text>
                             </div>
                         </div>
-                        <div className={classes.pdfControlsRight}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                        }}>
                             <Button
-                                appearance="subtle"
+                                type="text"
                                 size="small"
                                 onClick={() => window.open(fileUrl, '_blank', 'noopener,noreferrer')}
                             >
                                 Mở tab mới
                             </Button>
                             <Button
-                                appearance="subtle"
-                                icon={<ZoomOut20Regular />}
+                                type="text"
+                                size="small"
+                                icon={<ZoomOutOutlined />}
                                 onClick={handleZoomOut}
                                 disabled={!!loadError || scale <= 0.5}
                             />
-                            <Text size={300}>{Math.round(scale * 100)}%</Text>
+                            <Text style={{ fontSize: '12px' }}>{Math.round(scale * 100)}%</Text>
                             <Button
-                                appearance="subtle"
-                                icon={<ZoomIn20Regular />}
+                                type="text"
+                                size="small"
+                                icon={<ZoomInOutlined />}
                                 onClick={handleZoomIn}
                                 disabled={!!loadError || scale >= 3.0}
                             />
                             <Button
-                                appearance="subtle"
+                                type="text"
                                 size="small"
                                 onClick={handleResetZoom}
                                 disabled={!!loadError}
@@ -397,10 +356,18 @@ export function PdfViewer({
                             </Button>
                         </div>
                     </div>
-                    <div className={classes.pdfViewer} ref={pdfViewerRef}>
+                    <div ref={pdfViewerRef} style={{
+                        flex: 1,
+                        overflow: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '16px',
+                    }}>
                         {loadError ? (
                             <>
-                                <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                <Text style={{ fontSize: '12px', color: '#999' }}>
                                     Không thể tải PDF trong trang (thường do CORS với link presigned). Bạn vẫn có thể xem bằng chế độ nhúng hoặc mở tab mới.
                                 </Text>
                                 <div style={{ width: '100%', flex: 1, minHeight: '600px' }}>
@@ -412,7 +379,7 @@ export function PdfViewer({
                                 </div>
                             </>
                         ) : isProxyUrl && !blobUrl ? (
-                            <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                            <Text style={{ fontSize: '12px', color: '#999' }}>
                                 {isBlobLoading ? 'Đang tải PDF...' : 'Không thể tải PDF từ máy chủ' }
                             </Text>
                         ) : (
@@ -446,10 +413,13 @@ export function PdfViewer({
                                     <div
                                         key={`page_${index + 1}`}
                                         ref={(el) => { pageRefs.current[index + 1] = el }}
+                                        style={{
+                                            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+                                            marginBottom: '8px',
+                                        }}
                                     >
                                         <Page
                                             pageNumber={index + 1}
-                                            className={classes.pdfPage}
                                             renderTextLayer={true}
                                             renderAnnotationLayer={true}
                                             width={pdfWidth}
@@ -462,24 +432,41 @@ export function PdfViewer({
                 </>
             ) : (
                 <>
-                    <div className={classes.pdfControls}>
-                        <div className={classes.pdfControlsLeft}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #e0e0e0',
+                        backgroundColor: '#f5f5f5',
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                        }}>
                             <Text>Không có tài liệu</Text>
                         </div>
-                        <div className={classes.pdfControlsRight}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                        }}>
                             <Button
-                                appearance="subtle"
-                                icon={<ZoomOut20Regular />}
+                                type="text"
+                                size="small"
+                                icon={<ZoomOutOutlined />}
                                 disabled
                             />
-                            <Text size={300}>100%</Text>
+                            <Text style={{ fontSize: '12px' }}>100%</Text>
                             <Button
-                                appearance="subtle"
-                                icon={<ZoomIn20Regular />}
+                                type="text"
+                                size="small"
+                                icon={<ZoomInOutlined />}
                                 disabled
                             />
                             <Button
-                                appearance="subtle"
+                                type="text"
                                 size="small"
                                 disabled
                             >
@@ -487,10 +474,26 @@ export function PdfViewer({
                             </Button>
                         </div>
                     </div>
-                    <div className={classes.pdfViewer}>
-                        <div className={classes.emptyState}>
-                            <DocumentRegular style={{ fontSize: '48px' }} />
-                            <Text size={400}>{emptyMessage}</Text>
+                    <div style={{
+                        flex: 1,
+                        overflow: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '16px',
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            gap: '16px',
+                            color: '#999',
+                        }}>
+                            <FileOutlined style={{ fontSize: '48px' }} />
+                            <Text style={{ fontSize: '16px' }}>{emptyMessage}</Text>
                         </div>
                     </div>
                 </>

@@ -1,21 +1,19 @@
 import {
   Button,
-  Menu,
-  MenuPopover,
-  MenuTrigger,
+  Dropdown,
   Badge,
-  Text,
-  Spinner,
-  makeStyles,
-  MenuList,
-} from "@fluentui/react-components";
-import { DismissRegular, Alert20Regular } from "@fluentui/react-icons";
+  Typography,
+  Spin,
+} from "antd";
+import { BellOutlined, CloseOutlined } from "@ant-design/icons";
 import { useEffect, useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../../stores/authStore";
 import { api } from "../../services/api";
 import type { BaseResponseDto, PageResponseDto } from "../../models";
 import { ArticleStatus } from "../../constants/article-status";
+
+const { Text } = Typography;
 
 interface NotificationPayload {
   [key: string]: unknown;
@@ -31,55 +29,13 @@ interface Notification {
   createdAt: string;
 }
 
-const useStyles = makeStyles({
-  container: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  badge: {
-    position: "relative",
-  },
-  menuContent: {
-    maxHeight: "400px",
-    overflowY: "auto",
-    overflowX: "hidden",
-    minWidth: "450px",
-    // maxWidth: "500px",
-  },
-  notificationItem: {
-    padding: "12px",
-    borderBottom: "1px solid #e0e0e0",
-    cursor: "pointer",
-    wordWrap: "break-word",
-    overflowWrap: "break-word",
-    "&:hover": {
-      backgroundColor: "#f0f0f0",
-    },
-  },
-  notificationItemUnread: {
-    backgroundColor: "#fff4ce",
-  },
-  notificationText: {
-    fontSize: "12px",
-    color: "#666",
-    display: "block",
-    lineHeight: "1.4",
-  },
-  emptyState: {
-    padding: "16px",
-    textAlign: "center" as const,
-    color: "#999",
-  },
-});
-
 export const NotificationCenter = () => {
-  const styles = useStyles();
   const navigate = useNavigate();
   const { accessToken } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!accessToken) return;
@@ -170,6 +126,7 @@ export const NotificationCenter = () => {
       [ArticleStatus.SUBMITTED]: 'Đã nộp',
       [ArticleStatus.PENDING_REVIEW]: 'Chờ phản biện',
       [ArticleStatus.IN_REVIEW]: 'Đang phản biện',
+      [ArticleStatus.REVIEWS_COMPLETED]: 'Đã hoàn tất phản biện',
       [ArticleStatus.REVISIONS_REQUESTED]: 'Yêu cầu sửa',
       [ArticleStatus.REVISIONS]: 'Đang sửa',
       [ArticleStatus.REJECT_REQUESTED]: 'Đề nghị loại bỏ',
@@ -237,103 +194,136 @@ export const NotificationCenter = () => {
   }
 
   return (
-    <div className={styles.container}>
-      <Menu>
-        <MenuTrigger disableButtonEnhancement>
-          <div style={{ position: "relative" }}>
-            <Button
-              icon={<Alert20Regular />}
-              appearance="subtle"
-              aria-label="Notifications"
-            />
-            {unreadCount > 0 && (
-              <Badge
-                appearance="filled"
-                color="danger"
-                size="small"
-                style={{
-                  position: "absolute",
-                  top: "4px",
-                  right: "4px",
-                  minWidth: "16px",
-                  height: "16px",
-                }}
-              >
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Badge>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <Dropdown
+        open={dropdownOpen}
+        onOpenChange={setDropdownOpen}
+        trigger={['click']}
+        dropdownRender={() => (
+          <div style={{
+            maxHeight: "400px",
+            overflowY: "auto",
+            overflowX: "hidden",
+            minWidth: "450px",
+            backgroundColor: '#fff',
+            borderRadius: '4px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}>
+            {loading && notifications.length === 0 ? (
+              <div style={{
+                padding: "16px",
+                textAlign: "center",
+                color: "#999",
+              }}>
+                <Spin size="small" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <div style={{
+                padding: "16px",
+                textAlign: "center",
+                color: "#999",
+              }}>
+                <Text>Không có thông báo</Text>
+              </div>
+            ) : (
+              notifications.map((notification) => {
+                const title = getNotificationTitle(notification.payload)
+                const detailLines = getNotificationDetailLines(notification)
+                return (
+                  <div
+                    key={notification.id}
+                    style={{
+                      padding: "12px",
+                      borderBottom: "1px solid #e0e0e0",
+                      cursor: "pointer",
+                      wordWrap: "break-word",
+                      overflowWrap: "break-word",
+                      backgroundColor: !notification.readAt ? "#fffce6" : "transparent",
+                    }}
+                    onClick={() => {
+                      handleNotificationClick(notification)
+                      setDropdownOpen(false)
+                    }}
+                    onMouseEnter={(e) => !notification.readAt && (e.currentTarget.style.backgroundColor = "#ffedd5")}
+                    onMouseLeave={(e) => !notification.readAt && (e.currentTarget.style.backgroundColor = "#fffce6")}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ marginBottom: "4px" }}>
+                          <Text strong style={{ fontSize: '14px' }}>
+                            {getNotificationLabel(notification.type)}
+                          </Text>
+                        </div>
+                        {title && (
+                          <div style={{
+                            fontSize: "12px",
+                            color: "#666",
+                            display: "block",
+                            lineHeight: "1.4",
+                            marginBottom: "4px",
+                          }}>
+                            {title}
+                          </div>
+                        )}
+                        {detailLines.map((line, idx) => (
+                          <div
+                            key={`${notification.id}_detail_${idx}`}
+                            style={{
+                              fontSize: "12px",
+                              color: "#666",
+                              display: "block",
+                              lineHeight: "1.4",
+                              marginBottom: idx === detailLines.length - 1 ? "4px" : "2px",
+                            }}
+                          >
+                            {line}
+                          </div>
+                        ))}
+                        <div style={{
+                          fontSize: "12px",
+                          color: "#666",
+                          display: "block",
+                          lineHeight: "1.4",
+                        }}>
+                          {new Date(notification.createdAt).toLocaleString('vi-VN')}
+                        </div>
+                      </div>
+                      {!notification.readAt && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CloseOutlined />}
+                          onClick={(e) => handleMarkAsRead(notification.id, e)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
-        </MenuTrigger>
-        <MenuPopover className={styles.menuContent}>
-          <MenuList>
-            <div className={styles.menuContent}>
-              {loading && notifications.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <Spinner size="small" />
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <Text>No notifications</Text>
-                </div>
-              ) : (
-                notifications.map((notification) => {
-                  const title = getNotificationTitle(notification.payload)
-                  const detailLines = getNotificationDetailLines(notification)
-                  return (
-                    <div
-                      key={notification.id}
-                      className={`${styles.notificationItem} ${!notification.readAt ? styles.notificationItemUnread : ""
-                        }`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ marginBottom: "4px" }}>
-                            <Text weight="semibold" size={300}>
-                              {getNotificationLabel(notification.type)}
-                            </Text>
-                          </div>
-                          {title && (
-                            <div className={styles.notificationText} style={{ marginBottom: "4px" }}>
-                              {title}
-                            </div>
-                          )}
-                          {detailLines.map((line, idx) => (
-                            <div
-                              key={`${notification.id}_detail_${idx}`}
-                              className={styles.notificationText}
-                              style={{ marginBottom: idx === detailLines.length - 1 ? "4px" : "2px" }}
-                            >
-                              {line}
-                            </div>
-                          ))}
-                          <div className={styles.notificationText}>
-                            {new Date(notification.createdAt).toLocaleString('vi-VN')}
-                          </div>
-                        </div>
-                        {!notification.readAt && (
-                          <Button
-                            icon={<DismissRegular />}
-                            appearance="subtle"
-                            size="small"
-                            onClick={(e) => handleMarkAsRead(notification.id, e)}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </MenuList>
-        </MenuPopover>
-      </Menu>
+        )}
+      >
+        <Button
+          type="text"
+          icon={<BellOutlined />}
+          aria-label="Notifications"
+        />
+      </Dropdown>
+      {unreadCount > 0 && (
+        <Badge
+          count={unreadCount > 9 ? '9+' : unreadCount}
+          style={{
+            backgroundColor: '#ff4d4f',
+          }}
+        />
+      )}
     </div>
   );
 };

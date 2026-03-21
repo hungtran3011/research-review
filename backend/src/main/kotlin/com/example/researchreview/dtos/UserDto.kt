@@ -25,6 +25,7 @@ data class UserDto(
     var avatarId: String? = "",
     var institution: InstitutionDto? = InstitutionDto(),
     var track: TrackDto? = TrackDto(),
+    var conferences: List<ConferenceMembershipDto> = emptyList(),
     var gender: Gender? = Gender.OTHER,
     var nationality: String? = "",
     var academicStatus: AcademicStatus? = AcademicStatus.TS,

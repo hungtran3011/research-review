@@ -1,6 +1,4 @@
-import { useToastController, Toast, ToastTitle, ToastBody } from "@fluentui/react-components";
-import type { JSX } from "react";
-import { APP_TOASTER_ID } from "../constants/toaster";
+import { message } from 'antd'
 import type { AxiosError } from "axios";
 
 type BaseResponseLike = {
@@ -22,52 +20,32 @@ export const getApiSuccessMessage = (response: unknown, fallback: string): strin
 
 export const getApiErrorMessage = (err: unknown, fallback: string): string => {
   const axiosErr = err as AxiosError<BaseResponseLike>;
-  const message = axiosErr?.response?.data?.message;
-  if (typeof message === 'string' && message.trim()) return message;
+  const msg = axiosErr?.response?.data?.message;
+  if (typeof msg === 'string' && msg.trim()) return msg;
   if (axiosErr?.message) return axiosErr.message;
   return fallback;
 };
 
 export type ToastIntent = "success" | "error" | "warning" | "info";
 
-export interface ToastOptions {
-  title: string;
-  body?: string;
-  intent?: ToastIntent;
-  action?: JSX.Element;
-}
-
 export function useBasicToast() {
-  const { dispatchToast } = useToastController(APP_TOASTER_ID);
-
-  const showToast = ({ title, body, intent = "info", action }: ToastOptions) => {
-    dispatchToast(
-      <Toast>
-        <ToastTitle action={action}>{title}</ToastTitle>
-        {body && <ToastBody>{body}</ToastBody>}
-      </Toast>,
-      { intent }
-    );
+  const success = (title: string) => {
+    message.success(title);
   };
 
-  const success = (title: string, body?: string) => {
-    showToast({ title, body, intent: "success" });
+  const error = (title: string) => {
+    message.error(title);
   };
 
-  const error = (title: string, body?: string) => {
-    showToast({ title, body, intent: "error" });
+  const warning = (title: string) => {
+    message.warning(title);
   };
 
-  const warning = (title: string, body?: string) => {
-    showToast({ title, body, intent: "warning" });
-  };
-
-  const info = (title: string, body?: string) => {
-    showToast({ title, body, intent: "info" });
+  const info = (title: string) => {
+    message.info(title);
   };
 
   return {
-    showToast,
     success,
     error,
     warning,

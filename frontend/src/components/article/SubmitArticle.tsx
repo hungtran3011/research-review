@@ -1,39 +1,52 @@
-import { Field, Input, Button, Text, makeStyles, Textarea, Dropdown, Option } from '@fluentui/react-components'
+import { Input, Button, Typography, Select, Form, Alert } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { DocumentRegular, Dismiss24Regular } from '@fluentui/react-icons'
+import { FileOutlined, CloseOutlined } from '@ant-design/icons'
 import { PdfViewer } from '../common/PdfViewer'
 import { useNavigate } from 'react-router'
 import { articleService } from '../../services/article.service'
 import { attachmentService } from '../../services/attachment.service'
 import { AttachmentKind } from '../../constants/attachment-kind'
-import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
+import { useInstitutions } from '../../hooks/useInstitutionTrack'
+import { useSubmissionMetadata } from '../../hooks/useArticles'
 import { useBasicToast } from '../../hooks/useBasicToast'
 import { useCurrentUser } from '../../hooks/useUser'
 import { useAuthStore } from '../../stores/authStore'
-import type { InstitutionDto } from '../../models'
+import type { InstitutionDto, SubmissionConferenceOptionDto, SubmissionTrackOptionDto } from '../../models'
 
-const useStyles = makeStyles({
+const { Title, Text } = Typography
+
+const dropzoneBaseStyle = {
+    border: '2px dashed #d9d9d9',
+    borderRadius: '8px',
+    padding: '32px',
+    textAlign: 'center' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+}
+
+const dropzoneActiveStyle = {
+    ...dropzoneBaseStyle,
+    border: '2px dashed #1890ff',
+    backgroundColor: '#fafafa',
+}
+
+const styles = {
     root: {
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'row' as const,
         gap: '24px',
         padding: '32px 0',
         width: '100%',
         height: 'calc(100vh - 64px)',
-        
-        '@media screen and (max-width: 768px)': {
-            flexDirection: 'column',
-            alignItems: 'center'
-        }
     },
     leftColumn: {
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         gap: '24px',
         width: '500px',
         flexShrink: 0,
-        overflow: 'auto',
+        overflow: 'auto' as const,
         paddingLeft: '16px',
         paddingRight: '16px',
     },
@@ -41,42 +54,15 @@ const useStyles = makeStyles({
         display: 'flex',
         flex: 1,
         minWidth: '0',
-
-        '@media screen and (max-width: 768px)': {
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '100%',
-            height: '800px'
-        }
     },
     form: {
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         gap: '16px',
-    },
-    dropzone: {
-        border: '2px dashed var(--colorNeutralStroke1)',
-        borderRadius: '8px',
-        padding: '32px',
-        textAlign: 'center',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-    },
-    dropzoneActive: {
-        border: '2px dashed var(--colorBrandStroke1)',
-        backgroundColor: 'var(--colorNeutralBackground1Pressed)',
-    },
-    dropzoneHover: {
-        border: '2px dashed var(--colorBrandStroke1)',
-        backgroundColor: 'var(--colorNeutralBackground1Hover)',
-    },
-    dropzoneDisabled: {
-        cursor: 'not-allowed',
-        opacity: 0.6,
     },
     fileList: {
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         gap: '8px',
         marginTop: '16px',
     },
@@ -85,9 +71,9 @@ const useStyles = makeStyles({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '12px',
-        backgroundColor: 'var(--colorNeutralBackground1)',
+        backgroundColor: '#fafafa',
         borderRadius: '4px',
-        border: '1px solid var(--colorNeutralStroke1)',
+        border: '1px solid #d9d9d9',
     },
     fileInfo: {
         display: 'flex',
@@ -96,14 +82,14 @@ const useStyles = makeStyles({
     },
     removeButton: {
         cursor: 'pointer',
-        color: 'var(--colorNeutralForeground2)',
+        color: '#8c8c8c',
     },
     authorCard: {
-        border: '1px solid var(--colorNeutralStroke1)',
+        border: '1px solid #d9d9d9',
         borderRadius: '8px',
         padding: '12px',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         gap: '8px',
     },
     authorActions: {
@@ -112,7 +98,7 @@ const useStyles = makeStyles({
         alignItems: 'center',
         gap: '8px',
     },
-})
+}
 
 type AuthorForm = {
     id: string
@@ -129,14 +115,16 @@ const createAuthorForm = (): AuthorForm => ({
 })
 
 function SubmitArticle() {
-    const classes = useStyles()
+    const [form] = Form.useForm()
     const [files, setFiles] = useState<File[]>([])
     const [formData, setFormData] = useState({
         title: '',
         abstract: '',
         conclusion: '',
         link: '',
+        conferenceId: '',
         trackId: '',
+        topicIds: [] as string[],
     })
     const [authors, setAuthors] = useState<AuthorForm[]>([createAuthorForm()])
     
@@ -147,7 +135,7 @@ function SubmitArticle() {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
     const { data: currentUserResponse } = useCurrentUser(Boolean(isAuthenticated))
     const currentUser = currentUserResponse?.data
-    const { data: tracksData } = useTracks()
+    const { data: submissionMetadataResponse } = useSubmissionMetadata()
     const { data: institutionsData } = useInstitutions(0, 100)
     const { error } = useBasicToast()
 
@@ -172,7 +160,31 @@ function SubmitArticle() {
         })
     }, [currentUser])
 
-    const tracks = useMemo(() => tracksData?.data ?? [], [tracksData])
+    const conferences = useMemo(
+        () => submissionMetadataResponse?.data?.conferences ?? [],
+        [submissionMetadataResponse]
+    )
+    const selectedConference = useMemo<SubmissionConferenceOptionDto | null>(
+        () => conferences.find((conference) => conference.id === formData.conferenceId) ?? null,
+        [conferences, formData.conferenceId]
+    )
+    const tracks = useMemo<SubmissionTrackOptionDto[]>(
+        () => selectedConference?.tracks ?? [],
+        [selectedConference]
+    )
+    const selectedTrack = useMemo<SubmissionTrackOptionDto | null>(
+        () => tracks.find((track) => track.id === formData.trackId) ?? null,
+        [tracks, formData.trackId]
+    )
+    const topics = useMemo(
+        () => selectedTrack?.topics ?? [],
+        [selectedTrack]
+    )
+    const submissionDeadline = selectedConference?.submissionDeadline ?? null
+    const isDeadlinePassed = useMemo(() => {
+        if (!submissionDeadline) return false
+        return new Date(submissionDeadline).getTime() < Date.now()
+    }, [submissionDeadline])
     const institutions = useMemo(() => institutionsData?.data?.content ?? [], [institutionsData])
     const institutionsMap = useMemo<Record<string, InstitutionDto>>(() => {
         const mapper: Record<string, InstitutionDto> = {}
@@ -216,11 +228,25 @@ function SubmitArticle() {
         }
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSubmit = () => {
+
+        if (!formData.conferenceId) {
+            error('Vui lòng chọn hội nghị')
+            return
+        }
+
+        if (isDeadlinePassed) {
+            error('Đã quá hạn nộp bài cho hội nghị đã chọn')
+            return
+        }
 
         if (!formData.trackId) {
             error('Vui lòng chọn chủ đề (track) cho bài báo')
+            return
+        }
+
+        if (formData.topicIds.length === 0) {
+            error('Vui lòng chọn ít nhất một topic')
             return
         }
 
@@ -261,7 +287,9 @@ function SubmitArticle() {
                     abstract: formData.abstract,
                     conclusion: formData.conclusion,
                     link: files.length > 0 ? '' : formData.link,
+                    conferenceId: formData.conferenceId,
                     trackId: formData.trackId,
+                    topicIds: formData.topicIds,
                     authors: authorPayload,
                 })
                 const articleId = createResp.data?.id
@@ -326,138 +354,165 @@ function SubmitArticle() {
     }
 
     return (
-        <div className={classes.root}>
-            <div className={classes.leftColumn}>
+        <div style={styles.root}>
+            <div style={styles.leftColumn}>
                 <div>
-                    <Text as="h1" size={600} weight="bold">Nộp bài báo</Text>
+                    <Title level={1}>Nộp bài báo</Title>
                 </div>
-                <form className={classes.form} onSubmit={handleSubmit}>
-                    <Field label="Tên bài báo" required>
+                <Form form={form} layout="vertical" style={styles.form} onFinish={handleSubmit}>
+                    <Form.Item label="Tên bài báo" required>
                         <Input
                             placeholder="Nhập tên bài báo"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             required
                         />
-                    </Field>
-                    <Field label="Tóm tắt" required>
-                        <Textarea
+                    </Form.Item>
+                    <Form.Item label="Tóm tắt" required>
+                        <Input.TextArea
                             placeholder="Nhập tóm tắt bài báo"
                             value={formData.abstract}
-                            onChange={(_, data) => setFormData({ ...formData, abstract: data.value })}
+                            onChange={(e) => setFormData({ ...formData, abstract: e.target.value })}
                             required
                             rows={4}
                         />
-                    </Field>
-                    <Field label="Kết luận" required>
-                        <Textarea
+                    </Form.Item>
+                    <Form.Item label="Kết luận" required>
+                        <Input.TextArea
                             placeholder="Nhập phần kết luận"
                             value={formData.conclusion}
-                            onChange={(_, data) => setFormData({ ...formData, conclusion: data.value })}
+                            onChange={(e) => setFormData({ ...formData, conclusion: e.target.value })}
                             required
                             rows={4}
                         />
-                    </Field>
-                    <Field label="Tệp tài liệu" required hint="Kéo thả file để tải lên; hệ thống sẽ tự sinh liên kết">
+                    </Form.Item>
+                    <Form.Item label="Tệp tài liệu" required tooltip="Kéo thả file để tải lên; hệ thống sẽ tự sinh liên kết">
                         <div
                             {...getRootProps()}
-                            className={`${classes.dropzone} ${isDragActive ? classes.dropzoneActive : ''}`}
-                            style={{ cursor: 'pointer' }}
+                            style={isDragActive ? dropzoneActiveStyle : dropzoneBaseStyle}
                         >
                             <input type="file" {...inputProps} />
-                            <DocumentRegular fontSize={48} />
+                            <FileOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
                             {isDragActive ? (
                                 <Text>Thả file vào đây...</Text>
                             ) : (
                                 <>
                                     <Text>Kéo thả file vào đây hoặc click để chọn file</Text>
-                                    <Text size={200} style={{ marginTop: '8px', color: 'var(--colorNeutralForeground3)' }}>
+                                    <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
                                         PDF, DOC, DOCX (tối đa 10MB)
                                     </Text>
                                 </>
                             )}
                         </div>
                         {files.length > 0 && (
-                            <div className={classes.fileList}>
+                            <div style={styles.fileList}>
                                 {files.map((file, index) => (
-                                    <div key={index} className={classes.fileItem}>
-                                        <div className={classes.fileInfo}>
-                                            <DocumentRegular fontSize={24} />
+                                    <div key={index} style={styles.fileItem}>
+                                        <div style={styles.fileInfo}>
+                                            <FileOutlined style={{ fontSize: '24px' }} />
                                             <div>
-                                                <Text weight="semibold">{file.name}</Text>
-                                                <Text size={200} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>
+                                                <Text strong>{file.name}</Text>
+                                                <Text type="secondary" style={{ display: 'block' }}>
                                                     {formatFileSize(file.size)}
                                                 </Text>
                                             </div>
                                         </div>
-                                        <Dismiss24Regular
-                                            className={classes.removeButton}
+                                        <CloseOutlined
+                                            style={styles.removeButton}
                                             onClick={() => removeFile(index)}
                                         />
                                     </div>
                                 ))}
                             </div>
                         )}
-                    </Field>
-                    <Field label="Chủ đề (Track)" required>
-                        <Dropdown
+                    </Form.Item>
+                    <Form.Item label="Hội nghị" required>
+                        <Select
+                            placeholder="Chọn hội nghị"
+                            value={formData.conferenceId || undefined}
+                            onChange={(value) => setFormData({ ...formData, conferenceId: value, trackId: '', topicIds: [] })}
+                            options={conferences.map((conference) => ({
+                                value: conference.id,
+                                label: `${conference.name} (${conference.shortName})`,
+                            }))}
+                        />
+                    </Form.Item>
+                    {submissionDeadline && (
+                        <Alert
+                            type={isDeadlinePassed ? 'error' : 'info'}
+                            showIcon
+                            message={isDeadlinePassed ? 'Đã quá hạn nộp bài' : 'Hạn nộp bài'}
+                            description={new Date(submissionDeadline).toLocaleString('vi-VN')}
+                        />
+                    )}
+                    <Form.Item label="Chủ đề (Track)" required>
+                        <Select
                             placeholder="Chọn track"
-                            selectedOptions={formData.trackId ? [formData.trackId] : []}
-                            onOptionSelect={(_, data) => setFormData({ ...formData, trackId: data.optionValue ?? '' })}
-                        >
-                            {tracks.map(track => (
-                                <Option key={track.id} value={track.id} text={track.name}>
-                                    {track.name}
-                                </Option>
-                            ))}
-                        </Dropdown>
-                    </Field>
+                            value={formData.trackId || undefined}
+                            disabled={!formData.conferenceId}
+                            onChange={(value) => setFormData({ ...formData, trackId: value, topicIds: [] })}
+                            options={tracks.map(track => ({
+                                value: track.id,
+                                label: track.name
+                            }))}
+                        />
+                    </Form.Item>
+                    <Form.Item label="Topics" required>
+                        <Select
+                            mode="multiple"
+                            placeholder="Chọn topic"
+                            value={formData.topicIds}
+                            disabled={!formData.trackId}
+                            onChange={(value) => setFormData({ ...formData, topicIds: value })}
+                            options={topics.map((topic) => ({
+                                value: topic.id,
+                                label: topic.name,
+                            }))}
+                        />
+                    </Form.Item>
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <Text weight="semibold">Danh sách tác giả</Text>
-                            <Button type="button" appearance="subtle" onClick={addAuthor}>
+                            <Text strong>Danh sách tác giả</Text>
+                            <Button type="text" onClick={addAuthor}>
                                 Thêm tác giả
                             </Button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {authors.map((author, index) => (
-                                <div key={author.id} className={classes.authorCard}>
-                                    <Text weight="semibold">Tác giả #{index + 1}</Text>
-                                    <Field label="Tên tác giả" required>
+                                <div key={author.id} style={styles.authorCard}>
+                                    <Text strong>Tác giả #{index + 1}</Text>
+                                    <Form.Item label="Tên tác giả" required>
                                         <Input
                                             placeholder="Họ và tên"
                                             value={author.name}
                                             onChange={(e) => handleAuthorChange(index, 'name', e.target.value)}
                                         />
-                                    </Field>
-                                    <Field label="Email" required>
+                                    </Form.Item>
+                                    <Form.Item label="Email" required>
                                         <Input
                                             type="email"
                                             placeholder="email@example.com"
                                             value={author.email}
                                             onChange={(e) => handleAuthorChange(index, 'email', e.target.value)}
                                         />
-                                    </Field>
-                                    <Field label="Đơn vị" required>
-                                        <Dropdown
+                                    </Form.Item>
+                                    <Form.Item label="Đơn vị" required>
+                                        <Select
                                             placeholder="Chọn đơn vị"
-                                            selectedOptions={author.institutionId ? [author.institutionId] : []}
-                                            onOptionSelect={(_, data) => handleAuthorChange(index, 'institutionId', data.optionValue ?? '')}
-                                        >
-                                            {institutions.map(inst => (
-                                                <Option key={inst.id} value={inst.id} text={inst.name}>
-                                                    {inst.name}
-                                                </Option>
-                                            ))}
-                                        </Dropdown>
-                                    </Field>
-                                    <div className={classes.authorActions}>
-                                        <Text size={200} style={{ color: 'var(--colorNeutralForeground3)' }}>
+                                            value={author.institutionId || undefined}
+                                            onChange={(value) => handleAuthorChange(index, 'institutionId', value)}
+                                            options={institutions.map(inst => ({
+                                                value: inst.id,
+                                                label: inst.name
+                                            }))}
+                                        />
+                                    </Form.Item>
+                                    <div style={styles.authorActions}>
+                                        <Text type="secondary">
                                             {institutionsMap[author.institutionId]?.name || 'Chưa chọn đơn vị'}
                                         </Text>
                                         <Button
-                                            type="button"
-                                            appearance="secondary"
+                                            type="default"
                                             onClick={() => removeAuthor(index)}
                                             disabled={authors.length === 1}
                                         >
@@ -468,55 +523,54 @@ function SubmitArticle() {
                             ))}
                         </div>
                     </div>
-                    <Field label="File bài báo (tùy chọn)" hint="Dùng để xem trước trước khi gửi lên hệ thống">
+                    <Form.Item label="File bài báo (tùy chọn)" tooltip="Dùng để xem trước trước khi gửi lên hệ thống">
                         <div
                             {...getRootProps()}
-                            className={`${classes.dropzone} ${isDragActive ? classes.dropzoneActive : ''}`}
-                            style={{ cursor: 'pointer' }}
+                            style={isDragActive ? dropzoneActiveStyle : dropzoneBaseStyle}
                         >
                             <input type="file" {...inputProps} />
-                            <DocumentRegular fontSize={48} />
+                            <FileOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
                             {isDragActive ? (
                                 <Text>Thả file vào đây...</Text>
                             ) : (
                                 <>
                                     <Text>Kéo thả file vào đây hoặc click để chọn file</Text>
-                                    <Text size={200} style={{ marginTop: '8px', color: 'var(--colorNeutralForeground3)' }}>
+                                    <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
                                         PDF, DOC, DOCX (tối đa 10MB)
                                     </Text>
                                 </>
                             )}
                         </div>
                         {files.length > 0 && (
-                            <div className={classes.fileList}>
+                            <div style={styles.fileList}>
                                 {files.map((file, index) => (
-                                    <div key={index} className={classes.fileItem}>
-                                        <div className={classes.fileInfo}>
-                                            <DocumentRegular fontSize={24} />
+                                    <div key={index} style={styles.fileItem}>
+                                        <div style={styles.fileInfo}>
+                                            <FileOutlined style={{ fontSize: '24px' }} />
                                             <div>
-                                                <Text weight="semibold">{file.name}</Text>
-                                                <Text size={200} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>
+                                                <Text strong>{file.name}</Text>
+                                                <Text type="secondary" style={{ display: 'block' }}>
                                                     {formatFileSize(file.size)}
                                                 </Text>
                                             </div>
                                         </div>
-                                        <Dismiss24Regular
-                                            className={classes.removeButton}
+                                        <CloseOutlined
+                                            style={styles.removeButton}
                                             onClick={() => removeFile(index)}
                                         />
                                     </div>
                                 ))}
                             </div>
                         )}
-                    </Field>
+                    </Form.Item>
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                        <Button appearance="primary" type="submit" size="large" disabled={uploading}>
+                        <Button type="primary" htmlType="submit" size="large" loading={uploading} disabled={isDeadlinePassed}>
                             {uploading ? 'Đang nộp bài...' : 'Nộp bài báo'}
                         </Button>
                     </div>
-                </form>
+                </Form>
             </div>
-            <div className={classes.rightColumn}>
+            <div style={styles.rightColumn}>
                 <PdfViewer 
                     fileUrl={pdfUrl ?? (formData.link || null)} 
                     emptyMessage="Tải lên file hoặc nhập liên kết để xem trước"

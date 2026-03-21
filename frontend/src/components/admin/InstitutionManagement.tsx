@@ -1,20 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Button,
-  Field,
-  Input,
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
-import { Delete16Regular, Save16Regular, Add16Regular } from '@fluentui/react-icons';
+import { Button, Input, Spin, Table, Typography, Space, Form } from 'antd';
+import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import type { InstitutionDto } from '../../models';
 import {
   useInstitutions,
@@ -22,20 +8,16 @@ import {
   useUpdateInstitution,
   useDeleteInstitution,
 } from '../../hooks/useInstitutionTrack';
+import type { ColumnsType } from 'antd/es/table';
 
-const useStyles = makeStyles({
+const { Text } = Typography;
+
+const styles = {
   container: {
     padding: '32px',
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column' as const,
     gap: '16px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '12px',
   },
   formRow: {
     display: 'grid',
@@ -43,17 +25,7 @@ const useStyles = makeStyles({
     gap: '12px',
     alignItems: 'end',
   },
-  tableWrapper: {
-    overflowX: 'auto',
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  actions: {
-    display: 'flex',
-    gap: '8px',
-    justifyContent: 'flex-end',
-  },
-});
+} as const;
 
 type InstitutionDraft = {
   name: string;
@@ -63,7 +35,6 @@ type InstitutionDraft = {
 };
 
 const InstitutionManagement = () => {
-  const classes = useStyles();
   const { data, isLoading } = useInstitutions(0, 100);
   const createInstitution = useCreateInstitution();
   const updateInstitution = useUpdateInstitution();
@@ -149,46 +120,117 @@ const InstitutionManagement = () => {
     deleteInstitution.mutate(id);
   };
 
-  return (
-    <div className={classes.container}>
-      <div className={classes.header}>
-        <Text size={600} weight="semibold">
-          Quản lý Nơi công tác
-        </Text>
-      </div>
+  const columns: ColumnsType<InstitutionDto & { draft?: InstitutionDraft }> = [
+    {
+      title: 'Tên',
+      key: 'name',
+      render: (_, record) => (
+        <Input
+          value={draftById[record.id]?.name ?? record.name ?? ''}
+          onChange={(e) => updateDraft(record.id, { name: e.target.value })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Quốc gia',
+      key: 'country',
+      render: (_, record) => (
+        <Input
+          value={draftById[record.id]?.country ?? record.country ?? ''}
+          onChange={(e) => updateDraft(record.id, { country: e.target.value })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Website',
+      key: 'website',
+      render: (_, record) => (
+        <Input
+          value={draftById[record.id]?.website ?? record.website ?? ''}
+          onChange={(e) => updateDraft(record.id, { website: e.target.value })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Logo',
+      key: 'logo',
+      render: (_, record) => (
+        <Input
+          value={draftById[record.id]?.logo ?? record.logo ?? ''}
+          onChange={(e) => updateDraft(record.id, { logo: e.target.value })}
+          disabled={isMutating}
+        />
+      ),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      render: (_, record) => {
+        const draft = draftById[record.id];
+        return (
+          <Space>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={() => handleSave(record.id)}
+              disabled={isMutating || !draft?.name.trim()}
+            >
+              Lưu
+            </Button>
+            <Button
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id)}
+              disabled={isMutating}
+            >
+              Xóa
+            </Button>
+          </Space>
+        );
+      },
+    },
+  ];
 
-      <div className={classes.formRow}>
-        <Field label="Tên" required>
+  return (
+    <div style={styles.container}>
+      <Text strong style={{ fontSize: '24px', marginBottom: '8px' }}>
+        Quản lý Nơi công tác
+      </Text>
+
+      <div style={styles.formRow}>
+        <Form.Item label="Tên" required>
           <Input
             value={createForm.name}
             onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
             placeholder="VD: Trường Đại học ABC"
           />
-        </Field>
-        <Field label="Quốc gia">
+        </Form.Item>
+        <Form.Item label="Quốc gia">
           <Input
             value={createForm.country}
             onChange={(e) => setCreateForm((p) => ({ ...p, country: e.target.value }))}
             placeholder="VD: Vietnam"
           />
-        </Field>
-        <Field label="Website">
+        </Form.Item>
+        <Form.Item label="Website">
           <Input
             value={createForm.website}
             onChange={(e) => setCreateForm((p) => ({ ...p, website: e.target.value }))}
             placeholder="https://example.edu"
           />
-        </Field>
-        <Field label="Logo">
+        </Form.Item>
+        <Form.Item label="Logo">
           <Input
             value={createForm.logo}
             onChange={(e) => setCreateForm((p) => ({ ...p, logo: e.target.value }))}
             placeholder="https://.../logo.png"
           />
-        </Field>
+        </Form.Item>
         <Button
-          appearance="primary"
-          icon={<Add16Regular />}
+          type="primary"
+          icon={<PlusOutlined />}
           disabled={isMutating || !createForm.name.trim()}
           onClick={handleCreate}
         >
@@ -197,90 +239,17 @@ const InstitutionManagement = () => {
       </div>
 
       {isLoading ? (
-        <Spinner label="Đang tải danh sách nơi công tác..." />
+        <Spin size="large" tip="Đang tải danh sách nơi công tác..." />
       ) : (
-        <div className={classes.tableWrapper}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Tên</TableHeaderCell>
-                <TableHeaderCell>Quốc gia</TableHeaderCell>
-                <TableHeaderCell>Website</TableHeaderCell>
-                <TableHeaderCell>Logo</TableHeaderCell>
-                <TableHeaderCell>Hành động</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {institutions.map((ins) => {
-                const draft = draftById[ins.id] ?? {
-                  name: ins.name ?? '',
-                  country: ins.country ?? '',
-                  website: ins.website ?? '',
-                  logo: ins.logo ?? '',
-                };
-
-                return (
-                  <TableRow key={ins.id}>
-                    <TableCell>
-                      <Input
-                        value={draft.name}
-                        onChange={(e) => updateDraft(ins.id, { name: e.target.value })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={draft.country}
-                        onChange={(e) => updateDraft(ins.id, { country: e.target.value })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={draft.website}
-                        onChange={(e) => updateDraft(ins.id, { website: e.target.value })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={draft.logo}
-                        onChange={(e) => updateDraft(ins.id, { logo: e.target.value })}
-                        disabled={isMutating}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className={classes.actions}>
-                        <Button
-                          appearance="primary"
-                          icon={<Save16Regular />}
-                          onClick={() => handleSave(ins.id)}
-                          disabled={isMutating || !draft.name.trim()}
-                        >
-                          Lưu
-                        </Button>
-                        <Button
-                          appearance="secondary"
-                          icon={<Delete16Regular />}
-                          onClick={() => handleDelete(ins.id)}
-                          disabled={isMutating}
-                        >
-                          Xóa
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-
-          {institutions.length === 0 && (
-            <Text style={{ padding: '16px', display: 'block' }}>
-              Chưa có nơi công tác nào.
-            </Text>
-          )}
-        </div>
+        <Table
+          columns={columns}
+          dataSource={institutions}
+          rowKey="id"
+          locale={{
+            emptyText: 'Chưa có nơi công tác nào.',
+          }}
+          pagination={false}
+        />
       )}
     </div>
   );

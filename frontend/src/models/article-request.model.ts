@@ -6,7 +6,9 @@ export interface ArticleRequestDto {
   abstract: string;
   conclusion: string;
   link: string;
+  conferenceId: string;
   trackId: string;
+  topicIds: string[];
   trackName?: string;
   authors: AuthorDto[];
 }

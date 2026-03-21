@@ -19,7 +19,7 @@ class ArticleAccessGuardImpl(
     override fun listAccessibleArticles(pageable: Pageable): Page<Article> {
         val user = currentUserService.currentUser() ?: return articleRepository.findAllByDeletedFalse(pageable)
         return when {
-            user.hasRole(Role.ADMIN) -> articleRepository.findAllByDeletedFalse(pageable)
+            user.hasRole(Role.ADMIN) || user.hasRole(Role.CHAIR) -> articleRepository.findAllByDeletedFalse(pageable)
             user.hasRole(Role.EDITOR) -> user.track?.id?.let { trackId ->
                 articleRepository.findAllByDeletedFalseAndTrackId(trackId, pageable)
             } ?: Page.empty(pageable)
@@ -32,7 +32,7 @@ class ArticleAccessGuardImpl(
     override fun fetchAccessibleArticle(articleId: String): Article {
         val user = currentUserService.currentUser()
         val article = when {
-            user == null || user.hasRole(Role.ADMIN) -> {
+            user == null || user.hasRole(Role.ADMIN) || user.hasRole(Role.CHAIR) -> {
                 articleRepository.findByIdAndDeletedFalse(articleId).orElse(null)
             }
             user.hasRole(Role.EDITOR) -> {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { makeStyles, Input, Field, Text, Combobox, Option, Button, Spinner } from '@fluentui/react-components'
-import { Mail16Regular } from '@fluentui/react-icons'
+import { Input, Button, Form, Select, Spin, Typography, Row, Col } from 'antd'
+import { MailOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 import { getWorldData } from '../../services/country.service'
 import { useQuery } from '@tanstack/react-query'
@@ -10,61 +10,40 @@ import { Gender, AcademicStatus, Role, RoleOptions, type RoleType } from '../../
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 import { Navigate } from 'react-router'
 
-const useStyles = makeStyles({
+const { Title, Text } = Typography
+
+const styles = {
     root: {
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         justifyContent: 'center',
         alignItems: 'center',
-        alignContent: 'center',
         gap: '32px',
         height: '100%',
         flexGrow: 1,
-        alignSelf: 'center',
         padding: '32px 16px',
         maxWidth: '800px',
         margin: '0 auto',
     },
-
-    form: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px',
-        width: '100%',
+    success: {
+        color: '#52c41a',
     },
-
-    formField: {
-        flexGrow: 1,
+    error: {
+        color: '#ff4d4f',
     },
-
-    row: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-    },
-
-    successText: {
-        color: 'var(--colorPaletteGreenForeground1)',
-    },
-
-    errorText: {
-        color: 'var(--colorPaletteRedForeground1)',
-    },
-
     submitButton: {
-        margin: "auto"
+        margin: 'auto',
     },
-
     loadingContainer: {
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         alignItems: 'center',
         gap: '16px',
-    }
-})
+    },
+}
 
 function Profile() {
-    const classes = useStyles()
+    const [form] = Form.useForm()
     const { email, isAuthenticated } = useAuthStore()
     const { data: worldData } = useQuery({
         queryKey: ['worldData'],
@@ -83,7 +62,7 @@ function Profile() {
     const isAdmin = effectiveRoles.includes(Role.ADMIN)
     const roleOptions = RoleOptions.filter(({ value }) => isAdmin || value !== Role.ADMIN)
     
-    const [form, setForm] = useState<UserRequestDto>({
+    const [formData, setFormData] = useState<UserRequestDto>({
         email: email || '',
         name: '',
         role: 'USER',
@@ -96,31 +75,6 @@ function Profile() {
         academicStatus: '',
     })
 
-    const roleLabel = roleOptions.find(({ value }) => value === form.role)?.label || ''
-    const genderLabel = (() => {
-        if (!form.gender) return ''
-        switch (form.gender) {
-            case Gender.MALE: return 'Nam'
-            case Gender.FEMALE: return 'Nữ'
-            case Gender.OTHER: return 'Khác'
-            default: return ''
-        }
-    })()
-    const nationalityLabel = form.nationality ? worldData?.find(c => c.alpha2 === form.nationality)?.name || '' : ''
-    const institutionLabel = form.institutionId ? institutions.find(i => i.id === form.institutionId)?.name || '' : ''
-    const trackLabel = form.trackId ? tracks.find(t => t.id === form.trackId)?.name || '' : ''
-    const academicStatusLabel = (() => {
-        switch (form.academicStatus) {
-            case AcademicStatus.GSTS: return 'Giáo sư - Tiến sĩ'
-            case AcademicStatus.PGSTS: return 'Phó giáo sư - Tiến sĩ'
-            case AcademicStatus.TS: return 'Tiến sĩ'
-            case AcademicStatus.THS: return 'Thạc sĩ'
-            case AcademicStatus.CN: return 'Cử nhân'
-            default: return ''
-        }
-    })()
-
-    // Additional form fields not in UserRequestDto
     const [additionalFields, setAdditionalFields] = useState({
         firstName: '',
         lastName: '',
@@ -128,7 +82,6 @@ function Profile() {
         dateOfBirth: '',
     })
 
-    // Populate form with current user data
     useEffect(() => {
         if (currentUser) {
             const nameParts = currentUser.name.split(' ')
@@ -137,7 +90,7 @@ function Profile() {
 
             const primaryRole = (currentUser.roles && currentUser.roles[0]) || currentUser.role
 
-            setForm({
+            setFormData({
                 email: currentUser.email,
                 name: currentUser.name,
                 role: (primaryRole as RoleType) || Role.USER,
@@ -153,229 +106,224 @@ function Profile() {
             setAdditionalFields({
                 firstName,
                 lastName,
-                phoneNumber: '', // Add if available in UserDto
-                dateOfBirth: '', // Add if available in UserDto
+                phoneNumber: '',
+                dateOfBirth: '',
             })
         }
     }, [currentUser])
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSubmit = () => {
         if (currentUser?.id) {
-            updateUser.mutate({ id: currentUser.id, data: form })
+            updateUser.mutate({ id: currentUser.id, data: formData })
         }
     }
 
     const handleFirstNameChange = (value: string) => {
         setAdditionalFields({ ...additionalFields, firstName: value })
-        setForm({ ...form, name: `${additionalFields.lastName} ${value}`.trim() })
+        setFormData({ ...formData, name: `${additionalFields.lastName} ${value}`.trim() })
     }
 
     const handleLastNameChange = (value: string) => {
         setAdditionalFields({ ...additionalFields, lastName: value })
-        setForm({ ...form, name: `${value} ${additionalFields.firstName}`.trim() })
+        setFormData({ ...formData, name: `${value} ${additionalFields.firstName}`.trim() })
     }
 
     document.title = "Thông tin cá nhân - Research Review"
 
-    // Redirect if not authenticated
     if (!isAuthenticated) {
-        return <Navigate to="/sign-in" replace />
+        return <Navigate to="/signin" replace />
     }
 
-    // Loading state
     if (userLoading) {
         return (
-            <div className={classes.root}>
-                <div className={classes.loadingContainer}>
-                    <Spinner size="large" label="Đang tải thông tin..." />
+            <div style={styles.root}>
+                <div style={styles.loadingContainer}>
+                    <Spin size="large" tip="Đang tải thông tin..." />
                 </div>
             </div>
         )
     }
 
     return (
-        <div className={classes.root}>
-            <Text as="h1" size={500} weight={"bold"}>Thông tin cá nhân</Text>
+        <div style={styles.root}>
+            <Title level={1}>Thông tin cá nhân</Title>
             
             {updateUser.isSuccess && (
-                <Text className={classes.successText}>Cập nhật thông tin thành công!</Text>
+                <Text style={styles.success}>Cập nhật thông tin thành công!</Text>
             )}
             {updateUser.isError && (
-                <Text className={classes.errorText}>Có lỗi xảy ra khi cập nhật thông tin</Text>
+                <Text style={styles.error}>Có lỗi xảy ra khi cập nhật thông tin</Text>
             )}
 
-            <form className={classes.form} onSubmit={handleSubmit}>
-                <Field label={"Email"} required hint={"Email đã đăng ký, không thay đổi"} className={classes.formField}>
+            <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ width: '100%' }}>
+                <Form.Item label="Email" required>
                     <Input 
-                        contentBefore={<Mail16Regular />} 
+                        prefix={<MailOutlined />}
                         placeholder='email@example.com' 
                         disabled 
-                        value={form.email} 
+                        value={formData.email} 
                     />
-                </Field>
-                <div className={classes.row}>
-                    <Field label={"Họ"} required hint={"Họ và tên đệm, ví dụ Nguyễn Văn"} className={classes.formField}>
-                        <Input 
-                            placeholder='VD: Nguyễn Văn' 
-                            value={additionalFields.lastName}
-                            onChange={(e) => handleLastNameChange(e.target.value)}
-                            required
-                        />
-                    </Field>
-                    <Field label={"Tên"} required hint={"Tên của bạn, ví dụ A"} className={classes.formField}>
-                        <Input 
-                            placeholder='VD: A' 
-                            value={additionalFields.firstName}
-                            onChange={(e) => handleFirstNameChange(e.target.value)}
-                            required
-                        />
-                    </Field>
-                </div>
-                <div className={classes.row}>
-                    <Field label={"Số điện thoại"} hint={"Số điện thoại 10 số"} className={classes.formField}>
-                        <Input 
-                            placeholder='VD: 0123456789' 
-                            value={additionalFields.phoneNumber}
-                            onChange={(e) => setAdditionalFields({ ...additionalFields, phoneNumber: e.target.value })}
-                            type='tel'
-                        />
-                    </Field>
-                    <Field label={"Ngày tháng năm sinh"} hint={"Ngày tháng năm sinh của bạn"} className={classes.formField}>
-                        <Input 
-                            placeholder='VD: 01/01/2000' 
-                            value={additionalFields.dateOfBirth}
-                            onChange={(e) => setAdditionalFields({ ...additionalFields, dateOfBirth: e.target.value })}
-                            type='date'
-                        />
-                    </Field>
-                </div>
-                <div className={classes.row}>
-                    <Field label={"Loại tài khoản"} required hint={"Chọn loại tài khoản của bạn"} className={classes.formField}>
-                        <Combobox
-                            placeholder='Loại tài khoản'
-                            selectedOptions={form.role ? [form.role] : []}
-                            value={roleLabel}
-                            freeform={false}
-                            onOptionSelect={(_e, data) => setForm({ ...form, role: (data.optionValue as RoleType) || Role.USER })}
-                            required
-                            disabled={!isAdmin}
-                        >
-                            {roleOptions.map(({ value, label }) => (
-                                <Option key={value} value={value}>
-                                    {label}
-                                </Option>
-                            ))}
-                        </Combobox>
-                    </Field>
-                    <Field label={"Giới tính"} required hint={"Giới tính của bạn"} className={classes.formField}>
-                        <Combobox
-                            placeholder='Giới tính của bạn'
-                            selectedOptions={form.gender ? [form.gender] : []}
-                            value={genderLabel}
-                            freeform={false}
-                            onOptionSelect={(_e, data) => setForm({ ...form, gender: (data.optionValue as string) || '' })}
-                            required
-                        >
-                            <Option value={Gender.MALE}>Nam</Option>
-                            <Option value={Gender.FEMALE}>Nữ</Option>
-                            <Option value={Gender.OTHER}>Khác</Option>
-                        </Combobox>
-                    </Field>
-                    <Field label={"Quốc tịch"} required hint={"Quốc tịch của bạn"} className={classes.formField}>
-                        <Combobox
-                            placeholder='Quốc tịch của bạn'
-                            selectedOptions={form.nationality ? [form.nationality] : []}
-                            value={nationalityLabel}
-                            freeform={false}
-                            onOptionSelect={(_e, data) => setForm({ ...form, nationality: (data.optionValue as string) || '' })}
-                            required
-                        >
-                            {
-                                worldData?.map((data) => (
-                                    <Option key={data.alpha2} value={data.alpha2}>{data.name}</Option>
-                                ))
-                            }
-                        </Combobox>
-                    </Field>
-                </div>
+                </Form.Item>
+                <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item label="Họ" required tooltip="Họ và tên đệm, ví dụ Nguyễn Văn">
+                            <Input 
+                                placeholder='VD: Nguyễn Văn' 
+                                value={additionalFields.lastName}
+                                onChange={(e) => handleLastNameChange(e.target.value)}
+                                required
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                        <Form.Item label="Tên" required tooltip="Tên của bạn, ví dụ A">
+                            <Input 
+                                placeholder='VD: A' 
+                                value={additionalFields.firstName}
+                                onChange={(e) => handleFirstNameChange(e.target.value)}
+                                required
+                            />
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item label="Số điện thoại" tooltip="Số điện thoại 10 số">
+                            <Input 
+                                placeholder='VD: 0123456789' 
+                                value={additionalFields.phoneNumber}
+                                onChange={(e) => setAdditionalFields({ ...additionalFields, phoneNumber: e.target.value })}
+                                type='tel'
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                        <Form.Item label="Ngày tháng năm sinh" tooltip="Ngày tháng năm sinh của bạn">
+                            <Input 
+                                placeholder='VD: 01/01/2000' 
+                                value={additionalFields.dateOfBirth}
+                                onChange={(e) => setAdditionalFields({ ...additionalFields, dateOfBirth: e.target.value })}
+                                type='date'
+                            />
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item label="Loại tài khoản" required tooltip="Chọn loại tài khoản của bạn">
+                            <Select
+                                placeholder='Loại tài khoản'
+                                value={formData.role || undefined}
+                                onChange={(value) => setFormData({ ...formData, role: value as RoleType })}
+                                disabled={!isAdmin}
+                                options={roleOptions.map(({ value, label }) => ({
+                                    value,
+                                    label
+                                }))}
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item label="Giới tính" required tooltip="Giới tính của bạn">
+                            <Select
+                                placeholder='Giới tính của bạn'
+                                value={formData.gender || undefined}
+                                onChange={(value) => setFormData({ ...formData, gender: value })}
+                                options={[
+                                    { value: Gender.MALE, label: 'Nam' },
+                                    { value: Gender.FEMALE, label: 'Nữ' },
+                                    { value: Gender.OTHER, label: 'Khác' },
+                                ]}
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item label="Quốc tịch" required tooltip="Quốc tịch của bạn">
+                            <Select
+                                placeholder='Quốc tịch của bạn'
+                                value={formData.nationality || undefined}
+                                onChange={(value) => setFormData({ ...formData, nationality: value })}
+                                options={worldData?.map((data) => ({
+                                    value: data.alpha2,
+                                    label: data.name
+                                })) || []}
+                            />
+                        </Form.Item>
+                    </Col>
+                </Row>
                 {!isAdmin && (
-                    <div className={classes.row}>
-                        <Field label={"Nơi công tác"} required hint={"Nơi công tác của bạn"} className={classes.formField}>
-                            <Combobox
-                                placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
-                                selectedOptions={form.institutionId ? [form.institutionId] : []}
-                                value={institutionLabel}
-                                freeform={false}
-                                onOptionSelect={(_e, data) => {
-                                    const selectedInstitution = institutions.find(i => i.id === data.optionValue)
-                                    setForm({
-                                        ...form,
-                                        institutionId: (data.optionValue as string) || '',
-                                        institutionName: selectedInstitution?.name || ''
-                                    })
-                                }}
-                                disabled={institutionsLoading}
-                                required
-                            >
-                                {institutions.map((institution) => (
-                                    <Option key={institution.id} value={institution.id}>
-                                        {institution.name}
-                                    </Option>
-                                ))}
-                            </Combobox>
-                        </Field>
-                        <Field label={"Lĩnh vực nghiên cứu (Track)"} required hint={"Lĩnh vực nghiên cứu của bạn"} className={classes.formField}>
-                            <Combobox
-                                placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
-                                selectedOptions={form.trackId ? [form.trackId] : []}
-                                value={trackLabel}
-                                freeform={false}
-                                onOptionSelect={(_e, data) => setForm({ ...form, trackId: (data.optionValue as string) || '' })}
-                                disabled={tracksLoading}
-                                required
-                            >
-                                {tracks.filter(track => track.isActive).map((track) => (
-                                    <Option key={track.id} value={track.id}>
-                                        {track.name}
-                                    </Option>
-                                ))}
-                            </Combobox>
-                        </Field>
-                    </div>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Nơi công tác" required tooltip="Nơi công tác của bạn">
+                                <Select
+                                    placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
+                                    value={formData.institutionId || undefined}
+                                    onChange={(value) => {
+                                        const selectedInstitution = institutions.find(i => i.id === value)
+                                        setFormData({
+                                            ...formData,
+                                            institutionId: value,
+                                            institutionName: selectedInstitution?.name || ''
+                                        })
+                                    }}
+                                    loading={institutionsLoading}
+                                    disabled={institutionsLoading}
+                                    options={institutions.map((institution) => ({
+                                        value: institution.id,
+                                        label: institution.name
+                                    }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Lĩnh vực nghiên cứu (Track)" required tooltip="Lĩnh vực nghiên cứu của bạn">
+                                <Select
+                                    placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
+                                    value={formData.trackId || undefined}
+                                    onChange={(value) => setFormData({ ...formData, trackId: value })}
+                                    loading={tracksLoading}
+                                    disabled={tracksLoading}
+                                    options={tracks.filter(track => track.isActive).map((track) => ({
+                                        value: track.id,
+                                        label: track.name
+                                    }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                 )}
                 {!isAdmin && (
-                    <div className={classes.row}>
-                        <Field label={"Học hàm, học vị"} required hint={"Học hàm, học vị của bạn"} className={classes.formField}>
-                            <Combobox
-                                placeholder='Học hàm, học vị của bạn'
-                                selectedOptions={form.academicStatus ? [form.academicStatus] : []}
-                                value={academicStatusLabel}
-                                freeform={false}
-                                onOptionSelect={(_e, data) => setForm({ ...form, academicStatus: (data.optionValue as string) || '' })}
-                                required
-                            >
-                                <Option value={AcademicStatus.GSTS}>Giáo sư - Tiến sĩ</Option>
-                                <Option value={AcademicStatus.PGSTS}>Phó giáo sư - Tiến sĩ</Option>
-                                <Option value={AcademicStatus.TS}>Tiến sĩ</Option>
-                                <Option value={AcademicStatus.THS}>Thạc sĩ</Option>
-                                <Option value={AcademicStatus.CN}>Cử nhân</Option>
-                            </Combobox>
-                        </Field>
-                    </div>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Học hàm, học vị" required tooltip="Học hàm, học vị của bạn">
+                                <Select
+                                    placeholder='Học hàm, học vị của bạn'
+                                    value={formData.academicStatus || undefined}
+                                    onChange={(value) => setFormData({ ...formData, academicStatus: value })}
+                                    options={[
+                                        { value: AcademicStatus.GSTS, label: 'Giáo sư - Tiến sĩ' },
+                                        { value: AcademicStatus.PGSTS, label: 'Phó giáo sư - Tiến sĩ' },
+                                        { value: AcademicStatus.TS, label: 'Tiến sĩ' },
+                                        { value: AcademicStatus.THS, label: 'Thạc sĩ' },
+                                        { value: AcademicStatus.CN, label: 'Cử nhân' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                 )}
 
-                <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginTop: '24px' }}>
                     <Button 
-                        appearance="primary" 
-                        type="submit" 
-                        className={classes.submitButton}
-                        disabled={updateUser.isPending}
+                        type="primary" 
+                        htmlType="submit"
+                        style={styles.submitButton}
+                        loading={updateUser.isPending}
                     >
                         {updateUser.isPending ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
                     </Button>
                 </div>
-            </form>
+            </Form>
         </div>
     )
 }

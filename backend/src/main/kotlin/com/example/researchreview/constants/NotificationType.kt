@@ -3,6 +3,7 @@ package com.example.researchreview.constants
 enum class NotificationType {
     ARTICLE_SUBMITTED,
     ARTICLE_STATUS_CHANGED,
+    REVIEW_THRESHOLD_REACHED,
     REVIEWER_INVITED,
     REVIEWER_REVOKED,
     COMMENT_ACTIVITY,

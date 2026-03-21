@@ -1,6 +1,7 @@
 package com.example.researchreview.dtos
 
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotEmpty
 
 data class ArticleRequestDto (
     var id: String? = null,
@@ -15,8 +16,15 @@ data class ArticleRequestDto (
 
     var link: String = "",
 
+    @field:NotBlank(message = "Conference is required")
+    var conferenceId: String = "",
+
     @field:NotBlank(message = "Track is required")
     var trackId: String = "",
+
+    @field:NotEmpty(message = "At least one topic is required")
+    var topicIds: List<String> = emptyList(),
+
     var trackName: String? = null, // can be used for searching
     var authors: List<AuthorDto> = emptyList()
 )

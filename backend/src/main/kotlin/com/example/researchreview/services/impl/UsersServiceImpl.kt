@@ -1,10 +1,12 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.AccountStatus
+import com.example.researchreview.constants.ConferenceMembershipRole
 import com.example.researchreview.constants.Role
 import com.example.researchreview.constants.AcademicStatus
 import com.example.researchreview.constants.Gender
 import com.example.researchreview.dtos.AdminCreateUserRequestDto
+import com.example.researchreview.dtos.ConferenceMembershipDto
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.UserRequestDto
 import com.example.researchreview.dtos.UserSearchRequestDto
@@ -17,6 +19,7 @@ import com.example.researchreview.repositories.InstitutionRepository
 import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.repositories.UserRepository
 import com.example.researchreview.repositories.TrackRepository
+import com.example.researchreview.repositories.UserConferenceMembershipRepository
 import com.example.researchreview.services.ReviewerInviteService
 import com.example.researchreview.services.UsersService
 import org.springframework.data.domain.Page
@@ -31,6 +34,7 @@ class UsersServiceImpl(
     private val trackRepository: TrackRepository,
     private val editorRepository: EditorRepository,
     private val reviewerRepository: ReviewerRepository,
+    private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
     private val reviewerInviteService: ReviewerInviteService
 ): UsersService {
 
@@ -135,39 +139,32 @@ class UsersServiceImpl(
         status: String?,
         pageable: Pageable
     ): Page<UserDto> {
+        val normalizedRole = role?.trim()?.takeIf { it.isNotBlank() }
+        val normalizedStatus = status?.trim()?.takeIf { it.isNotBlank() }
+
         val roleOrdinal = try {
-            if (role.isNullOrBlank()) null else Role.valueOf(role).value.toInt()
+            if (normalizedRole == null) null else Role.valueOf(normalizedRole).value.toInt()
         } catch (_: Exception) {
             null
         }
 
         val statusOrdinal = try {
-            if (status.isNullOrBlank()) null else AccountStatus.valueOf(status).value.toInt()
+            if (normalizedStatus == null) null else AccountStatus.valueOf(normalizedStatus).value.toInt()
         } catch (_: Exception) {
             null
         }
-
-        val dto = UserSearchRequestDto(
-            name = name,
-            email = email,
-            institutionName = institutionName,
-            role = role,
-            roleOrdinal = roleOrdinal,
-            status = status,
-            statusOrdinal = statusOrdinal
-        )
-        // Prepare LIKE patterns; keep null when filter not provided so query short-circuits
-        val emailPattern = email?.lowercase()?.let { "%$it%" }
-        val namePattern = name?.lowercase()?.let { "%$it%" }
-        val institutionPattern = institutionName?.lowercase()?.let { "%$it%" }
+        // Prepare prefix tsquery terms; keep null when filter not provided so query short-circuits
+        val emailQuery = toPrefixTsQuery(email)
+        val nameQuery = toPrefixTsQuery(name)
+        val institutionQuery = toPrefixTsQuery(institutionName)
 
         val users = userRepository.search(
-            emailPattern = emailPattern,
-            namePattern = namePattern,
-            institutionPattern = institutionPattern,
-            role = role,
+            emailQuery = emailQuery,
+            nameQuery = nameQuery,
+            institutionQuery = institutionQuery,
+            role = normalizedRole,
             roleOrdinal = roleOrdinal,
-            status = status,
+            status = normalizedStatus,
             statusOrdinal = statusOrdinal,
             pageable = pageable
         )
@@ -333,6 +330,7 @@ class UsersServiceImpl(
     }
 
     private fun toDto(user: com.example.researchreview.entities.User): UserDto {
+        val memberships = userConferenceMembershipRepository.findAllByUserIdAndDeletedFalse(user.id)
         return UserDto(
             id = user.id,
             name = user.name,
@@ -362,6 +360,19 @@ class UsersServiceImpl(
                     updatedBy = it.updatedBy
                 )
             },
+            conferences = memberships.map {
+                ConferenceMembershipDto(
+                    id = it.id,
+                    userId = user.id,
+                    userName = user.name,
+                    userEmail = user.email,
+                    conferenceId = it.conference.id,
+                    conferenceName = it.conference.name,
+                    membershipRole = it.membershipRole,
+                    createdAt = it.createdAt,
+                    updatedAt = it.updatedAt,
+                )
+            },
             gender = user.gender,
             nationality = user.nationality,
             academicStatus = user.academicStatus,
@@ -381,6 +392,18 @@ class UsersServiceImpl(
             ur.role = r
             user.roles.add(ur)
         }
+    }
+
+    private fun toPrefixTsQuery(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val normalized = raw
+            .trim()
+            .lowercase()
+            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+        if (normalized.isEmpty()) return null
+        return normalized.joinToString(" & ") { "$it:*" }
     }
 
     private fun toEntity(dto: UserRequestDto): com.example.researchreview.entities.User {

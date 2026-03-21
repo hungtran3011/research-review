@@ -3,9 +3,9 @@ package com.example.researchreview.controllers
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.ReviewerInviteDecisionDto
 import com.example.researchreview.dtos.ReviewerInviteResolveDto
-import com.example.researchreview.constants.SpecialErrorCode
 import com.example.researchreview.services.ReviewerInviteDecisionService
 import com.example.researchreview.services.ReviewerInviteService
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -33,7 +33,7 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Invalid token",
@@ -41,9 +41,9 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = "Internal server error: ${e.message}",
                     data = null
                 )
@@ -64,7 +64,7 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Failed to accept invitation",
@@ -87,7 +87,7 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
                     message = e.message ?: "Failed to decline invitation",

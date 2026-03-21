@@ -31,12 +31,14 @@ import { CommentStatus } from '../../constants'
 import type { CommentStatusType } from '../../constants'
 import { ArticleStatus } from '../../constants'
 import { useParams } from 'react-router'
-import { useArticle, useRequestReviewApprove, useRequestReviewReject, useRequestRevisions } from '../../hooks/useArticles'
+import { useArticle } from '../../hooks/useArticles'
 import { useArticleComments, useCreateComment, useUpdateCommentStatus } from '../../hooks/useComments'
 import { useReplyComment } from '../../hooks/useComments'
 import { useAuthStore } from '../../stores/authStore'
 import { useCurrentUser } from '../../hooks/useUser'
 import { Spinner } from '@fluentui/react-components'
+import { useMyStructuredReview, useSubmitStructuredReview } from '../../hooks/useStructuredReviews'
+import { ReviewRecommendation } from '../../models'
 import { attachmentService } from '../../services/attachment.service'
 import { AttachmentKind } from '../../constants/attachment-kind'
 import { AttachmentStatus } from '../../constants/attachment-status'
@@ -269,6 +271,25 @@ const useStyles = makeStyles({
             display: 'none',
         },
     },
+    structuredForm: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+    },
+    scoreRow: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 90px',
+        alignItems: 'center',
+        gap: '8px',
+    },
+    numberInput: {
+        width: '90px',
+        padding: '6px 8px',
+        border: `1px solid ${tokens.colorNeutralStroke1}`,
+        borderRadius: '6px',
+        backgroundColor: tokens.colorNeutralBackground1,
+        color: tokens.colorNeutralForeground1,
+    },
 })
 
 type CommentItem = {
@@ -306,9 +327,9 @@ function ReviewArticle() {
     const { mutate: createComment, isPending: isCreatingComment } = useCreateComment(safeArticleId)
     const { mutate: updateCommentStatus, isPending: isUpdatingCommentStatus } = useUpdateCommentStatus(safeArticleId)
     const { mutate: replyToComment, isPending: isReplying } = useReplyComment(safeArticleId)
-    const { mutate: requestReviewApprove, isPending: isRequestingApprove } = useRequestReviewApprove(safeArticleId)
-    const { mutate: requestReviewReject, isPending: isRequestingReject } = useRequestReviewReject(safeArticleId)
-    const { mutate: requestRevisions, isPending: isRequestingRevisions } = useRequestRevisions(safeArticleId)
+    const { data: myStructuredReviewResponse } = useMyStructuredReview(articleId, !!articleId)
+    const { mutate: submitStructuredReview, isPending: isSubmittingStructuredReview } = useSubmitStructuredReview(safeArticleId)
+    const myStructuredReview = myStructuredReviewResponse?.data
     const { data: currentUserData } = useCurrentUser()
     const currentUserId = currentUserData?.data?.id
     const currentUserName = currentUserData?.data?.name
@@ -330,6 +351,17 @@ function ReviewArticle() {
     const [isTocVisible, setIsTocVisible] = useState<boolean>(true)
     const [isCommentsVisible, setIsCommentsVisible] = useState<boolean>(true)
     const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 1024)
+    const [isStructuredDialogOpen, setIsStructuredDialogOpen] = useState(false)
+    const [structuredRecommendation, setStructuredRecommendation] = useState<keyof typeof ReviewRecommendation>('BORDERLINE')
+    const [structuredSummary, setStructuredSummary] = useState('')
+    const [structuredConfidentialRemarks, setStructuredConfidentialRemarks] = useState('')
+    const [structuredScores, setStructuredScores] = useState<Record<string, number>>({
+        originality: 6,
+        technical_quality: 6,
+        clarity: 6,
+        relevance: 6,
+        overall: 6,
+    })
 
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
@@ -384,6 +416,73 @@ function ReviewArticle() {
     const displayAuthorName = useCallback((comment: { authorName: string; createdBy?: string | null; authorId?: string | null }) => {
         return isMyComment(comment) ? 'Bạn' : comment.authorName
     }, [isMyComment])
+
+    const isStructuredReviewSubmitted = !!myStructuredReview?.submittedAt
+
+    useEffect(() => {
+        if (!myStructuredReview) return
+
+        setStructuredRecommendation(myStructuredReview.recommendation)
+        setStructuredSummary(myStructuredReview.summaryNotes ?? '')
+        setStructuredConfidentialRemarks(myStructuredReview.confidentialRemarks ?? '')
+        const nextScores: Record<string, number> = {
+            originality: 6,
+            technical_quality: 6,
+            clarity: 6,
+            relevance: 6,
+            overall: 6,
+        }
+        myStructuredReview.scores.forEach((item) => {
+            nextScores[item.criterion] = item.score
+        })
+        setStructuredScores(nextScores)
+    }, [myStructuredReview])
+
+    const setScore = useCallback((criterion: string, nextValue: number) => {
+        const bounded = Math.max(1, Math.min(10, nextValue))
+        setStructuredScores((prev) => ({ ...prev, [criterion]: bounded }))
+    }, [])
+
+    const submitStructuredForm = useCallback((finalSubmit: boolean) => {
+        if (!article || article.status !== ArticleStatus.IN_REVIEW) return
+        if (finalSubmit && isStructuredReviewSubmitted) return
+        if (!structuredSummary.trim()) {
+            window.alert('Vui lòng nhập tóm tắt phản biện.')
+            return
+        }
+
+        submitStructuredReview({
+            recommendation: structuredRecommendation,
+            summaryNotes: structuredSummary.trim(),
+            finalSubmit,
+            confidentialRemarks: structuredConfidentialRemarks.trim() || null,
+            scores: [
+                { criterion: 'originality', score: structuredScores.originality },
+                { criterion: 'technical_quality', score: structuredScores.technical_quality },
+                { criterion: 'clarity', score: structuredScores.clarity },
+                { criterion: 'relevance', score: structuredScores.relevance },
+                { criterion: 'overall', score: structuredScores.overall },
+            ],
+        }, {
+            onSuccess: () => {
+                if (finalSubmit) {
+                    setIsStructuredDialogOpen(false)
+                }
+            },
+        })
+    }, [
+        article,
+        isStructuredReviewSubmitted,
+        structuredConfidentialRemarks,
+        structuredRecommendation,
+        structuredScores.clarity,
+        structuredScores.originality,
+        structuredScores.overall,
+        structuredScores.relevance,
+        structuredScores.technical_quality,
+        structuredSummary,
+        submitStructuredReview,
+    ])
 
     const handleReplyToThread = (threadId: string) => {
         if (!replyText.trim() || !articleId) return
@@ -1097,64 +1196,23 @@ function ReviewArticle() {
                     </Button>
                     <Button
                         appearance="secondary"
-                        icon={<CheckmarkRegular />}
-                        disabled={
-                            isRequestingApprove ||
-                            isRequestingReject ||
-                            isRequestingRevisions ||
-                            isArticleLoading ||
-                            !article ||
-                            article.status !== ArticleStatus.IN_REVIEW
-                        }
-                        onClick={() => {
-                            if (!article || article.status !== ArticleStatus.IN_REVIEW) return
-                            const ok = window.confirm('Gửi đề nghị chấp thuận bài báo tới ban biên tập?')
-                            if (!ok) return
-                            requestReviewApprove()
-                        }}
-                    >
-                        {isRequestingApprove ? 'Đang gửi...' : 'Đề nghị chấp thuận'}
-                    </Button>
-                    <Button
-                        appearance="secondary"
                         icon={<DocumentRegular />}
                         disabled={
-                            isRequestingApprove ||
-                            isRequestingReject ||
-                            isRequestingRevisions ||
+                            isSubmittingStructuredReview ||
                             isArticleLoading ||
                             !article ||
-                            article.status !== ArticleStatus.IN_REVIEW
+                            article.status !== ArticleStatus.IN_REVIEW ||
+                            isStructuredReviewSubmitted
                         }
-                        onClick={() => {
-                            if (!article || article.status !== ArticleStatus.IN_REVIEW) return
-                            const ok = window.confirm('Yêu cầu tác giả sửa chữa và nộp lại bản sửa?')
-                            if (!ok) return
-                            requestRevisions()
-                        }}
+                        onClick={() => setIsStructuredDialogOpen(true)}
                     >
-                        {isRequestingRevisions ? 'Đang gửi...' : 'Yêu cầu sửa chữa'}
+                        {isStructuredReviewSubmitted ? 'Đã nộp phản biện' : 'Mẫu phản biện cấu trúc'}
                     </Button>
-                    <Button
-                        appearance="secondary"
-                        icon={<DismissRegular />}
-                        disabled={
-                            isRequestingApprove ||
-                            isRequestingReject ||
-                            isRequestingRevisions ||
-                            isArticleLoading ||
-                            !article ||
-                            article.status !== ArticleStatus.IN_REVIEW
-                        }
-                        onClick={() => {
-                            if (!article || article.status !== ArticleStatus.IN_REVIEW) return
-                            const ok = window.confirm('Gửi yêu cầu loại bỏ bài báo tới ban biên tập?')
-                            if (!ok) return
-                            requestReviewReject()
-                        }}
-                    >
-                        {isRequestingReject ? 'Đang gửi...' : 'Yêu cầu loại bỏ'}
-                    </Button>
+                    {myStructuredReview?.submittedAt && (
+                        <Text size={200}>
+                            Đã nộp lúc {new Date(myStructuredReview.submittedAt).toLocaleString('vi-VN')}
+                        </Text>
+                    )}
                     <Button
                         className={classes.commentsToggleButton}
                         appearance="subtle"
@@ -1171,6 +1229,99 @@ function ReviewArticle() {
                     jumpToPage={jumpToPage}
                     onPageChange={setCurrentPdfPage}
                 />
+
+                <Dialog open={isStructuredDialogOpen} onOpenChange={(_, data) => setIsStructuredDialogOpen(data.open)}>
+                    <DialogSurface>
+                        <DialogBody>
+                            <DialogTitle>Phản biện cấu trúc</DialogTitle>
+                            <DialogContent>
+                                <div className={classes.structuredForm}>
+                                    <Text size={200}>Điểm từ 1 đến 10 cho từng tiêu chí.</Text>
+                                    {[
+                                        { key: 'originality', label: 'Tính mới' },
+                                        { key: 'technical_quality', label: 'Chất lượng kỹ thuật' },
+                                        { key: 'clarity', label: 'Độ rõ ràng' },
+                                        { key: 'relevance', label: 'Mức độ liên quan' },
+                                        { key: 'overall', label: 'Tổng thể' },
+                                    ].map((criterion) => (
+                                        <div key={criterion.key} className={classes.scoreRow}>
+                                            <Text>{criterion.label}</Text>
+                                            <input
+                                                className={classes.numberInput}
+                                                type="number"
+                                                min={1}
+                                                max={10}
+                                                step={1}
+                                                value={structuredScores[criterion.key] ?? 6}
+                                                onChange={(event) => setScore(criterion.key, Number(event.target.value))}
+                                                disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <Text>Khuyến nghị</Text>
+                                    <Dropdown
+                                        value={structuredRecommendation}
+                                        selectedOptions={[structuredRecommendation]}
+                                        onOptionSelect={(_, data) => {
+                                            const nextValue = data.optionValue as keyof typeof ReviewRecommendation | undefined
+                                            if (!nextValue) return
+                                            setStructuredRecommendation(nextValue)
+                                        }}
+                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                    >
+                                        {Object.keys(ReviewRecommendation).map((value) => (
+                                            <Option key={value} value={value}>
+                                                {value}
+                                            </Option>
+                                        ))}
+                                    </Dropdown>
+
+                                    <Text>Tóm tắt phản biện</Text>
+                                    <Textarea
+                                        value={structuredSummary}
+                                        onChange={(_, data) => setStructuredSummary(data.value)}
+                                        placeholder="Nêu nhận định tổng quan về bài báo"
+                                        resize="vertical"
+                                        rows={4}
+                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                    />
+
+                                    <Text>Ghi chú bảo mật (chỉ chair thấy)</Text>
+                                    <Textarea
+                                        value={structuredConfidentialRemarks}
+                                        onChange={(_, data) => setStructuredConfidentialRemarks(data.value)}
+                                        placeholder="Nhận xét nội bộ cho chair (tùy chọn)"
+                                        resize="vertical"
+                                        rows={3}
+                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                    />
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                        <Button appearance="subtle" onClick={() => setIsStructuredDialogOpen(false)}>
+                                            Đóng
+                                        </Button>
+                                        <Button
+                                            appearance="secondary"
+                                            onClick={() => submitStructuredForm(false)}
+                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        >
+                                            Lưu nháp
+                                        </Button>
+                                        <Button
+                                            appearance="primary"
+                                            icon={<CheckmarkRegular />}
+                                            onClick={() => submitStructuredForm(true)}
+                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        >
+                                            {isSubmittingStructuredReview ? 'Đang gửi...' : 'Nộp phản biện'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </DialogBody>
+                    </DialogSurface>
+                </Dialog>
             </div>
 
             {/* Comments Section - Desktop */}

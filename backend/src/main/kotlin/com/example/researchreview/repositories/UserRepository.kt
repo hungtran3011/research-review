@@ -1,6 +1,5 @@
 package com.example.researchreview.repositories
 
-import com.example.researchreview.dtos.UserSearchRequestDto
 import com.example.researchreview.entities.User
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -13,9 +12,9 @@ interface UserRepository: JpaRepository<User, String> {
             "left join institution i on i.id = u.institution_id " +
             "left join user_roles ur on ur.user_id = u.id " +
             "WHERE u.deleted = false " +
-            "and (:emailPattern IS NULL OR LOWER(u.email) LIKE :emailPattern) " +
-            "and (:namePattern IS NULL OR LOWER(u.name) LIKE :namePattern) " +
-            "and (:institutionPattern IS NULL OR LOWER(i.name) LIKE :institutionPattern) " +
+            "and (:emailQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.email), '')) @@ to_tsquery('simple', :emailQuery)) " +
+            "and (:nameQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.name), '')) @@ to_tsquery('simple', :nameQuery)) " +
+            "and (:institutionQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(i.name), '')) @@ to_tsquery('simple', :institutionQuery)) " +
             "and (:role IS NULL OR ( ( :roleOrdinal IS NOT NULL AND u.role = CAST(:roleOrdinal AS smallint) ) OR (ur.roles = :role) )) " +
             "and (:status IS NULL OR ( :statusOrdinal IS NOT NULL AND u.status = CAST(:statusOrdinal AS smallint) )) " +
             "limit :#{#pageable.pageSize} offset :#{#pageable.offset}",
@@ -23,16 +22,16 @@ interface UserRepository: JpaRepository<User, String> {
                 "left join institution i on i.id = u.institution_id " +
                 "left join user_roles ur on ur.user_id = u.id " +
                 "WHERE u.deleted = false " +
-                "and (:emailPattern IS NULL OR LOWER(u.email) LIKE :emailPattern) " +
-                "and (:namePattern IS NULL OR LOWER(u.name) LIKE :namePattern) " +
-                "and (:institutionPattern IS NULL OR LOWER(i.name) LIKE :institutionPattern) " +
+                "and (:emailQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.email), '')) @@ to_tsquery('simple', :emailQuery)) " +
+                "and (:nameQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.name), '')) @@ to_tsquery('simple', :nameQuery)) " +
+                "and (:institutionQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(i.name), '')) @@ to_tsquery('simple', :institutionQuery)) " +
                 "and (:role IS NULL OR ( ( :roleOrdinal IS NOT NULL AND u.role = CAST(:roleOrdinal AS smallint) ) OR (ur.roles = :role) )) " +
                 "and (:status IS NULL OR ( :statusOrdinal IS NOT NULL AND u.status = CAST(:statusOrdinal AS smallint) ))",
         nativeQuery = true)
     fun search(
-        emailPattern: String?,
-        namePattern: String?,
-        institutionPattern: String?,
+        emailQuery: String?,
+        nameQuery: String?,
+        institutionQuery: String?,
         role: String?,
         roleOrdinal: Int?,
         status: String?,

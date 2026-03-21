@@ -1,5 +1,6 @@
 // import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import 'antd/dist/reset.css'
 import './index.css'
 import App from './App.tsx'
 import { BrowserRouter, Route, Routes } from 'react-router'
@@ -23,6 +24,8 @@ import ProtectedRoute from './components/common/ProtectedRoute.tsx'
 import Unauthorized from './components/common/Unauthorized.tsx'
 import UserManagement from './components/admin/UserManagement.tsx'
 import TrackManagement from './components/admin/TrackManagement.tsx'
+import ConferenceManagement from './components/admin/ConferenceManagement.tsx'
+import TopicManagement from './components/admin/TopicManagement.tsx'
 import InstitutionManagement from './components/admin/InstitutionManagement.tsx'
 import AdminLayout from './components/admin/AdminLayout.tsx'
 import PublicOnlyRoute from './components/common/PublicOnlyRoute.tsx'
@@ -96,7 +99,9 @@ createRoot(document.getElementById('root')!).render(
             }
           >
             <Route path='users' element={<UserManagement />} />
+            <Route path='conferences' element={<ConferenceManagement />} />
             <Route path='tracks' element={<TrackManagement />} />
+            <Route path='topics' element={<TopicManagement />} />
             <Route path='institutions' element={<InstitutionManagement />} />
           </Route>
           <Route path='/unauthorized' element={<Unauthorized />} />

@@ -5,5 +5,6 @@ enum class Role(val value: Byte){
     USER(1),
     EDITOR(2),
     RESEARCHER(3),
-    REVIEWER(4)
+    REVIEWER(4),
+    CHAIR(5)
 }

@@ -1,6 +1,7 @@
 package com.example.researchreview.entities
 
 import jakarta.persistence.Entity
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
@@ -9,4 +10,8 @@ class Track: BaseEntity() {
     var name: String = ""
     var description: String? = "";
     var isActive: Boolean = true;
+    var reviewPolicyMinCompletedReviews: Int? = null
+
+    @ManyToOne
+    var conference: Conference? = null
 }

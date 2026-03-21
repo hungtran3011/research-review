@@ -20,8 +20,7 @@ interface ArticlesService {
     fun reject(id: String)
     fun approve(id: String)
     fun getReviewers(id: String): List<ReviewerDto>
-    fun requestRejection(id: String): ArticleDto
-    fun requestApproval(id: String): ArticleDto
+    fun markReviewsCompleted(id: String): ArticleDto
     fun requestRevisions(id: String): ArticleDto
     fun initialReview(articleId: String, request: InitialReviewRequestDto): ArticleDto
     fun updateLink(id: String, link: String): ArticleDto

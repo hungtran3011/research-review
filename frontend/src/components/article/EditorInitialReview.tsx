@@ -1,32 +1,12 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
+import { Button, Typography, Input, Modal, Radio, Select, Spin, Form } from 'antd'
 import {
-    makeStyles,
-    Button,
-    Text,
-    Textarea,
-    Dialog,
-    DialogTrigger,
-    DialogSurface,
-    DialogTitle,
-    DialogBody,
-    DialogActions,
-    DialogContent,
-    tokens,
-    Spinner,
-    Combobox,
-    Option,
-    Field,
-    Input,
-    RadioGroup,
-    Radio,
-} from '@fluentui/react-components'
-import {
-    CheckmarkCircleRegular,
-    DismissCircleRegular,
-    NavigationRegular,
-    PanelLeftContractRegular,
-    PanelLeftExpandRegular,
-} from '@fluentui/react-icons'
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    MenuOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
+} from '@ant-design/icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
 import { useParams, useNavigate } from 'react-router'
@@ -37,144 +17,82 @@ import { articleService } from '../../services/article.service'
 import { useBasicToast } from '../../hooks/useBasicToast'
 import { InitialReviewDecision, ArticleStatus } from '../../constants'
 
-const useStyles = makeStyles({
+const { Text } = Typography
+
+const styles = {
     root: {
         display: 'flex',
         height: 'calc(100vh - 64px)',
         width: '100%',
         overflow: 'hidden',
-        flexDirection: 'row',
-        position: 'relative',
-        '@media (max-width: 1024px)': {
-            flexDirection: 'column',
-        },
+        flexDirection: 'row' as const,
+        position: 'relative' as const,
     },
-    // Table of Contents Section
     tocSection: {
         width: '280px',
         flexShrink: 0,
-        borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+        borderRight: '1px solid #f0f0f0',
         display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: tokens.colorNeutralBackground1,
+        flexDirection: 'column' as const,
+        backgroundColor: '#ffffff',
         overflow: 'hidden',
         transition: 'transform 0.3s ease-in-out',
         zIndex: 100,
-        '@media (max-width: 1024px)': {
-            position: 'fixed',
-            left: 0,
-            top: '64px',
-            height: 'calc(100vh - 64px)',
-            zIndex: 1002,
-            boxShadow: tokens.shadow16,
-            borderRight: 'none',
-        },
     },
     tocSectionHidden: {
-        '@media (max-width: 1024px)': {
-            transform: 'translateX(-100%)',
-        },
-        '@media (min-width: 1025px)': {
-            transform: 'translateX(-100%)',
-        },
+        transform: 'translateX(-100%)',
     },
     articleInfo: {
         padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground1,
+        borderBottom: '1px solid #f0f0f0',
+        backgroundColor: '#ffffff',
         flexShrink: 0,
     },
     infoCol: {
         marginBottom: '8px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column' as const,
     },
     infoLabel: {
-        color: tokens.colorNeutralForeground3,
+        color: '#8c8c8c',
         marginBottom: '4px',
     },
-    tocHeader: {
-        padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
-    },
-    tocList: {
-        flex: 1,
-        overflow: 'auto',
-        padding: '8px',
-    },
-    tocItem: {
-        padding: '8px 12px',
-        cursor: 'pointer',
-        borderRadius: '4px',
-        marginBottom: '4px',
-        transition: 'background-color 0.2s',
-        display: 'flex',
-        width: '100%',
-        ':hover': {
-            backgroundColor: tokens.colorNeutralBackground1Hover,
-        },
-        ':first-child': {
-            flex:1
-        }
-    },
-    tocItemNested: {
-        marginLeft: '16px',
-        fontSize: '13px',
-    },
-    // PDF Viewer Section
     viewerSection: {
         flex: 1,
         minWidth: '0',
         display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
+        flexDirection: 'column' as const,
+        position: 'relative' as const,
         overflow: 'hidden',
-        '@media (max-width: 1024px)': {
-            height: 'calc(100vh - 64px)',
-        },
     },
     viewerHeader: {
         padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
+        borderBottom: '1px solid #f0f0f0',
+        backgroundColor: '#fafafa',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-end',
         gap: '12px',
-        flexWrap: 'wrap',
+        flexWrap: 'wrap' as const,
     },
     tocToggleButton: {
-        position: 'fixed',
+        position: 'fixed' as const,
         bottom: '24px',
         left: '24px',
         zIndex: 1001,
-        boxShadow: tokens.shadow16,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    tocToggleButtonDesktop: {
-        '@media (max-width: 1024px)': {
-            display: 'none',
-        },
     },
     overlay: {
-        position: 'fixed',
+        position: 'fixed' as const,
         top: '64px',
         left: 0,
         right: 0,
         bottom: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.4)',
         zIndex: 999,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
     },
-})
+} as const
 
 function EditorInitialReview() {
-    const classes = useStyles()
     const navigate = useNavigate()
     const { success, error: showError } = useBasicToast()
 
@@ -216,11 +134,11 @@ function EditorInitialReview() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
         gap: '12px',
         padding: '24px',
-        textAlign: 'center',
-    } as const
+        textAlign: 'center' as const,
+    }
 
     const statusLabels: Record<string, string> = {
         [ArticleStatus.SUBMITTED]: 'Đã gửi',
@@ -302,8 +220,8 @@ function EditorInitialReview() {
     if (!articleId) {
         return (
             <div style={centeredStateStyles}>
-                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
-                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                <Text strong style={{ fontSize: '18px' }}>Không tìm thấy bài báo</Text>
+                <Text style={{ color: '#8c8c8c' }}>
                     Đường dẫn không hợp lệ.
                 </Text>
             </div>
@@ -314,8 +232,8 @@ function EditorInitialReview() {
         const errorMessage = error instanceof Error ? error.message : 'Không thể tải thông tin bài báo.'
         return (
             <div style={centeredStateStyles}>
-                <Text weight="semibold" size={400}>Đã xảy ra lỗi</Text>
-                <Text size={300} style={{ color: tokens.colorPaletteDarkOrangeForeground1 }}>
+                <Text strong style={{ fontSize: '18px' }}>Đã xảy ra lỗi</Text>
+                <Text style={{ color: '#ff4d4f' }}>
                     {errorMessage}
                 </Text>
             </div>
@@ -325,7 +243,7 @@ function EditorInitialReview() {
     if (isLoading && !article) {
         return (
             <div style={centeredStateStyles}>
-                <Spinner size="large" label="Đang tải bài báo..." />
+                <Spin size="large" tip="Đang tải bài báo..." />
             </div>
         )
     }
@@ -333,8 +251,8 @@ function EditorInitialReview() {
     if (!article) {
         return (
             <div style={centeredStateStyles}>
-                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
-                <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
+                <Text strong style={{ fontSize: '18px' }}>Không tìm thấy bài báo</Text>
+                <Text style={{ color: '#8c8c8c' }}>
                     Bài báo có thể đã bị xóa hoặc bạn không có quyền truy cập.
                 </Text>
             </div>
@@ -450,53 +368,51 @@ function EditorInitialReview() {
     const statusLabel = statusLabels[article.status] ?? article.status
 
     return (
-        <div className={classes.root}>
+        <div style={styles.root}>
             {/* Overlay for mobile when TOC is visible */}
             {isTocVisible && (
-                <div className={classes.overlay} onClick={handleOverlayClick} />
+                <div style={styles.overlay} onClick={handleOverlayClick} />
             )}
 
             {/* Table of Contents Section */}
-            <div className={`${classes.tocSection} ${
-                !isTocVisible ? classes.tocSectionHidden : ''
-            }`}>
+            <div style={!isTocVisible ? { ...styles.tocSection, ...styles.tocSectionHidden } : styles.tocSection}>
                 {/* Article Info */}
-                <div className={classes.articleInfo}>
-                    <div className={classes.infoCol}>
-                        <Text size={200} className={classes.infoLabel}>
+                <div style={styles.articleInfo}>
+                    <div style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>
                             Tên bài báo
                         </Text>
-                        <Text weight="semibold" size={300} style={{ display: 'block' }}>
+                        <Text strong style={{ display: 'block' }}>
                             {article.title}
                         </Text>
                     </div>
-                    <div className={classes.infoCol}>
-                        <Text size={200} className={classes.infoLabel}>
+                    <div style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>
                             Tác giả:
                         </Text>
-                        <Text size={200}>
+                        <Text>
                             {authorNames}
                         </Text>
                     </div>
-                    <div className={classes.infoCol}>
-                        <Text size={200} className={classes.infoLabel}>
+                    <div style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>
                             Ngày gửi
                         </Text>
-                        <Text size={200}>
+                        <Text>
                             {submittedDate}
                         </Text>
                     </div>
-                    <div className={classes.infoCol}>
-                        <Text size={200} className={classes.infoLabel}>
+                    <div style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>
                             Chuyên đề
                         </Text>
-                        <Text size={200}>{trackName}</Text>
+                        <Text>{trackName}</Text>
                     </div>
-                    <div className={classes.infoCol}>
-                        <Text size={200} className={classes.infoLabel}>
+                    <div style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>
                             Trạng thái hiện tại
                         </Text>
-                        <Text size={200}>
+                        <Text>
                             {statusLabel}
                         </Text>
                     </div>
@@ -518,175 +434,33 @@ function EditorInitialReview() {
             </div>
 
             {/* PDF Viewer Section */}
-            <div className={classes.viewerSection}>
+            <div style={styles.viewerSection}>
                 {/* Header with Decision Buttons */}
-                <div className={classes.viewerHeader}>
+                <div style={styles.viewerHeader}>
                     <Button
-                        className={classes.tocToggleButtonDesktop}
-                        appearance="subtle"
-                        icon={isTocVisible ? <PanelLeftContractRegular /> : <PanelLeftExpandRegular />}
+                        type="text"
+                        icon={isTocVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
                         onClick={() => setIsTocVisible(!isTocVisible)}
                     >
                         {isTocVisible ? 'Ẩn thông tin' : 'Hiện thông tin'}
                     </Button>
-                    <Dialog open={isRejectDialogOpen} onOpenChange={(_, data) => setIsRejectDialogOpen(data.open)}>
-                        <DialogTrigger disableButtonEnhancement>
-                            <Button
-                                appearance="subtle"
-                                icon={<DismissCircleRegular />}
-                                style={{ color: tokens.colorPaletteRedForeground1 }}
-                            >
-                                Từ chối
-                            </Button>
-                        </DialogTrigger>
-                        <DialogSurface>
-                            <DialogBody>
-                                <DialogTitle>Từ chối bài báo</DialogTitle>
-                                <DialogContent>
-                                    <Text size={300} style={{ display: 'block', marginBottom: '12px' }}>
-                                        Lý do từ chối <span style={{ color: tokens.colorPaletteRedForeground1 }}>*</span>
-                                    </Text>
-                                    <Text size={200} style={{ display: 'block', marginBottom: '8px', color: tokens.colorNeutralForeground3 }}>
-                                        Lý do từ chối sẽ được gửi kèm vào email phản hồi tác giả bài báo
-                                    </Text>
-                                    <Textarea
-                                        placeholder="Nhập lý do từ chối tại đây"
-                                        value={rejectReason}
-                                        onChange={(_, data) => setRejectReason(data.value)}
-                                        rows={6}
-                                        resize="vertical"
-                                    />
-                                </DialogContent>
-                                <DialogActions>
-                                    <Button appearance="primary" onClick={handleReject} disabled={!rejectReason.trim() || isSubmittingDecision}>
-                                        Từ chối bài báo
-                                    </Button>
-                                    <Button appearance="secondary" onClick={() => setIsRejectDialogOpen(false)}>
-                                        Không, quay lại bước trước
-                                    </Button>
-                                </DialogActions>
-                            </DialogBody>
-                        </DialogSurface>
-                    </Dialog>
+                    <Button
+                        type="text"
+                        icon={<CloseCircleOutlined />}
+                        style={{ color: '#ff4d4f' }}
+                        onClick={() => setIsRejectDialogOpen(true)}
+                    >
+                        Từ chối
+                    </Button>
 
-                    <Dialog open={isAcceptDialogOpen} onOpenChange={(_, data) => setIsAcceptDialogOpen(data.open)}>
-                            <DialogTrigger disableButtonEnhancement>
-                                <Button
-                                    appearance="primary"
-                                    icon={<CheckmarkCircleRegular />}
-                                    disabled={isSubmittingDecision}
-                                >
-                                    Chấp nhận và mời reviewer
-                                </Button>
-                            </DialogTrigger>
-                            <DialogSurface>
-                                <DialogBody>
-                                    <DialogTitle>Chấp nhận và tìm Reviewer</DialogTitle>
-                                    <DialogContent>
-                                        <Text size={300} style={{ display: 'block', marginBottom: '12px' }}>
-                                            Bạn đồng ý chấp nhận bài báo này và tìm reviewer phản biện bài báo?
-                                        </Text>
-                                        
-                                        <Field label="Phương thức mời phản biện viên" style={{ marginBottom: '16px' }}>
-                                            <RadioGroup
-                                                value={reviewerEntryMode}
-                                                onChange={(_, data) => setReviewerEntryMode(data.value as 'existing' | 'manual')}
-                                            >
-                                                <Radio value="existing" label="Chọn từ danh sách người dùng hiện có" />
-                                                <Radio value="manual" label="Nhập thông tin phản biện viên mới" />
-                                            </RadioGroup>
-                                        </Field>
-                                        
-                                        {reviewerEntryMode === 'existing' ? (
-                                            <Field
-                                                label="Chọn phản biện viên"
-                                                required
-                                                style={{ marginBottom: '12px' }}
-                                            >
-                                                <Combobox
-                                                    multiselect
-                                                    placeholder="Chọn phản biện viên"
-                                                    selectedOptions={selectedReviewers}
-                                                    onOptionSelect={(_, data) => {
-                                                        setSelectedReviewers(data.selectedOptions)
-                                                    }}
-                                                >
-                                                    {reviewerUsers.map((user) => (
-                                                        <Option key={user.id} value={user.id} text={`${user.name} (${user.email})`}>
-                                                            {user.name} ({user.email})
-                                                            {user.institution?.name && ` - ${user.institution.name}`}
-                                                        </Option>
-                                                    ))}
-                                                </Combobox>
-                                            </Field>
-                                        ) : (
-                                            <>
-                                                <Field label="Họ và tên" required style={{ marginBottom: '12px' }}>
-                                                    <Input
-                                                        placeholder="Nhập họ và tên phản biện viên"
-                                                        value={manualReviewerName}
-                                                        onChange={(_, data) => setManualReviewerName(data.value)}
-                                                    />
-                                                </Field>
-                                                
-                                                <Field label="Email" required style={{ marginBottom: '12px' }}>
-                                                    <Input
-                                                        type="email"
-                                                        placeholder="Nhập email phản biện viên"
-                                                        value={manualReviewerEmail}
-                                                        onChange={(_, data) => setManualReviewerEmail(data.value)}
-                                                    />
-                                                </Field>
-                                                
-                                                <Field label="Cơ quan" required style={{ marginBottom: '12px' }}>
-                                                    <Combobox
-                                                        placeholder="Chọn cơ quan"
-                                                        value={institutions.find(i => i.id === manualReviewerInstitutionId)?.name || ''}
-                                                        onOptionSelect={(_, data) => {
-                                                            setManualReviewerInstitutionId(data.optionValue || '')
-                                                        }}
-                                                    >
-                                                        {institutions.map((institution) => (
-                                                            <Option key={institution.id} value={institution.id} text={institution.name}>
-                                                                {institution.name}
-                                                            </Option>
-                                                        ))}
-                                                    </Combobox>
-                                                </Field>
-                                            </>
-                                        )}
-                                        
-                                        <Text size={200} style={{ display: 'block', marginBottom: '8px', color: tokens.colorNeutralForeground3 }}>
-                                            Ghi chú (không bắt buộc):
-                                        </Text>
-                                        <Textarea
-                                            placeholder="Nhập ghi chú nếu cần"
-                                            value={acceptReason}
-                                            onChange={(_, data) => setAcceptReason(data.value)}
-                                            rows={4}
-                                            resize="vertical"
-                                        />
-                                    </DialogContent>
-                                    <DialogActions>
-                                        <Button 
-                                            appearance="primary" 
-                                            onClick={handleAccept} 
-                                            disabled={
-                                                isSubmittingDecision || 
-                                                isAssigningReviewers || 
-                                                (reviewerEntryMode === 'existing' && selectedReviewers.length === 0) ||
-                                                (reviewerEntryMode === 'manual' && (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId))
-                                            }
-                                        >
-                                            {isAssigningReviewers ? 'Đang mời phản biện viên...' : 'Xác nhận'}
-                                        </Button>
-                                        <Button appearance="secondary" onClick={() => setIsAcceptDialogOpen(false)}>
-                                            Không, quay lại bước trước
-                                        </Button>
-                                    </DialogActions>
-                                </DialogBody>
-                            </DialogSurface>
-                        </Dialog>
+                    <Button
+                        type="primary"
+                        icon={<CheckCircleOutlined />}
+                        disabled={isSubmittingDecision}
+                        onClick={() => setIsAcceptDialogOpen(true)}
+                    >
+                        Chấp nhận và mời reviewer
+                    </Button>
                 </div>
 
                 {/* PDF Viewer */}
@@ -708,14 +482,151 @@ function EditorInitialReview() {
 
             {/* Floating Button for Mobile */}
             <Button
-                className={classes.tocToggleButton}
-                appearance="primary"
-                shape="circular"
+                style={styles.tocToggleButton}
+                type="primary"
+                shape="circle"
                 size="large"
-                icon={<NavigationRegular />}
+                icon={<MenuOutlined />}
                 onClick={() => setIsTocVisible(!isTocVisible)}
                 title={isTocVisible ? 'Ẩn thông tin' : 'Hiện thông tin'}
             />
+
+            {/* Reject Dialog */}
+            <Modal
+                title="Từ chối bài báo"
+                open={isRejectDialogOpen}
+                onCancel={() => setIsRejectDialogOpen(false)}
+                footer={[
+                    <Button key="cancel" onClick={() => setIsRejectDialogOpen(false)}>
+                        Không, quay lại bước trước
+                    </Button>,
+                    <Button
+                        key="submit"
+                        type="primary"
+                        onClick={handleReject}
+                        disabled={!rejectReason.trim()}
+                        loading={isSubmittingDecision}
+                    >
+                        Từ chối bài báo
+                    </Button>,
+                ]}
+            >
+                <div style={{ marginBottom: '12px' }}>
+                    <Text style={{ display: 'block', marginBottom: '12px' }}>
+                        Lý do từ chối <span style={{ color: '#ff4d4f' }}>*</span>
+                    </Text>
+                    <Text style={{ display: 'block', marginBottom: '8px', color: '#8c8c8c', fontSize: '12px' }}>
+                        Lý do từ chối sẽ được gửi kèm vào email phản hồi tác giả bài báo
+                    </Text>
+                    <Input.TextArea
+                        placeholder="Nhập lý do từ chối tại đây"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows={6}
+                    />
+                </div>
+            </Modal>
+
+            {/* Accept Dialog */}
+            <Modal
+                title="Chấp nhận và tìm Reviewer"
+                open={isAcceptDialogOpen}
+                onCancel={() => setIsAcceptDialogOpen(false)}
+                width={600}
+                footer={[
+                    <Button key="cancel" onClick={() => setIsAcceptDialogOpen(false)}>
+                        Không, quay lại bước trước
+                    </Button>,
+                    <Button
+                        key="submit"
+                        type="primary"
+                        onClick={handleAccept}
+                        disabled={
+                            isSubmittingDecision || 
+                            isAssigningReviewers || 
+                            (reviewerEntryMode === 'existing' && selectedReviewers.length === 0) ||
+                            (reviewerEntryMode === 'manual' && (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId))
+                        }
+                        loading={isAssigningReviewers}
+                    >
+                        Xác nhận
+                    </Button>,
+                ]}
+            >
+                <Text style={{ display: 'block', marginBottom: '12px' }}>
+                    Bạn đồng ý chấp nhận bài báo này và tìm reviewer phản biện bài báo?
+                </Text>
+                
+                <Form.Item label="Phương thức mời phản biện viên" style={{ marginBottom: '16px' }}>
+                    <Radio.Group
+                        value={reviewerEntryMode}
+                        onChange={(e) => setReviewerEntryMode(e.target.value as 'existing' | 'manual')}
+                    >
+                        <Radio value="existing">Chọn từ danh sách người dùng hiện có</Radio>
+                        <Radio value="manual">Nhập thông tin phản biện viên mới</Radio>
+                    </Radio.Group>
+                </Form.Item>
+                
+                {reviewerEntryMode === 'existing' ? (
+                    <Form.Item
+                        label="Chọn phản biện viên"
+                        required
+                        style={{ marginBottom: '12px' }}
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="Chọn phản biện viên"
+                            value={selectedReviewers}
+                            onChange={setSelectedReviewers}
+                            options={reviewerUsers.map((user) => ({
+                                value: user.id,
+                                label: `${user.name} (${user.email})${user.institution?.name ? ` - ${user.institution.name}` : ''}`,
+                            }))}
+                        />
+                    </Form.Item>
+                ) : (
+                    <>
+                        <Form.Item label="Họ và tên" required style={{ marginBottom: '12px' }}>
+                            <Input
+                                placeholder="Nhập họ và tên phản biện viên"
+                                value={manualReviewerName}
+                                onChange={(e) => setManualReviewerName(e.target.value)}
+                            />
+                        </Form.Item>
+                        
+                        <Form.Item label="Email" required style={{ marginBottom: '12px' }}>
+                            <Input
+                                type="email"
+                                placeholder="Nhập email phản biện viên"
+                                value={manualReviewerEmail}
+                                onChange={(e) => setManualReviewerEmail(e.target.value)}
+                            />
+                        </Form.Item>
+                        
+                        <Form.Item label="Cơ quan" required style={{ marginBottom: '12px' }}>
+                            <Select
+                                placeholder="Chọn cơ quan"
+                                value={manualReviewerInstitutionId || undefined}
+                                onChange={(value) => setManualReviewerInstitutionId(value)}
+                                options={institutions.map((institution) => ({
+                                    value: institution.id,
+                                    label: institution.name,
+                                }))}
+                            />
+                        </Form.Item>
+                    </>
+                )}
+                
+                <Text style={{ display: 'block', marginBottom: '8px', color: '#8c8c8c', fontSize: '12px' }}>
+                    Ghi chú (không bắt buộc):
+                </Text>
+                <Input.TextArea
+                    placeholder="Nhập ghi chú nếu cần"
+                    value={acceptReason}
+                    onChange={(e) => setAcceptReason(e.target.value)}
+                    rows={4}
+                />
+            </Modal>
         </div>
     )
 }

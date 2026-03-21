@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useParams } from 'react-router'
-import { Text } from '@fluentui/react-components'
+import { Typography } from 'antd'
 import ArticleDetails from './ArticleDetails'
 import ReviewArticle from './ReviewArticle'
 import EditorInitialReview from './EditorInitialReview'
@@ -8,6 +8,8 @@ import { useCurrentUser } from '../../hooks/useUser'
 import { useArticle } from '../../hooks/useArticles'
 import { useAuthStore } from '../../stores/authStore'
 import { ArticleStatus } from '../../constants'
+
+const { Text } = Typography
 
 function ArticleWorkspace() {
     const params = useParams<{ articleId: string }>()

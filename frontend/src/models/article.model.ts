@@ -9,7 +9,10 @@ export interface ArticleDto {
   abstract: string;
   conclusion: string;
   link: string;
+  conferenceId: string;
+  conferenceName: string;
   track: TrackDto;
+  topicIds: string[];
   status: ArticleStatusType;
   initialReviewNote?: string | null;
   initialReviewNextSteps?: string | null;

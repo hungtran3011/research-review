@@ -1,8 +1,6 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.AttachmentBusinessCode
 import com.example.researchreview.constants.AttachmentKind
-import com.example.researchreview.constants.SpecialErrorCode
 import com.example.researchreview.dtos.AttachmentDto
 import com.example.researchreview.dtos.AttachmentFinalizeRequestDto
 import com.example.researchreview.dtos.AttachmentUploadRequestDto
@@ -12,6 +10,7 @@ import com.example.researchreview.services.AttachmentService
 import jakarta.validation.Valid
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -40,17 +39,17 @@ class AttachmentController(
     ): ResponseEntity<BaseResponseDto<AttachmentUploadResponseDto>> {
         return try {
             val response = attachmentService.requestUploadSlot(articleId, request)
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.CREATED).body(
                 BaseResponseDto(
-                    code = AttachmentBusinessCode.ATTACHMENT_UPLOAD_SLOT_CREATED.value,
+                    code = 201,
                     message = "Upload slot created",
                     data = response
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Unable to create upload slot"
                 )
             )
@@ -68,15 +67,15 @@ class AttachmentController(
             val attachment = attachmentService.uploadAttachment(articleId, file, version, kind)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = AttachmentBusinessCode.ATTACHMENT_FINALIZED.value,
+                    code = 200,
                     message = "Attachment uploaded",
                     data = attachment
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Unable to upload attachment"
                 )
             )
@@ -92,15 +91,15 @@ class AttachmentController(
             val attachment = attachmentService.finalizeUpload(attachmentId, request)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = AttachmentBusinessCode.ATTACHMENT_FINALIZED.value,
+                    code = 200,
                     message = "Attachment finalized",
                     data = attachment
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Unable to finalize attachment"
                 )
             )
@@ -115,7 +114,7 @@ class AttachmentController(
         val attachments = attachmentService.listArticleAttachments(articleId, version)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = AttachmentBusinessCode.ATTACHMENT_LIST_FOUND.value,
+                code = 200,
                 message = "Attachments retrieved",
                 data = attachments
             )
@@ -128,14 +127,14 @@ class AttachmentController(
             attachmentService.deleteAttachment(attachmentId)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = AttachmentBusinessCode.ATTACHMENT_DELETED.value,
+                    code = 200,
                     message = "Attachment deleted"
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = SpecialErrorCode.INTERNAL_ERROR.value,
+                    code = 500,
                     message = ex.message ?: "Unable to delete attachment"
                 )
             )
@@ -158,7 +157,7 @@ class AttachmentController(
         val url = attachmentService.downloadUrl(attachmentId)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = AttachmentBusinessCode.ATTACHMENT_LIST_FOUND.value,
+                code = 200,
                 message = "Download URL generated",
                 data = url
             )

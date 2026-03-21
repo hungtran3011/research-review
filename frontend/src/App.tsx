@@ -1,234 +1,208 @@
-import { useMemo, useState } from 'react';
-import './App.css'
-import { Button, Text, Card, CardHeader, CardPreview, Badge, Spinner } from '@fluentui/react-components'
-import { makeStyles } from '@fluentui/react-components'
-import { Add16Regular, Document16Regular } from '@fluentui/react-icons';
-import { useAuthStore } from './stores/authStore';
-import { useArticles } from './hooks/useArticles';
-import { ArticleStatus } from './constants';
-import type { ArticleStatusType } from './constants';
-import type { ArticleDto } from './models';
+import { useMemo, useState } from 'react'
+import { Badge, Button, Card, Col, Layout, List, Row, Space, Spin, Statistic, Typography } from 'antd'
+import { FileSearchOutlined, PlusOutlined } from '@ant-design/icons'
+import { useAuthStore } from './stores/authStore'
+import { useArticles } from './hooks/useArticles'
+import { ArticleStatus } from './constants'
+import type { ArticleStatusType } from './constants'
+import type { ArticleDto } from './models'
 
-const useStyles = makeStyles({
-  wrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    padding: '16px',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  main: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '16px',
-    flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  sidebar: {
-    width: '300px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  card: {
-    padding: '16px',
-  },
-  footer: {
-    marginTop: 'auto',
-    textAlign: 'center',
-    padding: '16px',
-    borderTop: '1px solid var(--colorNeutralStroke1)',
-  },
-});
+const { Content, Footer } = Layout
+const { Title, Paragraph, Text } = Typography
 
 function App() {
-  const classes = useStyles();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const userEmail = useAuthStore((state) => state.email);
-  const [page, setPage] = useState(0);
-  const pageSize = 5;
-  const { data, isLoading, isError } = useArticles(page, pageSize);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const userEmail = useAuthStore((state) => state.email)
+  const [page, setPage] = useState(0)
+  const pageSize = 5
+  const { data, isLoading, isError } = useArticles(page, pageSize)
 
-  const pageData = data?.data;
-  const totalPages = pageData?.totalPages ?? 0;
-  const currentPage = pageData?.pageNumber ?? page;
+  const pageData = data?.data
+  const totalPages = pageData?.totalPages ?? 0
+  const currentPage = pageData?.pageNumber ?? page
 
-  const articles = useMemo(() => pageData?.content ?? [], [pageData]);
+  const articles = useMemo(() => pageData?.content ?? [], [pageData])
 
-  const statusLabelMap: Record<string, { label: string; color: 'brand' | 'informative' | 'important' | 'success' }> = {
-    [ArticleStatus.SUBMITTED]: { label: 'Chờ xử lý', color: 'informative' },
-    [ArticleStatus.PENDING_REVIEW]: { label: 'Chờ phản biện', color: 'informative' },
-    [ArticleStatus.IN_REVIEW]: { label: 'Đang phản biện', color: 'brand' },
+  const statusLabelMap: Record<string, { label: string; color: 'default' | 'processing' | 'error' | 'success' | 'warning' }> = {
+    [ArticleStatus.SUBMITTED]: { label: 'Chờ xử lý', color: 'processing' },
+    [ArticleStatus.PENDING_REVIEW]: { label: 'Chờ phản biện', color: 'processing' },
+    [ArticleStatus.IN_REVIEW]: { label: 'Đang phản biện', color: 'warning' },
+    [ArticleStatus.REVIEWS_COMPLETED]: { label: 'Đã hoàn tất phản biện', color: 'processing' },
+    [ArticleStatus.REVISIONS_REQUESTED]: { label: 'Yêu cầu sửa', color: 'warning' },
+    [ArticleStatus.REVISIONS]: { label: 'Đang sửa', color: 'warning' },
     [ArticleStatus.ACCEPTED]: { label: 'Đã chấp nhận', color: 'success' },
-    [ArticleStatus.REJECTED]: { label: 'Bị từ chối', color: 'important' },
-    [ArticleStatus.REJECT_REQUESTED]: { label: 'Đề nghị loại bỏ', color: 'important' },
-  };
+    [ArticleStatus.REJECTED]: { label: 'Bị từ chối', color: 'error' },
+    [ArticleStatus.REJECT_REQUESTED]: { label: 'Đề nghị loại bỏ', color: 'error' },
+    [ArticleStatus.ACCEPT_REQUESTED]: { label: 'Đề nghị chấp thuận', color: 'processing' },
+  }
 
   const stats = useMemo(() => {
     const pendingStatuses: ArticleStatusType[] = [
       ArticleStatus.SUBMITTED,
       ArticleStatus.PENDING_REVIEW,
       ArticleStatus.IN_REVIEW,
-    ];
+      ArticleStatus.REVISIONS_REQUESTED,
+      ArticleStatus.REVISIONS,
+    ]
     return {
       total: articles.length,
       pending: articles.filter((article) => pendingStatuses.includes(article.status)).length,
       accepted: articles.filter((article) => article.status === ArticleStatus.ACCEPTED).length,
       rejected: articles.filter((article) => article.status === ArticleStatus.REJECTED).length,
-    };
-  }, [articles]);
-
-  const renderArticle = (article: ArticleDto) => {
-    const status = statusLabelMap[article.status] ?? { label: article.status, color: 'informative' as const };
-    return (
-      <Card key={article.id} className={classes.card} style={{ marginBottom: '12px' }}>
-        <CardHeader
-          header={<Text weight="semibold">{article.title}</Text>}
-          description={article.track?.name ? `Track: ${article.track.name}` : undefined}
-        />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <Text size={200}>{article.abstract}</Text>
-            <Text size={200} style={{ color: 'var(--colorNeutralForeground3)' }}>
-              Gửi lúc: {article.createdAt ? new Date(article.createdAt).toLocaleString('vi-VN') : '—'}
-            </Text>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Badge appearance="filled" color={status.color}>{status.label}</Badge>
-            <Button as="a" href={`/articles/${article.id}`} appearance="primary" size="small">
-              Xem chi tiết
-            </Button>
-          </div>
-        </div>
-      </Card>
-    );
-  };
+    }
+  }, [articles])
 
   return (
-    <div className={classes.wrapper}>
-      {/* Header */}
-      <div className={classes.header}>
-        <Text as="h1" size={600}>Welcome to Research Review</Text>
-        {isAuthenticated ? (
-          <Text size={400}>Hello, {userEmail}! Manage your submissions and reviews.</Text>
-        ) : (
-          <Text size={400}>Sign up to submit and review research articles.</Text>
-        )}
-      </div>
+    <Layout style={{ minHeight: 'calc(100vh - 64px)', background: 'transparent' }}>
+      <Content style={{ padding: 16 }}>
+        <Space direction='vertical' size={16} style={{ width: '100%' }}>
+          <Card>
+            <Title level={2} style={{ marginBottom: 8 }}>
+              Welcome to Research Review
+            </Title>
+            <Paragraph style={{ marginBottom: 0 }}>
+              {isAuthenticated
+                ? `Hello, ${userEmail}! Manage your submissions and reviews.`
+                : 'Sign up to submit and review research articles.'}
+            </Paragraph>
+          </Card>
 
-      {/* Main Content */}
-      <div className={classes.main}>
-        {/* Primary Content */}
-        <div className={classes.content}>
-          <Card className={classes.card}>
-            <CardHeader header={<Text weight="semibold">Bài báo gần đây</Text>} />
-            <CardPreview>
-              {isLoading && <Spinner label="Đang tải danh sách bài báo..." />} 
-              {isError && !isLoading && (
-                <Text size={300}>
-                  Không thể tải danh sách bài báo.
-                </Text>
-              )}
-              {!isLoading && !isError && articles.length === 0 && (
-                <Text size={300}>Chưa có bài báo nào trong hệ thống.</Text>
-              )}
-            </CardPreview>
-            {!isLoading && !isError && articles.length > 0 && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                  <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
-                    Trang {currentPage + 1}{totalPages > 0 ? ` / ${totalPages}` : ''}
-                  </Text>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <Button
-                      appearance="secondary"
-                      size="small"
-                      disabled={isLoading || currentPage <= 0}
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    >
-                      Trang trước
-                    </Button>
-                    <Button
-                      appearance="secondary"
-                      size="small"
-                      disabled={isLoading || (totalPages > 0 && currentPage >= totalPages - 1)}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Trang sau
-                    </Button>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={16}>
+              <Space direction='vertical' size={16} style={{ width: '100%' }}>
+                <Card
+                  title='Bài báo gần đây'
+                  extra={
+                    <Space>
+                      <Button
+                        size='small'
+                        disabled={isLoading || currentPage <= 0}
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      >
+                        Trang trước
+                      </Button>
+                      <Button
+                        size='small'
+                        disabled={isLoading || (totalPages > 0 && currentPage >= totalPages - 1)}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        Trang sau
+                      </Button>
+                    </Space>
+                  }
+                >
+                  {isLoading && (
+                    <Space>
+                      <Spin size='small' />
+                      <Text>Đang tải danh sách bài báo...</Text>
+                    </Space>
+                  )}
+
+                  {isError && !isLoading && <Text type='danger'>Không thể tải danh sách bài báo.</Text>}
+
+                  {!isLoading && !isError && articles.length === 0 && (
+                    <Text type='secondary'>Chưa có bài báo nào trong hệ thống.</Text>
+                  )}
+
+                  {!isLoading && !isError && articles.length > 0 && (
+                    <List
+                      itemLayout='vertical'
+                      dataSource={articles}
+                      renderItem={(article: ArticleDto) => {
+                        const status = statusLabelMap[article.status] ?? {
+                          label: article.status,
+                          color: 'default' as const,
+                        }
+
+                        return (
+                          <List.Item
+                            key={article.id}
+                            actions={[
+                              <Space key='status'>
+                                <Badge status={status.color} text={status.label} />
+                              </Space>,
+                              <Button key='view' type='primary' href={`/articles/${article.id}`}>
+                                Xem chi tiết
+                              </Button>,
+                            ]}
+                          >
+                            <List.Item.Meta
+                              title={article.title}
+                              description={article.track?.name ? `Track: ${article.track.name}` : undefined}
+                            />
+                            <Paragraph ellipsis={{ rows: 2, expandable: true, symbol: 'xem thêm' }}>
+                              {article.abstract}
+                            </Paragraph>
+                            <Text type='secondary'>
+                              Gửi lúc: {article.createdAt ? new Date(article.createdAt).toLocaleString('vi-VN') : '—'}
+                            </Text>
+                          </List.Item>
+                        )
+                      }}
+                    />
+                  )}
+
+                  <div style={{ marginTop: 12 }}>
+                    <Text type='secondary'>
+                      Trang {currentPage + 1}
+                      {totalPages > 0 ? ` / ${totalPages}` : ''}
+                    </Text>
                   </div>
-                </div>
-                {articles.map(renderArticle)}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
-                  <Text size={300} style={{ color: 'var(--colorNeutralForeground3)' }}>
-                    Trang {currentPage + 1}{totalPages > 0 ? ` / ${totalPages}` : ''}
-                  </Text>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <Button
-                      appearance="secondary"
-                      size="small"
-                      disabled={isLoading || currentPage <= 0}
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    >
-                      Trang trước
+                </Card>
+
+                <Card title='Quick Actions'>
+                  <Space>
+                    <Button type='primary' href='/articles/submit' icon={<PlusOutlined />}>
+                      Submit New Article
                     </Button>
-                    <Button
-                      appearance="secondary"
-                      size="small"
-                      disabled={isLoading || (totalPages > 0 && currentPage >= totalPages - 1)}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Trang sau
+                    <Button href='/articles' icon={<FileSearchOutlined />}>
+                      View My Reviews
                     </Button>
-                  </div>
-                </div>
-              </div>
+                  </Space>
+                </Card>
+              </Space>
+            </Col>
+
+            {isAuthenticated && (
+              <Col xs={24} lg={8}>
+                <Space direction='vertical' size={16} style={{ width: '100%' }}>
+                  <Card title='Stats'>
+                  <Row gutter={[12, 12]}>
+                    <Col span={12}>
+                      <Statistic title='Total articles' value={stats.total} />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic title='Pending review' value={stats.pending} />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic title='Accepted' value={stats.accepted} />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic title='Rejected' value={stats.rejected} />
+                    </Col>
+                  </Row>
+                  </Card>
+
+                  <Card title='Notifications'>
+                    <Text type='secondary'>New review request received.</Text>
+                  </Card>
+                </Space>
+              </Col>
             )}
-          </Card>
-          <Card className={classes.card}>
-            <CardHeader header={<Text weight="semibold">Quick Actions</Text>} />
-            <Button icon={<Add16Regular />} appearance="primary" as='a' href='/articles/submit'>
-              Submit New Article
-            </Button>
-            <Button icon={<Document16Regular />} as='a' href='/articles'>View My Reviews</Button>
-          </Card>
-        </div>
+          </Row>
+        </Space>
+      </Content>
 
-        {/* Sidebar */}
-        <div className={classes.sidebar}>
-          <Card className={classes.card}>
-            <CardHeader header={<Text weight="semibold">Stats</Text>} />
-            <Text size={300}>Total articles: {stats.total}</Text>
-            <Text size={300}>Pending review: {stats.pending}</Text>
-            <Text size={300}>Accepted: {stats.accepted}</Text>
-            <Text size={300}>Rejected: {stats.rejected}</Text>
-          </Card>
-          <Card className={classes.card}>
-            <CardHeader header={<Text weight="semibold">Notifications</Text>} />
-            <Text size={300}>New review request received.</Text>
-          </Card>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className={classes.footer}>
-        <Text size={300}>© 2025 Research Review. All rights reserved.</Text>
-        <Button as="a" href="/help" appearance="subtle">Help</Button>
-      </div>
-    </div>
-  );
+      <Footer style={{ textAlign: 'center' }}>
+        <Space size={8}>
+          <Text>© 2026 Research Review. All rights reserved.</Text>
+          <Button type='link' href='/help' style={{ padding: 0 }}>
+            Help
+          </Button>
+        </Space>
+      </Footer>
+    </Layout>
+  )
 }
 
-export default App;
+export default App

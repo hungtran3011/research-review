@@ -53,21 +53,15 @@ export const articleService = {
     );
     return response.data;
   },
-  requestReviewApprove: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
-    const response = await api.post<BaseResponseDto<ArticleDto>>(
-      `/articles/${id}/review-requests/approve`,
-    );
-    return response.data;
-  },
-  requestReviewReject: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
-    const response = await api.post<BaseResponseDto<ArticleDto>>(
-      `/articles/${id}/review-requests/reject`,
-    );
-    return response.data;
-  },
   requestRevisions: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
     const response = await api.post<BaseResponseDto<ArticleDto>>(
-      `/articles/${id}/review-requests/revisions`,
+      `/articles/${id}/decision/revisions`,
+    );
+    return response.data;
+  },
+  markReviewsCompleted: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.post<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/reviews/completed`,
     );
     return response.data;
   },

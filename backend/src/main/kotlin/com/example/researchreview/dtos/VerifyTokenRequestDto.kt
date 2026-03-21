@@ -2,6 +2,7 @@ package com.example.researchreview.dtos
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 
 data class VerifyTokenRequestDto(
     @field:Email(message = "Invalid email format")
@@ -11,5 +12,7 @@ data class VerifyTokenRequestDto(
     @field:NotBlank(message = "Token is required")
     val token: String,
 
-    val isSignUp: Boolean = true
+    val isSignUp: Boolean = true,
+    @field:Size(max = 512, message = "Device fingerprint is too long")
+    val deviceFingerprint: String? = null
 )

@@ -1,6 +1,5 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.EditorBusinessCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.EditorDto
@@ -8,6 +7,7 @@ import com.example.researchreview.dtos.EditorRequestDto
 import com.example.researchreview.services.EditorService
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
@@ -20,22 +20,24 @@ class EditorController(
 ) {
     @PostMapping("/")
     fun create(@Valid @RequestBody editor: EditorRequestDto): ResponseEntity<BaseResponseDto<EditorDto>> {
-        val created = try {
-            editorService.create(editor)
-        } catch (e: Exception) {
-            val response = BaseResponseDto(
-                code = EditorBusinessCode.EDITOR_CREATED_FAIL.value,
-                message = "Errors when creating editor: ${e.message}",
-                data = EditorDto()
+        return try {
+            val created = editorService.create(editor)
+            ResponseEntity.status(HttpStatus.CREATED).body(
+                BaseResponseDto(
+                    code = 201,
+                    message = "Editor created successfully",
+                    data = created
+                )
             )
-            return ResponseEntity.ok(response)
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = "Errors when creating editor: ${e.message}",
+                    data = EditorDto()
+                )
+            )
         }
-        val response = BaseResponseDto(
-            code = EditorBusinessCode.EDITOR_CREATED_SUCCESSFULLY.value,
-            message = "Editor created successfully",
-            data = created
-        )
-        return ResponseEntity.ok(response)
     }
 
     @GetMapping("/")
@@ -43,7 +45,7 @@ class EditorController(
         val editors = editorService.getAll(pageable)
         val pageResponse = PageResponseDto.from(editors)
         val response = BaseResponseDto(
-            code = EditorBusinessCode.EDITOR_FOUND.value,
+            code = 200,
             message = "Editors retrieved successfully",
             data = pageResponse
         )
@@ -57,22 +59,24 @@ class EditorController(
 
     @PutMapping("/{id}")
     fun update(@PathVariable id: String, @Valid @RequestBody editor: EditorRequestDto): ResponseEntity<BaseResponseDto<EditorDto>> {
-        val updated = try {
-            editorService.update(id, editor)
-        } catch (e: Exception) {
-            val response = BaseResponseDto(
-                code = EditorBusinessCode.EDITOR_CREATED_FAIL.value,
-                message = "Errors when updating editor: ${e.message}",
-                data = EditorDto()
+        return try {
+            val updated = editorService.update(id, editor)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "Editor updated successfully",
+                    data = updated
+                )
             )
-            return ResponseEntity.ok(response)
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = "Errors when updating editor: ${e.message}",
+                    data = EditorDto()
+                )
+            )
         }
-        val response = BaseResponseDto(
-            code = EditorBusinessCode.EDITOR_FOUND.value,
-            message = "Editor updated successfully",
-            data = updated
-        )
-        return ResponseEntity.ok(response)
     }
 
     @DeleteMapping("/{id}")

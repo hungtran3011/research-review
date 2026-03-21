@@ -3,7 +3,7 @@ package com.example.researchreview.dtos
 /**
  * Khuôn dạng dữ liệu trả về cho API
  * Sử dụng theo dạng BaseResponseDto<DTO>
- *     - Lưu ý: Phần code phải sử dụng BusinessCode enum để dễ dàng quản lý mã lỗi
+ *     - code dùng mã số kiểu HTTP (200, 201, 400, 404, 500)
  */
 data class BaseResponseDto<T>(
     val code: Int,

@@ -2,10 +2,13 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.ArticleStatus
 import com.example.researchreview.constants.AttachmentKind
+import com.example.researchreview.constants.ConferenceStatus
 import com.example.researchreview.constants.InitialReviewDecision
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
 import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.ConferenceMembershipRole
+import com.example.researchreview.configs.FeatureFlagsProperties
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.AuthorDto
@@ -16,21 +19,28 @@ import com.example.researchreview.dtos.TrackDto
 import com.example.researchreview.dtos.InstitutionDto
 import com.example.researchreview.entities.Article
 import com.example.researchreview.entities.ArticleAuthor
+import com.example.researchreview.entities.ArticleTopic
 import com.example.researchreview.entities.Author
 import com.example.researchreview.entities.Reviewer
 import com.example.researchreview.entities.ReviewerArticle
+import com.example.researchreview.entities.Topic
 import com.example.researchreview.entities.User
 import com.example.researchreview.entities.UserRole
 import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.ArticleRepository
+import com.example.researchreview.repositories.ArticleTopicRepository
 import com.example.researchreview.repositories.AuthorRepository
 import com.example.researchreview.repositories.AttachmentRepository
+import com.example.researchreview.repositories.ConferenceRepository
 import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.InstitutionRepository
 import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.ReviewerRepository
+import com.example.researchreview.repositories.TopicRepository
 import com.example.researchreview.repositories.TrackRepository
 import com.example.researchreview.repositories.UserRepository
+import com.example.researchreview.repositories.StructuredReviewRepository
+import com.example.researchreview.repositories.UserConferenceMembershipRepository
 import com.example.researchreview.services.ArticleAccessGuard
 import com.example.researchreview.services.ArticlesService
 import com.example.researchreview.services.CurrentUserService
@@ -53,7 +63,10 @@ import java.time.LocalDateTime
 @Service
 class ArticlesServiceImpl(
     private val articleRepository: ArticleRepository,
+    private val conferenceRepository: ConferenceRepository,
     private val trackRepository: TrackRepository,
+    private val topicRepository: TopicRepository,
+    private val articleTopicRepository: ArticleTopicRepository,
     private val authorRepository: AuthorRepository,
     private val reviewerRepository: ReviewerRepository,
     private val articleAuthorRepository: ArticleAuthorRepository,
@@ -68,7 +81,10 @@ class ArticlesServiceImpl(
     private val emailService: EmailService,
     private val reviewerInviteService: ReviewerInviteService,
     private val attachmentService: AttachmentService,
-    private val attachmentRepository: AttachmentRepository
+    private val attachmentRepository: AttachmentRepository,
+    private val structuredReviewRepository: StructuredReviewRepository,
+    private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
+    private val featureFlagsProperties: FeatureFlagsProperties,
 ) : ArticlesService {
 
     @Value("\${custom.front-end-url}")
@@ -89,18 +105,26 @@ class ArticlesServiceImpl(
         if (!currentUser.hasRole(com.example.researchreview.constants.Role.RESEARCHER)) {
             throw AccessDeniedException("Only RESEARCHER can submit articles")
         }
-        val track = trackRepository.findById(articleDto.trackId)
-            .orElseThrow { EntityNotFoundException("Track not found with id ${articleDto.trackId}") }
+        val conference = conferenceRepository.findByIdAndDeletedFalse(articleDto.conferenceId)
+            .orElseThrow { EntityNotFoundException("Conference not found with id ${articleDto.conferenceId}") }
+        ensureConferenceOpenForSubmission(conference.status, conference.submissionDeadline)
+
+        val track = trackRepository.findByIdAndConferenceIdAndDeletedFalse(articleDto.trackId, conference.id)
+            .orElseThrow { EntityNotFoundException("Track not found with id ${articleDto.trackId} in conference ${conference.id}") }
+        val topics = resolveSubmissionTopics(conference.id, track.id, articleDto.topicIds)
+
         val article = Article().apply {
             title = articleDto.title
             abstract = articleDto.abstract
             conclusion = articleDto.conclusion
             link = articleDto.link
+            this.conference = conference
             this.track = track
             status = ArticleStatus.SUBMITTED
         }
         val saved = articleRepository.saveAndFlush(article)
         syncAuthors(saved, articleDto.authors)
+        syncTopics(saved, topics)
         notifyArticleSubmitted(saved)
         return toDto(saved)
     }
@@ -109,17 +133,23 @@ class ArticlesServiceImpl(
     override fun update(articleDto: ArticleRequestDto): ArticleDto {
         val articleId = articleDto.id ?: throw IllegalArgumentException("Article id is required for update")
         val article = fetchArticle(articleId)
+
+        val conference = conferenceRepository.findByIdAndDeletedFalse(articleDto.conferenceId)
+            .orElseThrow { EntityNotFoundException("Conference not found with id ${articleDto.conferenceId}") }
+        val track = trackRepository.findByIdAndConferenceIdAndDeletedFalse(articleDto.trackId, conference.id)
+            .orElseThrow { EntityNotFoundException("Track not found with id ${articleDto.trackId} in conference ${conference.id}") }
+        val topics = resolveSubmissionTopics(conference.id, track.id, articleDto.topicIds)
+
         article.title = articleDto.title
         article.abstract = articleDto.abstract
         article.conclusion = articleDto.conclusion
         article.link = articleDto.link
-        if (article.track.id != articleDto.trackId) {
-            val track = trackRepository.findById(articleDto.trackId)
-                .orElseThrow { EntityNotFoundException("Track not found with id ${articleDto.trackId}") }
-            article.track = track
-        }
+        article.conference = conference
+        article.track = track
+
         val saved = articleRepository.saveAndFlush(article)
         syncAuthors(saved, articleDto.authors)
+        syncTopics(saved, topics)
         return toDto(saved)
     }
 
@@ -163,12 +193,28 @@ class ArticlesServiceImpl(
 
     @Transactional
     override fun reject(id: String) {
+        val currentUser = currentUserService.requireUser()
+        val article = fetchArticle(id)
+        ensureChairDecisionPermission(currentUser, article)
+        if (article.status != ArticleStatus.REVIEWS_COMPLETED) {
+            throw IllegalStateException("Reject decision is only allowed when article is REVIEWS_COMPLETED")
+        }
         updateStatus(id, ArticleStatus.REJECTED)
+        val updatedArticle = fetchArticle(id)
+        sendChairDecisionEmailToAuthors(updatedArticle, ArticleStatus.REJECTED)
     }
 
     @Transactional
     override fun approve(id: String) {
+        val currentUser = currentUserService.requireUser()
+        val article = fetchArticle(id)
+        ensureChairDecisionPermission(currentUser, article)
+        if (article.status != ArticleStatus.REVIEWS_COMPLETED) {
+            throw IllegalStateException("Approve decision is only allowed when article is REVIEWS_COMPLETED")
+        }
         updateStatus(id, ArticleStatus.ACCEPTED)
+        val updatedArticle = fetchArticle(id)
+        sendChairDecisionEmailToAuthors(updatedArticle, ArticleStatus.ACCEPTED)
     }
 
     @Transactional(readOnly = true)
@@ -176,33 +222,45 @@ class ArticlesServiceImpl(
         reviewerArticleRepository.findAllByArticleIdAndDeletedFalse(id).map { reviewerToDto(it.reviewer) }
 
     @Transactional
-    override fun requestRejection(id: String): ArticleDto {
+    override fun markReviewsCompleted(id: String): ArticleDto {
         val article = fetchArticle(id)
         if (article.status != ArticleStatus.IN_REVIEW) {
-            throw IllegalStateException("Rejection request is only allowed when article is IN_REVIEW")
+            throw IllegalStateException("Review completion mark is only allowed when article is IN_REVIEW")
         }
-        updateStatus(id, ArticleStatus.REJECT_REQUESTED)
-        return getById(id)
-    }
 
-    @Transactional
-    override fun requestApproval(id: String): ArticleDto {
-        val article = fetchArticle(id)
-        if (article.status != ArticleStatus.IN_REVIEW) {
-            throw IllegalStateException("Approval request is only allowed when article is IN_REVIEW")
+        if (featureFlagsProperties.reviewThresholdGateEnabled) {
+            val completedCount = structuredReviewRepository
+                .countByReviewerArticleArticleIdAndReviewerArticleStatusAndSubmittedAtIsNotNullAndDeletedFalse(
+                    id,
+                    ReviewerInvitationStatus.ACCEPTED,
+                )
+                .toInt()
+            val threshold = article.track.reviewPolicyMinCompletedReviews
+                ?: article.conference?.minimumCompletedReviews
+                ?: 3
+            if (completedCount < threshold) {
+                throw IllegalStateException(
+                    "Cannot mark REVIEWS_COMPLETED before threshold is met: $completedCount/$threshold completed reviews"
+                )
+            }
         }
-        updateStatus(id, ArticleStatus.ACCEPT_REQUESTED)
+
+        updateStatus(id, ArticleStatus.REVIEWS_COMPLETED)
         return getById(id)
     }
 
     @Transactional
     override fun requestRevisions(id: String): ArticleDto {
+        val currentUser = currentUserService.requireUser()
         val article = fetchArticle(id)
-        if (article.status != ArticleStatus.IN_REVIEW) {
-            throw IllegalStateException("Revision request is only allowed when article is IN_REVIEW")
+        ensureChairDecisionPermission(currentUser, article)
+        if (article.status != ArticleStatus.REVIEWS_COMPLETED) {
+            throw IllegalStateException("Revision request is only allowed when article is REVIEWS_COMPLETED")
         }
         updateStatus(id, ArticleStatus.REVISIONS_REQUESTED)
-        return getById(id)
+        val updatedArticle = fetchArticle(id)
+        sendChairDecisionEmailToAuthors(updatedArticle, ArticleStatus.REVISIONS_REQUESTED)
+        return toDto(updatedArticle)
     }
 
     @Transactional
@@ -262,6 +320,57 @@ class ArticlesServiceImpl(
                 this.authorOrder = index
             }
             articleAuthorRepository.save(relation)
+        }
+    }
+
+    private fun syncTopics(article: Article, topics: List<Topic>) {
+        val existing = articleTopicRepository.findAllByArticleIdAndDeletedFalse(article.id)
+        existing.forEach {
+            it.deleted = true
+            articleTopicRepository.save(it)
+        }
+
+        val managedArticle = articleRepository.findById(article.id)
+            .orElseThrow { EntityNotFoundException("Article not found with id ${article.id}") }
+
+        topics.forEach { topic ->
+            articleTopicRepository.save(
+                ArticleTopic().apply {
+                    this.article = managedArticle
+                    this.topic = topic
+                }
+            )
+        }
+    }
+
+    private fun resolveSubmissionTopics(conferenceId: String, trackId: String, topicIds: List<String>): List<Topic> {
+        val normalizedTopicIds = topicIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (normalizedTopicIds.isEmpty()) {
+            throw IllegalArgumentException("At least one topic must be selected")
+        }
+
+        val topics = topicRepository.findAllByIdInAndConferenceIdAndTrackIdAndDeletedFalse(
+            ids = normalizedTopicIds,
+            conferenceId = conferenceId,
+            trackId = trackId,
+        )
+
+        if (topics.size != normalizedTopicIds.size) {
+            throw IllegalArgumentException("One or more topicIds are invalid for the selected conference/track")
+        }
+        if (topics.any { !it.isActive }) {
+            throw IllegalArgumentException("One or more selected topics are inactive")
+        }
+
+        return topics
+    }
+
+    private fun ensureConferenceOpenForSubmission(status: ConferenceStatus, submissionDeadline: LocalDateTime?) {
+        if (status != ConferenceStatus.ACTIVE) {
+            throw IllegalStateException("Submission is allowed only for ACTIVE conferences")
+        }
+        if (submissionDeadline != null && LocalDateTime.now().isAfter(submissionDeadline)) {
+            throw IllegalStateException("Submission deadline has passed")
         }
     }
 
@@ -327,6 +436,7 @@ class ArticlesServiceImpl(
             payload = mapOf(
                 "articleId" to article.id,
                 "title" to article.title,
+                "conferenceId" to article.conference?.id,
                 "trackId" to article.track.id,
                 "status" to article.status.name
             )
@@ -467,12 +577,16 @@ class ArticlesServiceImpl(
             .map(ArticleAuthor::author)
         val reviewers = reviewerArticleRepository.findAllByArticleIdAndDeletedFalse(article.id)
             .map(ReviewerArticle::reviewer)
+        val topicIds = articleTopicRepository.findAllByArticleIdAndDeletedFalse(article.id)
+            .map { it.topic.id }
         return ArticleDto(
             id = article.id,
             title = article.title,
             abstract = article.abstract,
             conclusion = article.conclusion,
             link = article.link,
+            conferenceId = article.conference?.id ?: "",
+            conferenceName = article.conference?.name ?: "",
             track = TrackDto(
                 id = article.track.id,
                 name = article.track.name,
@@ -484,6 +598,7 @@ class ArticlesServiceImpl(
                 createdBy = article.track.createdBy,
                 updatedBy = article.track.updatedBy
             ),
+            topicIds = topicIds,
             status = article.status,
             initialReviewNote = article.initialReviewNote,
             initialReviewNextSteps = article.initialReviewNextSteps,
@@ -693,5 +808,61 @@ class ArticlesServiceImpl(
                 "notes" to notes
             )
         )
+    }
+
+    private fun sendChairDecisionEmailToAuthors(article: Article, decisionStatus: ArticleStatus) {
+        val authorEmails = articleAuthorRepository.findAllByArticleIdAndDeletedFalse(article.id)
+            .map { it.author.email.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (authorEmails.isEmpty()) {
+            return
+        }
+
+        val decisionLabel = when (decisionStatus) {
+            ArticleStatus.ACCEPTED -> "CHẤP NHẬN"
+            ArticleStatus.REJECTED -> "TỪ CHỐI"
+            ArticleStatus.REVISIONS_REQUESTED -> "YÊU CẦU SỬA CHỮA"
+            else -> return
+        }
+
+        val subject = "[Research Review] Kết quả quyết định cho bài báo: ${article.title}"
+        val articleUrl = "$frontendUrl/articles/${article.id}"
+        val message = """
+            Xin chào tác giả,
+
+            Chủ tịch hội nghị đã đưa ra quyết định chính thức cho bài báo của bạn.
+
+            Tiêu đề: ${article.title}
+            Quyết định: $decisionLabel
+
+            Bạn có thể xem chi tiết tại:
+            $articleUrl
+
+            Trân trọng,
+            Research Review
+        """.trimIndent()
+
+        emailService.sendEmail(
+            to = authorEmails,
+            subject = subject,
+            message = message,
+            template = "chair-decision-notification"
+        )
+    }
+
+    private fun ensureChairDecisionPermission(user: User, article: Article) {
+        val conferenceId = article.conference?.id
+            ?: throw IllegalStateException("Article conference is required for decision permission check")
+
+        val conferenceMembership = userConferenceMembershipRepository
+            .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, user.id)
+            .orElse(null)
+
+        val hasChairMembership = conferenceMembership?.membershipRole == ConferenceMembershipRole.CHAIR
+        if (!hasChairMembership) {
+            throw AccessDeniedException("Only conference chair can send final decisions")
+        }
     }
 }

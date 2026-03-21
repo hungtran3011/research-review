@@ -30,5 +30,8 @@ class Article: BaseEntity() {
     var initialReviewNextSteps: String? = null
 
     @ManyToOne
+    var conference: Conference? = null
+
+    @ManyToOne
     lateinit var track: Track
 }

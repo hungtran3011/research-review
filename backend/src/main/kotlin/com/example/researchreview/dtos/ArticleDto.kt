@@ -16,7 +16,10 @@ data class ArticleDto(
     @field:NotBlank(message = "Conclusion is required")
     var conclusion: String = "",
     var link: String = "",
+    var conferenceId: String = "",
+    var conferenceName: String = "",
     var track: TrackDto = TrackDto(),
+    var topicIds: List<String> = emptyList(),
     var status: ArticleStatus = ArticleStatus.SUBMITTED,
     var initialReviewNote: String? = null,
     var initialReviewNextSteps: String? = null,

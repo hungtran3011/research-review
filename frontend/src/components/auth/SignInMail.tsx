@@ -1,65 +1,18 @@
 import React from 'react';
-import { Input, Button, Text, Spinner, Link } from '@fluentui/react-components';
-import { ArrowRightRegular, Mail16Regular, Mail48Color } from '@fluentui/react-icons';
-import { makeStyles } from '@fluentui/react-components';
+import { Input, Button, Typography, Spin } from 'antd';
+import { ArrowRightOutlined, MailOutlined } from '@ant-design/icons';
 import { useSignIn } from '../../hooks/useAuth';
-import { AxiosError } from 'axios';
-import { AuthBusinessCode, EmailBusinessCode } from '../../constants/business-code';
+import { getApiErrorMessage } from '../../hooks/useBasicToast';
 import { useAuthStore } from '../../stores/authStore';
+import { useDeviceFingerprint } from '../../hooks/useDeviceFingerprint';
 
-const useStyles = makeStyles({
-  root: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignContent: 'center',
-    gap: '16px',
-    height: '100%',
-    flexGrow: 1,
-    padding: '0 16px',
-  },
-
-  inputBox: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '4px',
-    width: '100%',
-    maxWidth: '400px',
-  },
-
-  h1Title: {
-    fontSize: '24px',
-  },
-
-  titleRegion: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center',
-    gap: '8px',
-  },
-
-  errorText: {
-    color: 'var(--colorPaletteRedForeground1)',
-  },
-
-  successText: {
-    color: 'var(--colorPaletteGreenForeground1)',
-  },
-
-  links: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  }
-});
+const { Title, Text, Link } = Typography;
 
 function SignInMail() {
-  const classes = useStyles();
   const [email, setEmail] = React.useState('');
   const storedEmail = useAuthStore((state) => state.email);
   const { mutate: signIn, isPending, error } = useSignIn();
+  const { fingerprint, isLoading: isFingerprintLoading, error: fingerprintError } = useDeviceFingerprint();
 
   document.title = "Đăng nhập - Research Review";
 
@@ -71,36 +24,53 @@ function SignInMail() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
-      signIn(email);
-    }
-  };
-
-  const getErrorMessage = (err: AxiosError | null) => {
-    if (!err || !err.response?.data) return 'Có lỗi xảy ra. Vui lòng thử lại.';
-
-    const { code, message } = err.response.data as { code?: number; message?: string };
-    switch (code) {
-      case AuthBusinessCode.USER_NOT_FOUND:
-        return 'Email chưa được đăng ký. Vui lòng đăng ký tài khoản mới.';
-      case EmailBusinessCode.EMAIL_SENT_FAIL:
-        return 'Không thể gửi email. Vui lòng thử lại sau.';
-      default:
-        return message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+    if (email && fingerprint) {
+      signIn({ email, deviceFingerprint: fingerprint });
+    } else if (email && fingerprintError) {
+      // Graceful degradation: allow signin without fingerprint if generation failed
+      console.warn('[SignInMail] Proceeding without fingerprint due to error');
+      signIn({ email, deviceFingerprint: undefined });
     }
   };
 
   return (
-    <div className={classes.root}>
-      <div className={classes.titleRegion}>
-        <Mail48Color />
-        <Text as="h1" weight="bold" className={classes.h1Title}>Đăng nhập với email</Text>
-        <Text align="center">Nhập email để nhận liên kết đăng nhập</Text>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '16px',
+      height: '100%',
+      flexGrow: 1,
+      padding: '0 16px',
+    }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '8px',
+      }}>
+        <MailOutlined style={{ fontSize: '48px' }} />
+        <Title level={1}>Đăng nhập với email</Title>
+        <Text>Nhập email để nhận liên kết đăng nhập</Text>
+        {isFingerprintLoading && (
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            <Spin size="small" style={{ marginRight: '8px' }} />
+            Đang kiểm tra thiết bị...
+          </Text>
+        )}
       </div>
-      <form className={classes.inputBox} onSubmit={handleSubmit}>
+      <form style={{
+        display: 'flex',
+        flexDirection: 'row',
+        gap: '4px',
+        width: '100%',
+        maxWidth: '400px',
+      }} onSubmit={handleSubmit}>
         <Input
           placeholder="Email của bạn"
-          contentBefore={<Mail16Regular />}
+          prefix={<MailOutlined />}
           type='email'
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -109,19 +79,24 @@ function SignInMail() {
           style={{ flex: 1 }}
         />
         <Button
-          appearance='primary'
-          icon={isPending ? <Spinner size="tiny" /> : <ArrowRightRegular />}
-          type="submit"
-          disabled={isPending}
+          type='primary'
+          icon={<ArrowRightOutlined />}
+          htmlType="submit"
+          loading={isPending}
+          disabled={isPending || isFingerprintLoading}
         />
       </form>
       {error && (
-        <Text className={classes.errorText}>
-          {getErrorMessage(error as AxiosError)}
+        <Text style={{ color: '#ff4d4f' }}>
+          {getApiErrorMessage(error, 'Có lỗi xảy ra. Vui lòng thử lại.')}
         </Text>
       )}
-      <div className={classes.links}>
-        <Text size={300}>Chưa có tài khoản?</Text>
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        alignItems: 'center',
+      }}>
+        <Text>Chưa có tài khoản?</Text>
         <Link href="/signup">Đăng ký ngay</Link>
       </div>
     </div>

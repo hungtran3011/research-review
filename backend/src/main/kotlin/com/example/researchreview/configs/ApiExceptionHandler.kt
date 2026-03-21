@@ -1,6 +1,5 @@
 package com.example.researchreview.configs
 
-import com.example.researchreview.constants.SpecialErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import jakarta.persistence.EntityNotFoundException
 import jakarta.servlet.http.HttpServletRequest
@@ -21,7 +20,7 @@ class ApiExceptionHandler {
         val msg = firstFieldError?.defaultMessage ?: "Invalid request"
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = SpecialErrorCode.BAD_REQUEST.value,
+                code = 400,
                 message = msg,
                 data = null
             )
@@ -32,7 +31,7 @@ class ApiExceptionHandler {
     fun handleNotReadable(_e: HttpMessageNotReadableException, _request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = SpecialErrorCode.BAD_REQUEST.value,
+                code = 400,
                 message = "Malformed JSON request",
                 data = null
             )
@@ -43,7 +42,7 @@ class ApiExceptionHandler {
     fun handleIllegalArgument(e: IllegalArgumentException, _request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = SpecialErrorCode.BAD_REQUEST.value,
+                code = 400,
                 message = e.message ?: "Invalid request",
                 data = null
             )
@@ -76,7 +75,7 @@ class ApiExceptionHandler {
     fun handleGeneric(e: Exception, _request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = SpecialErrorCode.INTERNAL_ERROR.value,
+                code = 500,
                 message = "Internal server error: ${e.message}",
                 data = null
             )

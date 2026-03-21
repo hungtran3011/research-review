@@ -1,67 +1,65 @@
-import { Card, CardHeader, Text, Button, makeStyles, tokens } from '@fluentui/react-components'
-import { Mail20Regular, Document16Regular } from '@fluentui/react-icons'
+import React from 'react'
+import { Card, Typography, Button, Space } from 'antd'
+import { MailOutlined, FileTextOutlined } from '@ant-design/icons'
 
-const useStyles = makeStyles({
-  wrapper: {
-    minHeight: 'calc(100vh - 64px)',
-    padding: '32px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: '720px',
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  section: {
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-})
+const { Title, Text, Paragraph } = Typography
+
+const containerStyle: React.CSSProperties = {
+  minHeight: 'calc(100vh - 64px)',
+  padding: 32,
+  display: 'flex',
+  justifyContent: 'center',
+  background: '#f5f7fa',
+}
+
+const innerStyle: React.CSSProperties = {
+  maxWidth: 720,
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+}
+
+const sectionBodyStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+}
 
 function HelpCenter() {
-  const classes = useStyles()
-
   return (
-    <div className={classes.wrapper}>
-      <div className={classes.container}>
-        <Card className={classes.section}>
-          <CardHeader
-            header={<Text weight="semibold" size={500}>Trung tâm trợ giúp</Text>}
-            description={<Text size={300}>Nhận hỗ trợ cho việc nộp bài, phản biện và quản lý tài khoản.</Text>}
-          />
-          <Text size={300}>
-            Chúng tôi đang xây dựng kho tài liệu hướng dẫn chi tiết cho từng vai trò. Trong thời gian này,
-            bạn có thể liên hệ trực tiếp với ban tổ chức hoặc xem lại các câu hỏi thường gặp dưới đây.
-          </Text>
+    <div style={containerStyle}>
+      <div style={innerStyle}>
+        <Card>
+          <Title level={4}>Trung tâm trợ giúp</Title>
+          <Paragraph>
+            <Text>Nhận hỗ trợ cho việc nộp bài, phản biện và quản lý tài khoản.</Text>
+          </Paragraph>
+          <div style={sectionBodyStyle}>
+            <Paragraph type="secondary">
+              Chúng tôi đang xây dựng kho tài liệu hướng dẫn chi tiết cho từng vai trò. Trong thời gian này,
+              bạn có thể liên hệ trực tiếp với ban tổ chức hoặc xem lại các câu hỏi thường gặp dưới đây.
+            </Paragraph>
+          </div>
         </Card>
 
-        <Card className={classes.section}>
-          <CardHeader
-            header={<Text weight="semibold" size={400}>Liên hệ nhanh</Text>}
-            description={<Text size={200}>Đội ngũ hỗ trợ sẽ phản hồi trong vòng 1 ngày làm việc.</Text>}
-          />
-          <Button as="a" href="mailto:support@researchreview.com" appearance="primary" icon={<Mail20Regular />}>
-            support@researchreview.com
-          </Button>
+        <Card>
+          <Title level={5}>Liên hệ nhanh</Title>
+          <Paragraph type="secondary">Đội ngũ hỗ trợ sẽ phản hồi trong vòng 1 ngày làm việc.</Paragraph>
+          <div style={sectionBodyStyle}>
+            <Button type="primary" icon={<MailOutlined />} href="mailto:support@researchreview.com">
+              support@researchreview.com
+            </Button>
+          </div>
         </Card>
 
-        <Card className={classes.section}>
-          <CardHeader
-            header={<Text weight="semibold" size={400}>Tài nguyên</Text>}
-            description={<Text size={200}>Đang cập nhật thêm hướng dẫn chi tiết.</Text>}
-          />
-          <Button appearance="secondary" icon={<Document16Regular />}>
-            Quy trình nộp bài (sắp ra mắt)
-          </Button>
-          <Button appearance="secondary" icon={<Document16Regular />}>
-            Quy trình phản biện (sắp ra mắt)
-          </Button>
+        <Card>
+          <Title level={5}>Tài nguyên</Title>
+          <Paragraph type="secondary">Đang cập nhật thêm hướng dẫn chi tiết.</Paragraph>
+          <Space direction="vertical">
+            <Button icon={<FileTextOutlined />}>Quy trình nộp bài (sắp ra mắt)</Button>
+            <Button icon={<FileTextOutlined />}>Quy trình phản biện (sắp ra mắt)</Button>
+          </Space>
         </Card>
       </div>
     </div>

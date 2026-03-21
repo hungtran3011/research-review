@@ -1,6 +1,5 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.CommentBusinessCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.CommentCreateRequestDto
 import com.example.researchreview.dtos.CommentReplyRequestDto
@@ -9,6 +8,7 @@ import com.example.researchreview.dtos.CommentThreadDto
 import com.example.researchreview.services.CommentService
 import jakarta.persistence.EntityNotFoundException
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -31,7 +31,7 @@ class CommentController(
         val threads = commentService.listThreads(articleId)
         return ResponseEntity.ok(
             BaseResponseDto(
-                code = CommentBusinessCode.COMMENT_THREAD_FOUND.value,
+                code = 200,
                 message = "Comments retrieved",
                 data = threads
             )
@@ -44,9 +44,9 @@ class CommentController(
         @Valid @RequestBody request: CommentCreateRequestDto
     ): ResponseEntity<BaseResponseDto<CommentThreadDto>> {
         val created = commentService.createThread(articleId, request)
-        return ResponseEntity.ok(
+        return ResponseEntity.status(HttpStatus.CREATED).body(
             BaseResponseDto(
-                code = CommentBusinessCode.COMMENT_THREAD_CREATED.value,
+                code = 201,
                 message = "Comment added",
                 data = created
             )
@@ -62,15 +62,15 @@ class CommentController(
             val updated = commentService.reply(threadId, request)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = CommentBusinessCode.COMMENT_THREAD_UPDATED.value,
+                    code = 200,
                     message = "Reply posted",
                     data = updated
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
-                    code = CommentBusinessCode.COMMENT_THREAD_NOT_FOUND.value,
+                    code = 404,
                     message = ex.message ?: "Thread not found"
                 )
             )
@@ -86,15 +86,15 @@ class CommentController(
             val updated = commentService.updateStatus(threadId, request)
             ResponseEntity.ok(
                 BaseResponseDto(
-                    code = CommentBusinessCode.COMMENT_THREAD_UPDATED.value,
+                    code = 200,
                     message = "Thread updated",
                     data = updated
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
-                    code = CommentBusinessCode.COMMENT_THREAD_NOT_FOUND.value,
+                    code = 404,
                     message = ex.message ?: "Thread not found"
                 )
             )

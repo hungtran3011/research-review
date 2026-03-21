@@ -1,91 +1,52 @@
-import { NavLink, Outlet, Navigate, useLocation } from 'react-router';
-import { makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Card, Layout, Menu, Space, Typography } from 'antd'
+import { TeamOutlined, ClusterOutlined, BankOutlined, CalendarOutlined, TagsOutlined } from '@ant-design/icons'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 
-const useStyles = makeStyles({
-  container: {
-    padding: '32px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  layout: {
-    display: 'grid',
-    gridTemplateColumns: '240px 1fr',
-    gap: '16px',
-    alignItems: 'start',
-  },
-  sideNav: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    padding: '12px',
-  },
-  sideLink: {
-    textDecoration: 'none',
-    color: 'inherit',
-    padding: '8px 10px',
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid transparent`,
-    ':hover': {
-      border: `1px solid ${tokens.colorNeutralStroke1}`,
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-    },
-  },
-  sideLinkActive: {
-    textDecoration: 'none',
-    padding: '8px 10px',
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorBrandStroke1}`,
-    color: tokens.colorBrandForeground1,
-    backgroundColor: tokens.colorBrandBackground2,
-  },
-  content: {
-    minWidth: 0,
-  },
-});
+const { Content, Sider } = Layout
+const { Title } = Typography
 
 const AdminLayout = () => {
-  const classes = useStyles();
-  const location = useLocation();
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  // Default landing: /admin -> /admin/users
   if (location.pathname === '/admin' || location.pathname === '/admin/') {
-    return <Navigate to="/admin/users" replace />;
+    return <Navigate to='/admin/users' replace />
   }
 
-  const links = [
-    { to: '/admin/users', label: 'Người dùng' },
-    { to: '/admin/tracks', label: 'Track' },
-    { to: '/admin/institutions', label: 'Nơi công tác' },
-  ];
+  const items = [
+    { key: '/admin/users', icon: <TeamOutlined />, label: 'Người dùng' },
+    { key: '/admin/conferences', icon: <CalendarOutlined />, label: 'Hội nghị' },
+    { key: '/admin/tracks', icon: <ClusterOutlined />, label: 'Track' },
+    { key: '/admin/topics', icon: <TagsOutlined />, label: 'Chủ đề' },
+    { key: '/admin/institutions', icon: <BankOutlined />, label: 'Nơi công tác' },
+  ]
 
   return (
-    <div className={classes.container}>
-      <Text size={600} weight="semibold">
-        Quản trị
-      </Text>
+    <Content style={{ padding: 16 }}>
+      <Space direction='vertical' size={16} style={{ width: '100%' }}>
+        <Title level={2} style={{ margin: 0 }}>
+          Quản trị
+        </Title>
 
-      <div className={classes.layout}>
-        <div className={classes.sideNav}>
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              className={({ isActive }) => (isActive ? classes.sideLinkActive : classes.sideLink)}
-            >
-              {l.label}
-            </NavLink>
-          ))}
-        </div>
+        <Layout style={{ background: 'transparent' }}>
+          <Sider width={260} theme='light' style={{ background: 'transparent' }}>
+            <Card bodyStyle={{ padding: 12 }}>
+              <Menu
+                mode='inline'
+                selectedKeys={[location.pathname]}
+                items={items}
+                onClick={({ key }) => navigate(key)}
+              />
+            </Card>
+          </Sider>
 
-        <div className={classes.content}>
-          <Outlet />
-        </div>
-      </div>
-    </div>
-  );
-};
+          <Content style={{ paddingLeft: 16 }}>
+            <Outlet />
+          </Content>
+        </Layout>
+      </Space>
+    </Content>
+  )
+}
 
-export default AdminLayout;
+export default AdminLayout

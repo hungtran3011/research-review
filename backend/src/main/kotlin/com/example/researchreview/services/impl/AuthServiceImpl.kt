@@ -9,6 +9,7 @@ import com.example.researchreview.exceptions.VerifiedEmailException
 import com.example.researchreview.services.AuthService
 import com.example.researchreview.services.EmailService
 import com.example.researchreview.services.JwtService
+import com.example.researchreview.services.MagicLinkSendResult
 import com.example.researchreview.services.UsersService
 import com.example.researchreview.services.Tokens
 import com.example.researchreview.utils.*
@@ -45,22 +46,39 @@ class AuthServiceImpl(
 
     private fun normalizeEmail(email: String) = email.trim().lowercase()
 
-    private fun emailKey(email: String) = "email:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}"
-    private fun resendKey(email: String) = "resend:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}"
-    private fun resendCountKey(email: String) = "resend-count:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}"
+    private fun fingerprintHash(deviceFingerprint: String?): String {
+        val raw = deviceFingerprint?.trim().orEmpty()
+        if (raw.isBlank()) return "no-device"
+        return CodeGen.hmacSha512(redisKeySecret, raw)
+    }
+
+    private fun magicPayload(tokenHash: String, fpHash: String): String = "$tokenHash.$fpHash"
+
+    private fun parseMagicPayload(payload: String): Pair<String, String>? {
+        val idx = payload.lastIndexOf('.')
+        if (idx <= 0 || idx >= payload.length - 1) return null
+        val tokenHash = payload.substring(0, idx)
+        val fpHash = payload.substring(idx + 1)
+        if (tokenHash.isBlank() || fpHash.isBlank()) return null
+        return tokenHash to fpHash
+    }
+
+    private fun emailKey(email: String, deviceFingerprint: String?) = "email:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}:${fingerprintHash(deviceFingerprint)}"
+    private fun resendKey(email: String, deviceFingerprint: String?) = "resend:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}:${fingerprintHash(deviceFingerprint)}"
+    private fun resendCountKey(email: String, deviceFingerprint: String?) = "resend-count:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}:${fingerprintHash(deviceFingerprint)}"
     private fun verifyKey(email: String) = "verify:${CodeGen.hmacSha512(redisKeySecret, normalizeEmail(email))}"
 
-    override fun signUpWithMail(email: String){
+    override fun signUpWithMail(email: String, deviceFingerprint: String?): MagicLinkSendResult {
         if (usersService.getByEmail(email) !== null) {
             throw EmailExistedException("Email already exists")
         }
-        if (redisTemplate.opsForValue().get(emailKey(email)) !== null) {
+        if (redisTemplate.opsForValue().get(emailKey(email, deviceFingerprint)) !== null) {
             throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Please wait before requesting another code")
         }
         if (redisTemplate.opsForValue().get(verifyKey(email)) == "verified") {
             throw VerifiedEmailException()
         }
-        sendMagicLink(email, true)
+        return sendMagicLink(email, true, deviceFingerprint)
     }
 
     override fun signUpInfo(info: UserRequestDto) {
@@ -84,20 +102,21 @@ class AuthServiceImpl(
         }
     }
 
-    override fun signInWithMail(email: String) {
+    override fun signInWithMail(email: String, deviceFingerprint: String?): MagicLinkSendResult {
         if (usersService.getByEmail(email) === null) {
             throw UserNotFoundException()
         }
         // reset resend keys so the user can request again immediately for sign-in
-        redisTemplate.delete(resendKey(email))
-        redisTemplate.delete(resendCountKey(email))
-        sendMagicLink(email, false)
+        redisTemplate.delete(resendKey(email, deviceFingerprint))
+        redisTemplate.delete(resendCountKey(email, deviceFingerprint))
+        return sendMagicLink(email, false, deviceFingerprint)
     }
 
-    override fun sendMagicLink(email: String, isSignUp: Boolean) {
-        val rKey = resendKey(email)
-        val rCountKey = resendCountKey(email)
-        val eKey = emailKey(email)
+    override fun sendMagicLink(email: String, isSignUp: Boolean, deviceFingerprint: String?): MagicLinkSendResult {
+        val rKey = resendKey(email, deviceFingerprint)
+        val rCountKey = resendCountKey(email, deviceFingerprint)
+        val eKey = emailKey(email, deviceFingerprint)
+        val fpHash = fingerprintHash(deviceFingerprint)
 
         val resendCount = redisTemplate.opsForValue().get(rCountKey)?.toIntOrNull() ?: 0
         val waitTime = when (resendCount) {
@@ -107,12 +126,13 @@ class AuthServiceImpl(
         }
 
         if (redisTemplate.opsForValue().get(rKey) != null) {
-            throw TooManyCodeRequestException()
+            val ttl = redisTemplate.getExpire(rKey, TimeUnit.SECONDS)?.coerceAtLeast(0)
+            throw TooManyCodeRequestException(ttl ?: 30)
         }
 
         val token = CodeGen.genCode()
         // store hashed token, not the raw token
-        redisTemplate.opsForValue().set(eKey, CodeGen.sha512(token), 5, TimeUnit.MINUTES)
+        redisTemplate.opsForValue().set(eKey, magicPayload(CodeGen.sha512(token), fpHash), 5, TimeUnit.MINUTES)
         // set resend lock and increment resend counter
         redisTemplate.opsForValue().set(rKey, "1", waitTime, TimeUnit.SECONDS)
         redisTemplate.opsForValue().set(rCountKey, (resendCount + 1).toString())
@@ -128,17 +148,34 @@ class AuthServiceImpl(
             message = "Please use the following code to sign up:  $url",
             template = "signup-email"
         )
+
+        val attemptsRemaining = (3 - (resendCount + 1)).coerceAtLeast(0)
+        return MagicLinkSendResult(cooldownSeconds = waitTime, attemptsRemaining = attemptsRemaining)
     }
 
-    override fun verifyMagicLink(email: String, token: String, isSignUp: Boolean): Tokens? {
-        val eKey = emailKey(email)
-        val storedHash = redisTemplate.opsForValue().get(eKey) ?: throw TokenInvalidException()
+    override fun verifyMagicLink(email: String, token: String, isSignUp: Boolean, deviceFingerprint: String?): Tokens? {
+        val eKey = emailKey(email, deviceFingerprint)
+        val storedPayload = redisTemplate.opsForValue().get(eKey) ?: throw TokenInvalidException()
+        val (storedHash, storedFpHash) = parseMagicPayload(storedPayload) ?: throw TokenInvalidException()
         val providedHash = CodeGen.sha512(token)
+        val providedFpHash = fingerprintHash(deviceFingerprint)
 
         val storedBytes = try { Base64.getDecoder().decode(storedHash) } catch (_: IllegalArgumentException) { null }
         val providedBytes = try { Base64.getDecoder().decode(providedHash) } catch (_: IllegalArgumentException) { null }
 
-        if (storedBytes == null || providedBytes == null || !MessageDigest.isEqual(storedBytes, providedBytes)) {
+        // Fingerprint hashes are encoded with URL-safe Base64 (CodeGen.hmacSha512 uses URL encoder).
+        // Also support the sentinel value "no-device" when no fingerprint was provided.
+        val storedFpBytes = if (storedFpHash == "no-device") null else try { Base64.getUrlDecoder().decode(storedFpHash) } catch (_: IllegalArgumentException) { null }
+        val providedFpBytes = if (providedFpHash == "no-device") null else try { Base64.getUrlDecoder().decode(providedFpHash) } catch (_: IllegalArgumentException) { null }
+
+        val tokenMatch = storedBytes != null && providedBytes != null && MessageDigest.isEqual(storedBytes, providedBytes)
+        val fpMatch = if (storedFpHash == "no-device" && providedFpHash == "no-device") {
+            true
+        } else {
+            storedFpBytes != null && providedFpBytes != null && MessageDigest.isEqual(storedFpBytes, providedFpBytes)
+        }
+
+        if (!tokenMatch || !fpMatch) {
             throw TokenInvalidException()
         }
 
@@ -146,18 +183,18 @@ class AuthServiceImpl(
             // Mark email as verified for sign up (7 days)
             redisTemplate.opsForValue().set(verifyKey(email), "verified", 7, TimeUnit.DAYS)
             redisTemplate.delete(eKey)
-            redisTemplate.delete(resendKey(email))
-            redisTemplate.delete(resendCountKey(email))
+            redisTemplate.delete(resendKey(email, deviceFingerprint))
+            redisTemplate.delete(resendCountKey(email, deviceFingerprint))
             null
         } else {
             val user = usersService.getByEmail(email) ?: throw TokenInvalidException()
             // issue tokens and set refresh httpOnly cookie on the current response
             val tokens = try {
-                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.role, user.roles))
+                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.role, user.roles), providedFpHash)
                 setCookiesFromTokens(issued, getCurrentResponse())
                 redisTemplate.delete(eKey)
-                redisTemplate.delete(resendKey(email))
-                redisTemplate.delete(resendCountKey(email))
+                redisTemplate.delete(resendKey(email, deviceFingerprint))
+                redisTemplate.delete(resendCountKey(email, deviceFingerprint))
                 issued
             } catch (e: Exception) {
                 // fallback: treat any failure as token invalid
@@ -190,7 +227,8 @@ class AuthServiceImpl(
             val jwt: Jwt = jwtService.validateAccessToken(refreshToken)
             val userId = jwt.subject
             val user = usersService.getById(userId)
-            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.role, user.roles))
+            val deviceFpHash = jwt.getClaimAsString("device_fp")
+            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.role, user.roles), deviceFpHash)
             // set rotated refresh cookie on response if available
             try {
                 setCookiesFromTokens(tokens, getCurrentResponse())

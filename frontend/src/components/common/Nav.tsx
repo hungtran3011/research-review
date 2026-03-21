@@ -1,166 +1,174 @@
-import React from 'react';
-import { makeStyles, Switch, Button, Avatar, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components';
-import { tokens } from '@fluentui/react-components';
-import { useThemeStore } from '../../stores/themeStore';
-import { useAuthStore } from '../../stores/authStore';
-import { useSignOut } from '../../hooks/useAuth';
-import { useCurrentUser } from '../../hooks/useUser';
-import { NavLink, useNavigate } from 'react-router';
-import { NotificationCenter } from './NotificationCenter';
+import { Avatar, Button, Dropdown, Layout, Space, Switch, Typography, Drawer, Grid } from 'antd'
 import {
-  WeatherSunny16Regular,
-  WeatherSunny16Filled,
-  WeatherMoon16Regular,
-  WeatherMoon16Filled,
-  Home12Regular,
-  SignOut20Regular,
-  Person20Regular,
-  Add16Regular,
-  Document16Regular,
-} from "@fluentui/react-icons";
+  BulbFilled,
+  BulbOutlined,
+  FileTextOutlined,
+  HomeOutlined,
+  LogoutOutlined,
+  PlusOutlined,
+  SettingOutlined,
+  UserOutlined,
+  MenuOutlined,
+} from '@ant-design/icons'
+import { NavLink, useNavigate } from 'react-router'
+import { useMemo, useState } from 'react'
+import { useThemeStore } from '../../stores/themeStore'
+import { useAuthStore } from '../../stores/authStore'
+import { useSignOut } from '../../hooks/useAuth'
+import { useCurrentUser } from '../../hooks/useUser'
+import { NotificationCenter } from './NotificationCenter'
 
-const useStyles = makeStyles({
-  nav: {
-    width: '100%',
-    height: '60px',
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: '0 16px',
-    boxShadow: tokens.shadow4,
-  },
-  navTitle: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  navLinks: {
-    marginLeft: 'auto',
-    marginRight: 'auto',
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
-  },
-  link: {
-    textDecoration: 'none',
-    color: 'inherit',
-    padding: '4px 8px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    ":hover": {
-      borderBottom: `2px solid ${tokens.colorBrandForeground1}`,
-    }
-  },
-  activeLink: {
-    textDecoration: 'none',
-    borderBottom: `2px solid ${tokens.colorBrandForeground1}`,
-    color: tokens.colorBrandForeground1,
-    padding: '4px 8px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  navActions: {
-    marginLeft: '16px',
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-  },
-  themeToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  }
-});
+const { Header } = Layout
+const { Text } = Typography
 
 function Nav() {
-  const classes = useStyles();
-  const theme = useThemeStore((state) => state.theme);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const email = useAuthStore((state) => state.email);
-  const navigate = useNavigate();
-  const { mutate: signOut } = useSignOut();
-  const { data: currentUserResponse } = useCurrentUser(Boolean(isAuthenticated));
+    const screens = Grid.useBreakpoint()
+    const [drawerVisible, setDrawerVisible] = useState(false)
+  const theme = useThemeStore((state) => state.theme)
+  const toggleTheme = useThemeStore((state) => state.toggleTheme)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const email = useAuthStore((state) => state.email)
+  const navigate = useNavigate()
+  const { mutate: signOut } = useSignOut()
+  const { data: currentUserResponse } = useCurrentUser(Boolean(isAuthenticated))
+
   const roles = currentUserResponse?.data?.roles?.length
     ? currentUserResponse.data.roles
     : currentUserResponse?.data?.role
       ? [currentUserResponse.data.role]
-      : [];
-  const isAdmin = roles.includes('ADMIN');
-  const isResearcher = roles.includes('RESEARCHER');
+      : []
 
-  const commonLinks = [
-    { to: '/', label: 'Trang chủ', icon: <Home12Regular /> },
-    { to: '/help', label: 'Trợ giúp', icon: <Document16Regular /> },
-  ];
+  const isAdmin = roles.includes('ADMIN')
+  const isResearcher = roles.includes('RESEARCHER')
 
-  const researcherLinks = isAuthenticated && isResearcher
-    ? [{ to: '/articles/submit', label: 'Nộp bài báo', icon: <Add16Regular /> }]
-    : [];
+  const links = [
+    { to: '/', label: 'Trang chủ', icon: <HomeOutlined /> },
+    { to: '/help', label: 'Trợ giúp', icon: <FileTextOutlined /> },
+    ...(isAuthenticated && isResearcher
+      ? [{ to: '/articles/submit', label: 'Nộp bài báo', icon: <PlusOutlined /> }]
+      : []),
+    ...(isAuthenticated ? [{ to: '/profile', label: 'Hồ sơ của tôi', icon: <UserOutlined /> }] : []),
+    ...(isAdmin ? [{ to: '/admin', label: 'Quản trị', icon: <SettingOutlined /> }] : []),
+  ]
 
-  const authenticatedLinks = [
-    { to: '/profile', label: 'Hồ sơ của tôi', icon: <Person20Regular /> },
-  ];
-
-  const adminLinks = isAdmin
-    ? [{ to: '/admin', label: 'Quản trị', icon: <Document16Regular /> }]
-    : [];
-
-  const handleSignOut = () => {
-    signOut();
-  };
+  const profileMenuItems = useMemo(
+    () => [
+      {
+        key: 'profile',
+        icon: <UserOutlined />,
+        label: 'Thông tin cá nhân',
+        onClick: () => navigate('/profile'),
+      },
+      {
+        key: 'signout',
+        icon: <LogoutOutlined />,
+        label: 'Đăng xuất',
+        onClick: () => signOut(),
+      },
+    ],
+    [navigate, signOut],
+  )
 
   return (
-    <div className={classes.nav}>
-      <div className={classes.navTitle}>
-        <div>Logo</div>
-        <div>Research Review</div>
-      </div>
-      <div className={classes.navLinks}>
-  {[...commonLinks, ...researcherLinks, ...(isAuthenticated ? [...authenticatedLinks, ...adminLinks] : [])].map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            className={({ isActive }) => (isActive ? classes.activeLink : classes.link)}
-          >
-            {link.icon}
-            {link.label}
-          </NavLink>
-        ))}
-      </div>
-      <div className={classes.navActions}>
+    <Header
+      style={{
+        background: theme === 'dark' ? '#141414' : '#ffffff',
+        borderBottom: '1px solid #f0f0f0',
+        padding: '0 16px',
+        height: 64,
+        lineHeight: '64px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+      }}
+    >
+      <Space size={8} style={{ minWidth: screens.lg ? 180 : 80, alignItems: 'center' }}>
+        {!screens.lg && (
+          <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerVisible(true)} />
+        )}
+        <Text strong style={{ margin: 0 }}>
+          Research Review
+        </Text>
+      </Space>
+
+      {screens.lg ? (
+        <Space size={4} wrap>
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              style={({ isActive }) => ({
+                textDecoration: 'none',
+                color: isActive ? '#1677ff' : 'inherit',
+                padding: '4px 10px',
+                borderRadius: 8,
+                border: isActive ? '1px solid #91caff' : '1px solid transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                lineHeight: '22px',
+              })}
+            >
+              {link.icon}
+              {link.label}
+            </NavLink>
+          ))}
+        </Space>
+      ) : null}
+
+      <Space size={12} style={{ minWidth: 260, justifyContent: 'flex-end' }}>
         {isAuthenticated && <NotificationCenter />}
+
         {isAuthenticated ? (
-          <Menu>
-            <MenuTrigger disableButtonEnhancement>
-              <Avatar name={email || 'User'} />
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem icon={<Person20Regular />} onClick={() => navigate('/profile')}>
-                  Thông tin cá nhân
-                </MenuItem>
-                <MenuItem icon={<SignOut20Regular />} onClick={handleSignOut}>
-                  Đăng xuất
-                </MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
+          <Dropdown menu={{ items: profileMenuItems }} trigger={['click']}>
+            <Avatar style={{ cursor: 'pointer' }} icon={<UserOutlined />}>
+              {email?.[0]?.toUpperCase()}
+            </Avatar>
+          </Dropdown>
         ) : (
-          <Button appearance='primary' as="a" href="/signin">
+          <Button type='primary' href='/signin'>
             Đăng nhập / Đăng ký
           </Button>
         )}
-        <div className={classes.themeToggle}>
-          {theme === "dark" ? <WeatherSunny16Regular /> : <WeatherSunny16Filled />}
-          <Switch checked={theme === "dark"} onChange={toggleTheme} />
-          {theme === "dark" ? <WeatherMoon16Filled /> : <WeatherMoon16Regular />}
-        </div>
-      </div>
-    </div>
-  );
+
+        <Space size={4}>
+          {theme === 'dark' ? <BulbFilled /> : <BulbOutlined />}
+          <Switch checked={theme === 'dark'} onChange={toggleTheme} />
+        </Space>
+      </Space>
+
+      <Drawer
+        title="Menu"
+        placement="left"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        zIndex={1005}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              onClick={() => setDrawerVisible(false)}
+              style={({ isActive }) => ({
+                textDecoration: 'none',
+                color: isActive ? '#1677ff' : 'inherit',
+                padding: '8px 4px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              })}
+            >
+              {link.icon}
+              {link.label}
+            </NavLink>
+          ))}
+        </Space>
+      </Drawer>
+    </Header>
+  )
 }
 
-export default Nav;
+export default Nav

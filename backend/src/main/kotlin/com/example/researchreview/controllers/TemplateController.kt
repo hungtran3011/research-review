@@ -1,6 +1,5 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.TemplateBusinessCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.TemplateDto
@@ -9,6 +8,7 @@ import com.example.researchreview.services.TemplateService
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
@@ -21,22 +21,24 @@ class TemplateController(
 ) {
     @PostMapping("/")
     fun create(@Valid @RequestBody tmpl: TemplateRequestDto): ResponseEntity<BaseResponseDto<TemplateDto>> {
-        val createdTemplate = try {
-            templateService.create(tmpl)
-        } catch (e: Exception) {
-            val response = BaseResponseDto(
-                code = TemplateBusinessCode.TEMPLATE_CREATED_FAIL.value,
-                message = "Errors when creating template: ${e.message}",
-                data = TemplateDto()
+        return try {
+            val createdTemplate = templateService.create(tmpl)
+            ResponseEntity.status(HttpStatus.CREATED).body(
+                BaseResponseDto(
+                    code = 201,
+                    message = "Template created successfully",
+                    data = createdTemplate
+                )
             )
-            return ResponseEntity.ok(response)
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = "Errors when creating template: ${e.message}",
+                    data = TemplateDto()
+                )
+            )
         }
-        val response = BaseResponseDto(
-            code = TemplateBusinessCode.TEMPLATE_CREATED_SUCCESSFULLY.value,
-            message = "Template created successfully",
-            data = createdTemplate
-        )
-        return ResponseEntity.ok(response)
     }
 
     @GetMapping("/")
@@ -44,7 +46,7 @@ class TemplateController(
         val templates = templateService.getAll(pageable)
         val pageResponse = PageResponseDto.from(templates)
         val response = BaseResponseDto(
-            code = TemplateBusinessCode.TEMPLATE_FOUND.value,
+            code = 200,
             message = "Templates retrieved successfully",
             data = pageResponse
         )

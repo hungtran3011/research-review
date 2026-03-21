@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>()(
         email: undefined,
         inviteToken: undefined,
         isAuthenticated: false,
-        hasBootstrapped: false,
+        hasBootstrapped: true,
         isVerified: false,
         isSignUp: false,
         accessToken: null,

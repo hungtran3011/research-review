@@ -1,31 +1,17 @@
+import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
-import { useEffect, useState } from 'react'
+import { Button, Typography, Spin, Card, Input, Modal, Tag, Drawer } from 'antd'
 import {
-    makeStyles,
-    Button,
-    Text,
-    Badge,
-    Spinner,
-    tokens,
-    Card,
-    Textarea,
-    Dialog,
-    DialogSurface,
-    DialogBody,
-    DialogTitle,
-    DialogContent,
-} from '@fluentui/react-components'
-import {
-    ArrowLeftRegular,
-    DocumentRegular,
-    PersonRegular,
-    CalendarRegular,
-    NavigationRegular,
-    CommentRegular,
-    SendRegular,
-    CheckmarkRegular,
-    DismissRegular,
-} from '@fluentui/react-icons'
+    ArrowLeftOutlined,
+    FilePdfOutlined,
+    UserOutlined,
+    CalendarOutlined,
+    MenuOutlined,
+    CommentOutlined,
+    SendOutlined,
+    CheckOutlined,
+    CloseOutlined,
+} from '@ant-design/icons'
 import { useArticle, useEditorApproveArticle, useEditorRejectArticle } from '../../hooks/useArticles'
 import { useAuthStore } from '../../stores/authStore'
 import { useCurrentUser } from '../../hooks/useUser'
@@ -36,9 +22,10 @@ import { useArticleComments, useReplyComment } from '../../hooks/useComments'
 import { SubmitRevision } from './SubmitRevision'
 import { useStartRevisions } from '../../hooks/useArticles'
 import { InviteReviewersDialog } from './InviteReviewersDialog'
+import { useAnonymizedStructuredReviews, useChairStructuredReviews } from '../../hooks/useStructuredReviews'
 import type { CommentDto, CommentThreadDto } from '../../models'
 
-const useStyles = makeStyles({
+const styles: Record<string, React.CSSProperties> = {
     root: {
         display: 'flex',
         height: 'calc(100vh - 64px)',
@@ -46,256 +33,64 @@ const useStyles = makeStyles({
         overflow: 'hidden',
         flexDirection: 'row',
         position: 'relative',
-        '@media (max-width: 1024px)': {
-            flexDirection: 'column',
-        },
     },
     sidebarSection: {
-        width: '320px',
+        width: 320,
         flexShrink: 0,
-        borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+        borderRight: '1px solid #f0f0f0',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: tokens.colorNeutralBackground1,
+        backgroundColor: '#fff',
         overflow: 'hidden',
         transition: 'transform 0.3s ease-in-out',
-        zIndex: 100,
-        '@media (max-width: 1024px)': {
-            position: 'fixed',
-            left: 0,
-            top: '64px',
-            height: 'calc(100vh - 64px)',
-            zIndex: 1002,
-            boxShadow: tokens.shadow16,
-            borderRight: 'none',
-        },
+        zIndex: 1002,
     },
     sidebarHidden: {
-        '@media (max-width: 1024px)': {
-            transform: 'translateX(-100%)',
-        },
+        transform: 'translateX(-100%)',
     },
     sidebarHeader: {
-        padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
+        padding: 16,
+        borderBottom: '1px solid #f0f0f0',
+        backgroundColor: '#fafafa',
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
+        gap: 8,
     },
     sidebarScroll: {
         flex: 1,
         overflow: 'auto',
-        padding: '16px',
+        padding: 16,
     },
-    sectionBlock: {
-        marginBottom: '16px',
-    },
-    sectionLabel: {
-        fontSize: '12px',
-        fontWeight: tokens.fontWeightSemibold,
-        color: tokens.colorNeutralForeground3,
-        textTransform: 'uppercase',
-        marginBottom: '6px',
-    },
-    sectionContent: {
-        fontSize: '14px',
-        color: tokens.colorNeutralForeground1,
-        wordBreak: 'break-word',
-    },
-    metadataRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: '8px',
-        color: tokens.colorNeutralForeground2,
-    },
-    authorsList: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-    },
-    authorItem: {
-        padding: '8px',
-        backgroundColor: tokens.colorNeutralBackground2,
-        borderRadius: tokens.borderRadiusMedium,
-        fontSize: '13px',
-    },
-    reviewersList: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '6px',
-    },
-    viewerSection: {
-        flex: 1,
-        minWidth: '0',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-        '@media (max-width: 1024px)': {
-            height: 'calc(100vh - 64px)',
-        },
-    },
-    viewerHeader: {
-        padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px',
-        flexWrap: 'wrap',
-    },
-    viewerTitle: {
-        fontSize: tokens.fontSizeHero700,
-        fontWeight: tokens.fontWeightSemibold,
-        flex: 1,
-    },
-    overlay: {
-        position: 'fixed',
-        top: '64px',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        zIndex: 999,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    sidebarToggle: {
-        position: 'fixed',
-        bottom: '24px',
-        left: '24px',
-        zIndex: 1001,
-        boxShadow: tokens.shadow16,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    centerContent: {
-        minHeight: '60vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-        gap: '12px',
-        padding: '24px',
-        textAlign: 'center',
-    },
-    // Comments Section
-    commentsSection: {
-        width: '400px',
-        flexShrink: 0,
-        borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: tokens.colorNeutralBackground1,
-        overflow: 'hidden',
-        transition: 'transform 0.3s ease-in-out',
-        '@media (max-width: 1024px)': {
-            display: 'none',
-        },
-    },
-    commentsSectionHidden: {
-        '@media (min-width: 1025px)': {
-            transform: 'translateX(100%)',
-        },
-    },
-    commentsDialogSurface: {
-        maxWidth: '90vw',
-        width: '520px',
-        maxHeight: '90vh',
-        '@media (max-width: 1024px)': {
-            width: '95vw',
-            maxWidth: '95vw',
-        },
-    },
-    commentsDialogBody: {
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: 'calc(90vh - 100px)',
-        overflow: 'hidden',
-    },
-    commentsHeader: {
-        padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    commentsScroll: {
-        flex: 1,
-        overflow: 'auto',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        gap: '12px',
-    },
-    commentCard: {
-        padding: '12px',
-        width: '100%',
-        alignSelf: 'stretch',
-        flexShrink: 0,
-    },
-    commentHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '8px',
-    },
-    commentMeta: {
-        display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        fontSize: '12px',
-        color: tokens.colorNeutralForeground3,
-        marginBottom: '8px',
-    },
-    commentContent: {
-        marginBottom: '8px',
-    },
-    commentReplies: {
-        marginLeft: '16px',
-        marginTop: '12px',
-        paddingLeft: '12px',
-        borderLeft: `2px solid ${tokens.colorNeutralStroke2}`,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-    },
-    replyItem: {
-        padding: '8px',
-        backgroundColor: tokens.colorNeutralBackground2,
-        borderRadius: tokens.borderRadiusMedium,
-    },
-    replyForm: {
-        marginTop: '8px',
-        padding: '12px',
-        backgroundColor: tokens.colorNeutralBackground2,
-        borderRadius: tokens.borderRadiusMedium,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-    },
-    commentsToggle: {
-        position: 'fixed',
-        bottom: '80px',
-        right: '24px',
-        zIndex: 1001,
-        boxShadow: tokens.shadow16,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-})
+    sectionBlock: { marginBottom: 16 },
+    sectionLabel: { fontSize: 12, textTransform: 'uppercase', marginBottom: 6, color: '#8c8c8c' },
+    sectionContent: { fontSize: 14, color: '#000', wordBreak: 'break-word' },
+    metadataRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: '#595959' },
+    authorsList: { display: 'flex', flexDirection: 'column', gap: 8 },
+    authorItem: { padding: 8, backgroundColor: '#fafafa', borderRadius: 6, fontSize: 13 },
+    reviewersList: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+    viewerSection: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' },
+    viewerHeader: { padding: 16, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
+    viewerTitle: { fontSize: 20, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    overlay: { position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1000 },
+    sidebarToggle: { position: 'fixed', bottom: 24, left: 24, zIndex: 1003 },
+    centerContent: { minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, padding: 24, textAlign: 'center' },
+    commentsSection: { width: 400, flexShrink: 0, borderLeft: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', backgroundColor: '#fff', overflow: 'hidden', transition: 'transform 0.3s ease-in-out' },
+    commentsSectionHidden: { transform: 'translateX(100%)' },
+    commentsDialogSurface: { maxWidth: '90vw', width: 520, maxHeight: '90vh' },
+    commentsDialogBody: { display: 'flex', flexDirection: 'column', maxHeight: 'calc(90vh - 100px)', overflow: 'hidden' },
+    commentsHeader: { padding: 16, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    commentsScroll: { flex: 1, overflow: 'auto', padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+    commentCard: { padding: 12, width: '100%', alignSelf: 'stretch', flexShrink: 0 },
+    commentHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+    commentMeta: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: '#8c8c8c', marginBottom: 8 },
+    commentContent: { marginBottom: 8 },
+    commentReplies: { marginLeft: 16, marginTop: 12, paddingLeft: 12, borderLeft: '2px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 8 },
+    replyItem: { padding: 8, backgroundColor: '#fafafa', borderRadius: 6 },
+    replyForm: { marginTop: 8, padding: 12, backgroundColor: '#fafafa', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 8 },
+    commentsToggle: { position: 'fixed', bottom: 80, right: 24, zIndex: 1003 },
+}
 
 function ArticleDetails() {
-    const classes = useStyles()
     const params = useParams<{ articleId: string }>()
     const navigate = useNavigate()
     const articleId = params.articleId
@@ -403,7 +198,8 @@ function ArticleDetails() {
         return role ? [role] : []
     })()
 
-    const canManageReviewers = currentRoles.includes('ADMIN') || currentRoles.includes('EDITOR')
+    const isChair = currentRoles.includes('CHAIR') || currentRoles.includes('ADMIN')
+    const canManageReviewers = currentRoles.includes('ADMIN') || currentRoles.includes('EDITOR') || currentRoles.includes('CHAIR')
 
     const handleReply = (threadId: string) => {
         if (!replyText.trim()) return
@@ -437,6 +233,11 @@ function ArticleDetails() {
         (author) => (author.email ?? '').trim().toLowerCase() === normalizedCurrentEmail
     )
 
+    const { data: chairStructuredReviewsResponse } = useChairStructuredReviews(articleId, !!articleId && isChair)
+    const { data: anonymizedStructuredReviewsResponse } = useAnonymizedStructuredReviews(articleId, !!articleId && !!isAuthor)
+    const chairStructuredReviews = chairStructuredReviewsResponse?.data ?? []
+    const anonymizedStructuredReviews = anonymizedStructuredReviewsResponse?.data ?? []
+
     const canReplyToComments = !!isAuthor || canManageReviewers
 
     // Check if current user can submit revision
@@ -451,6 +252,7 @@ function ArticleDetails() {
         [ArticleStatus.SUBMITTED]: { label: 'Đã nộp', color: 'informative' },
         [ArticleStatus.PENDING_REVIEW]: { label: 'Chờ phản biện', color: 'informative' },
         [ArticleStatus.IN_REVIEW]: { label: 'Đang phản biện', color: 'brand' },
+        [ArticleStatus.REVIEWS_COMPLETED]: { label: 'Phản biện hoàn thành', color: 'brand' },
         [ArticleStatus.REVISIONS_REQUESTED]: { label: 'Yêu cầu sửa chữa', color: 'warning' },
         [ArticleStatus.REVISIONS]: { label: 'Đang sửa chữa', color: 'important' },
         [ArticleStatus.ACCEPTED]: { label: 'Đã chấp nhận', color: 'success' },
@@ -462,8 +264,8 @@ function ArticleDetails() {
     // Loading state - center content
     if (isLoading && !article) {
         return (
-            <div className={classes.centerContent}>
-                <Spinner size="large" label="Đang tải thông tin bài báo..." />
+            <div style={styles.centerContent}>
+                <Spin size="large" tip="Đang tải thông tin bài báo..." />
             </div>
         )
     }
@@ -471,12 +273,13 @@ function ArticleDetails() {
     // Error state - center content
     if (isError || !article) {
         return (
-            <div className={classes.centerContent}>
-                <Text size={500} weight="semibold">Không thể tải thông tin bài báo</Text>
+            <div style={styles.centerContent}>
+                <Typography.Text strong>Không thể tải thông tin bài báo</Typography.Text>
                 <Button
-                    appearance="primary"
-                    icon={<ArrowLeftRegular />}
+                    type="primary"
+                    icon={<ArrowLeftOutlined />}
                     onClick={() => navigate('/')}
+                    style={{ marginTop: 12 }}
                 >
                     Quay lại trang chủ
                 </Button>
@@ -485,6 +288,25 @@ function ArticleDetails() {
     }
 
     const statusInfo = statusLabelMap[article.status] || { label: article.status, color: 'informative' as const }
+
+    const reviewSubmissionCount = chairStructuredReviews.length
+    const assignedReviewerCount = article.reviewers?.length ?? 0
+    const recommendationDistribution = chairStructuredReviews.reduce<Record<string, number>>((accumulator, review) => {
+        accumulator[review.recommendation] = (accumulator[review.recommendation] ?? 0) + 1
+        return accumulator
+    }, {})
+
+    const overallScores = chairStructuredReviews
+        .flatMap((review) => review.scores)
+        .filter((score) => score.criterion === 'overall')
+        .map((score) => score.score)
+    const averageOverallScore = overallScores.length > 0
+        ? (overallScores.reduce((sum, score) => sum + score, 0) / overallScores.length).toFixed(2)
+        : null
+
+    const submittedReviewerDisplayIndices = new Set(
+        chairStructuredReviews.map((review) => review.reviewerDisplayIndex)
+    )
 
     // Determine PDF URL for viewer - use same logic as ReviewArticle
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
@@ -509,93 +331,136 @@ function ArticleDetails() {
         ? new Date(article.createdAt).toLocaleString('vi-VN')
         : 'Chưa cập nhật'
 
+    const renderStructuredReviewPanel = () => {
+        if (!isChair && !isAuthor) return null
+
+        if (isChair) {
+            return (
+                <div style={styles.sectionBlock}>
+                    <div style={styles.sectionLabel}>Structured review (Chair)</div>
+                    <Card size="small" style={{ marginBottom: 8 }}>
+                        <Typography.Text style={{ display: 'block' }}>
+                            Hoàn tất phản biện: {reviewSubmissionCount}/{assignedReviewerCount}
+                        </Typography.Text>
+                        <Typography.Text style={{ display: 'block' }}>
+                            Điểm overall trung bình: {averageOverallScore ?? 'Chưa có'}
+                        </Typography.Text>
+                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {Object.entries(recommendationDistribution).length > 0 ? Object.entries(recommendationDistribution).map(([recommendation, count]) => (
+                                <Tag key={recommendation}>{recommendation}: {count}</Tag>
+                            )) : <Typography.Text type="secondary">Chưa có khuyến nghị</Typography.Text>}
+                        </div>
+                    </Card>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {(article.reviewers ?? []).map((reviewer, index) => {
+                            const displayIndex = reviewer.displayIndex ?? index + 1
+                            const submitted = submittedReviewerDisplayIndices.has(displayIndex)
+                            return (
+                                <div key={reviewer.id} style={styles.authorItem}>
+                                    <Typography.Text>
+                                        Reviewer {displayIndex}: {submitted ? 'Đã nộp' : 'Chưa nộp'}
+                                    </Typography.Text>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )
+        }
+
+        return (
+            <div style={styles.sectionBlock}>
+                <div style={styles.sectionLabel}>Structured review (Ẩn danh)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {anonymizedStructuredReviews.length === 0 ? (
+                        <Typography.Text type="secondary">Chưa có phản biện ẩn danh.</Typography.Text>
+                    ) : anonymizedStructuredReviews.map((review) => (
+                        <Card key={review.id} size="small">
+                            <Typography.Text strong>{review.reviewerLabel}</Typography.Text>
+                            <Typography.Paragraph style={{ marginTop: 8, marginBottom: 8 }}>
+                                {review.summaryNotes}
+                            </Typography.Paragraph>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {review.scores.map((score) => (
+                                    <Tag key={`${review.id}-${score.criterion}`}>{score.criterion}: {score.score}</Tag>
+                                ))}
+                            </div>
+                            {review.submittedAt && (
+                                <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                                    Nộp lúc: {new Date(review.submittedAt).toLocaleString('vi-VN')}
+                                </Typography.Text>
+                            )}
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
     const renderCommentsList = () => (
-        <div className={classes.commentsScroll}>
+        <div style={styles.commentsScroll}>
             {isCommentsLoading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
-                    <Spinner size="medium" />
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+                    <Spin />
                 </div>
             ) : commentThreads.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: tokens.colorNeutralForeground3 }}>
-                    <CommentRegular style={{ fontSize: '48px', opacity: 0.3 }} />
-                    <Text size={300} style={{ display: 'block', marginTop: '8px' }}>
-                        Chưa có nhận xét nào
-                    </Text>
+                <div style={{ textAlign: 'center', padding: 24, color: '#8c8c8c' }}>
+                    <CommentOutlined style={{ fontSize: 48, opacity: 0.3 }} />
+                    <Typography.Text style={{ display: 'block', marginTop: 8 }}>Chưa có nhận xét nào</Typography.Text>
                 </div>
             ) : (
                 commentThreads.map((thread) => (
-                    <Card key={thread.id} className={classes.commentCard}>
-                        <div className={classes.commentHeader}>
+                    <Card key={thread.id} style={styles.commentCard}>
+                        <div style={styles.commentHeader}>
                             <div>
-                                <Text weight="semibold" size={300}>
-                                    {getThreadReviewerLabel(thread)}
-                                </Text>
-                                <Badge appearance="tint" size="small" style={{ marginLeft: '8px' }}>
-                                    v{thread.version}
-                                </Badge>
+                                <Typography.Text strong>{getThreadReviewerLabel(thread)}</Typography.Text>
+                                <Tag style={{ marginLeft: 8 }}>v{thread.version}</Tag>
                             </div>
-                            <Badge appearance="outline" size="small">
-                                {thread.status}
-                            </Badge>
+                            <Tag>{thread.status}</Tag>
                         </div>
 
-                        <div className={classes.commentMeta}>
+                        <div style={styles.commentMeta}>
                             {thread.section && (
                                 <>
-                                    <Text size={200}>{thread.section}</Text>
-                                    <Text size={200}>•</Text>
+                                    <Typography.Text>{thread.section}</Typography.Text>
+                                    <Typography.Text>•</Typography.Text>
                                 </>
                             )}
-                            <Text size={200}>Trang {thread.pageNumber}</Text>
+                            <Typography.Text>Trang {thread.pageNumber}</Typography.Text>
                             {thread.createdAt && (
                                 <>
-                                    <Text size={200}>•</Text>
-                                    <Text size={200}>
+                                    <Typography.Text>•</Typography.Text>
+                                    <Typography.Text>
                                         {new Date(thread.createdAt).toLocaleDateString('vi-VN')}
-                                    </Text>
+                                    </Typography.Text>
                                 </>
                             )}
                         </div>
 
                         {thread.selectedText && (
-                            <div
-                                style={{
-                                    padding: '8px',
-                                    backgroundColor: tokens.colorNeutralBackground3,
-                                    borderLeft: `3px solid ${tokens.colorPaletteYellowBorder2}`,
-                                    marginBottom: '8px',
-                                    fontSize: '13px',
-                                    fontStyle: 'italic',
-                                }}
-                            >
+                            <div style={{ padding: 8, backgroundColor: '#fafafa', borderLeft: '3px solid #faad14', marginBottom: 8, fontSize: 13, fontStyle: 'italic' }}>
                                 "{thread.selectedText}"
                             </div>
                         )}
 
                         {thread.comments.length > 0 && (
                             <>
-                                <div className={classes.commentContent}>
-                                    <Text size={300}>{thread.comments[0].content}</Text>
+                                <div style={styles.commentContent}>
+                                    <Typography.Text>{thread.comments[0].content}</Typography.Text>
                                 </div>
 
                                 {thread.comments.length > 1 && (
-                                    <div className={classes.commentReplies}>
+                                    <div style={styles.commentReplies}>
                                         {thread.comments.slice(1).map((reply) => (
-                                            <div key={reply.id} className={classes.replyItem}>
-                                                <Text weight="semibold" size={200}>
-                                                    {displayAuthorName(reply)}
-                                                </Text>
+                                            <div key={reply.id} style={styles.replyItem}>
+                                                <Typography.Text strong>{displayAuthorName(reply)}</Typography.Text>
                                                 {reply.createdAt && (
-                                                    <Text
-                                                        size={100}
-                                                        style={{ color: tokens.colorNeutralForeground3, marginLeft: '8px' }}
-                                                    >
+                                                    <Typography.Text style={{ color: '#8c8c8c', marginLeft: 8 }}>
                                                         {new Date(reply.createdAt).toLocaleDateString('vi-VN')}
-                                                    </Text>
+                                                    </Typography.Text>
                                                 )}
-                                                <Text size={300} style={{ display: 'block', marginTop: '4px' }}>
-                                                    {reply.content}
-                                                </Text>
+                                                <Typography.Text style={{ display: 'block', marginTop: 4 }}>{reply.content}</Typography.Text>
                                             </div>
                                         ))}
                                     </div>
@@ -603,45 +468,20 @@ function ArticleDetails() {
 
                                 {canReplyToComments ? (
                                     replyingTo === thread.id ? (
-                                        <div className={classes.replyForm}>
-                                            <Textarea
+                                        <div style={styles.replyForm}>
+                                            <Input.TextArea
                                                 value={replyText}
-                                                onChange={(_, data) => setReplyText(data.value)}
+                                                onChange={(e) => setReplyText(e.target.value)}
                                                 placeholder="Nhập câu trả lời..."
                                                 rows={3}
                                             />
-                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                                <Button
-                                                    size="small"
-                                                    appearance="subtle"
-                                                    onClick={() => {
-                                                        setReplyingTo(null)
-                                                        setReplyText('')
-                                                    }}
-                                                >
-                                                    Hủy
-                                                </Button>
-                                                <Button
-                                                    size="small"
-                                                    appearance="primary"
-                                                    icon={<SendRegular />}
-                                                    onClick={() => handleReply(thread.id)}
-                                                    disabled={!replyText.trim() || isReplying}
-                                                >
-                                                    Gửi
-                                                </Button>
+                                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                                <Button size="small" onClick={() => { setReplyingTo(null); setReplyText('') }}>Hủy</Button>
+                                                <Button size="small" type="primary" icon={<SendOutlined />} onClick={() => handleReply(thread.id)} disabled={!replyText.trim() || isReplying}>Gửi</Button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <Button
-                                            size="small"
-                                            appearance="subtle"
-                                            icon={<CommentRegular />}
-                                            onClick={() => setReplyingTo(thread.id)}
-                                            style={{ marginTop: '8px' }}
-                                        >
-                                            Trả lời
-                                        </Button>
+                                        <Button size="small" onClick={() => setReplyingTo(thread.id)} style={{ marginTop: 8 }} icon={<CommentOutlined />}>Trả lời</Button>
                                     )
                                 ) : null}
                             </>
@@ -653,159 +493,229 @@ function ArticleDetails() {
     )
 
     return (
-        <div className={classes.root}>
-            {/* Overlay for mobile */}
-            {isSidebarVisible && (
-                <div className={classes.overlay} onClick={() => setIsSidebarVisible(false)} />
-            )}
-
-            {/* Sidebar with Article Info */}
-            <div
-                className={`${classes.sidebarSection} ${
-                    !isSidebarVisible ? classes.sidebarHidden : ''
-                }`}
-            >
-                <div className={classes.sidebarHeader}>
-                    <Badge appearance="filled" color={statusInfo.color}>
-                        {statusInfo.label}
-                    </Badge>
-                </div>
-
-                <div className={classes.sidebarScroll}>
-                    {/* Basic Info */}
-                    <div className={classes.sectionBlock}>
-                        <div className={classes.sectionLabel}>Ngày nộp</div>
-                        <div className={classes.metadataRow}>
-                            <CalendarRegular />
-                            <Text size={300}>{submittedDate}</Text>
-                        </div>
+        <div style={styles.root}>
+            {isMobile ? (
+                <Drawer
+                    placement="left"
+                    onClose={() => setIsSidebarVisible(false)}
+                    open={isSidebarVisible}
+                    width={320}
+                    mask={true}
+                    zIndex={1002}
+                    bodyStyle={{ padding: 0 }}
+                >
+                    <div style={styles.sidebarHeader}>
+                        <Tag>{statusInfo.label}</Tag>
                     </div>
 
-                    <div className={classes.sectionBlock}>
-                        <div className={classes.sectionLabel}>Lĩnh vực</div>
-                        <Text size={300} className={classes.sectionContent}>
-                            {trackName}
-                        </Text>
-                    </div>
-
-                    {/* Abstract */}
-                    <div className={classes.sectionBlock}>
-                        <div className={classes.sectionLabel}>Tóm tắt</div>
-                        <Text size={300} className={classes.sectionContent}>
-                            {article.abstract}
-                        </Text>
-                    </div>
-
-                    {/* Conclusion */}
-                    {article.conclusion && (
-                        <div className={classes.sectionBlock}>
-                            <div className={classes.sectionLabel}>Kết luận</div>
-                            <Text size={300} className={classes.sectionContent}>
-                                {article.conclusion}
-                            </Text>
-                        </div>
-                    )}
-
-                    {/* Authors */}
-                    <div className={classes.sectionBlock}>
-                        <div className={classes.sectionLabel}>Tác giả</div>
-                        <div className={classes.authorsList}>
-                            {article.authors.map((author, index) => (
-                                <div key={author.id || index} className={classes.authorItem}>
-                                    <div>
-                                        <Text weight="semibold" size={300}>
-                                            {author.name}
-                                        </Text>
-                                        <Text size={200}>{author.email}</Text>
-                                        <Text size={200}>{author.institution.name}</Text>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Reviewers */}
-                    {article.reviewers && article.reviewers.length > 0 && (
-                        <div className={classes.sectionBlock}>
-                            <div className={classes.sectionLabel}>Người phản biện</div>
-                            <div className={classes.reviewersList}>
-                                {canManageReviewers ? (
-                                    article.reviewers.map((reviewer) => (
-                                        <Badge
-                                            key={reviewer.id}
-                                            appearance="outline"
-                                            icon={<PersonRegular />}
-                                            size="small"
-                                        >
-                                            {reviewer.name}
-                                        </Badge>
-                                    ))
-                                ) : currentUser?.role === 'REVIEWER' ? (
-                                    // Reviewers should not see other reviewers; show only themselves.
-                                    article.reviewers
-                                        .filter((reviewer) => {
-                                            const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
-                                            const matchesEmail = reviewer.email?.toLowerCase() === (currentUserEmail ?? '').toLowerCase()
-                                            return !!(matchesUserId || matchesEmail)
-                                        })
-                                        .map((reviewer) => (
-                                            <Badge
-                                                key={reviewer.id}
-                                                appearance="outline"
-                                                icon={<PersonRegular />}
-                                                size="small"
-                                            >
-                                                Bạn
-                                            </Badge>
-                                        ))
-                                ) : (
-                                    // Researchers see anonymized stable reviewer numbering.
-                                    article.reviewers.map((reviewer, index) => (
-                                        <Badge
-                                            key={reviewer.id}
-                                            appearance="outline"
-                                            icon={<PersonRegular />}
-                                            size="small"
-                                        >
-                                            Người phản biện {reviewer.displayIndex ?? index + 1}
-                                        </Badge>
-                                    ))
-                                )}
+                    <div style={styles.sidebarScroll}>
+                        {/* Basic Info */}
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Ngày nộp</div>
+                            <div style={styles.metadataRow}>
+                                <CalendarOutlined />
+                                <Typography.Text>{submittedDate}</Typography.Text>
                             </div>
                         </div>
-                    )}
 
-                    {/* Initial Review Note */}
-                    {article.initialReviewNote && (
-                        <div className={classes.sectionBlock}>
-                            <div className={classes.sectionLabel}>Ghi chú ban đầu</div>
-                            <Text size={300} className={classes.sectionContent}>
-                                {article.initialReviewNote}
-                            </Text>
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Lĩnh vực</div>
+                            <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
                         </div>
-                    )}
 
-                    {/* Initial Review Next Steps */}
-                    {article.initialReviewNextSteps && (
-                        <div className={classes.sectionBlock}>
-                            <div className={classes.sectionLabel}>Các bước tiếp theo</div>
-                            <Text size={300} className={classes.sectionContent}>
-                                {article.initialReviewNextSteps}
-                            </Text>
+                        {/* Abstract */}
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Tóm tắt</div>
+                            <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
                         </div>
-                    )}
+
+                        {/* Conclusion */}
+                        {article.conclusion && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Kết luận</div>
+                                <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
+                            </div>
+                        )}
+
+                        {/* Authors */}
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Tác giả</div>
+                            <div style={styles.authorsList}>
+                                {article.authors.map((author, index) => (
+                                    <div key={author.id || index} style={styles.authorItem}>
+                                        <div>
+                                            <Typography.Text strong>{author.name}</Typography.Text>
+                                            <div>
+                                                <Typography.Text type="secondary">{author.email}</Typography.Text>
+                                            </div>
+                                            <div>
+                                                <Typography.Text type="secondary">{author.institution.name}</Typography.Text>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Reviewers */}
+                        {article.reviewers && article.reviewers.length > 0 && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Người phản biện</div>
+                                <div style={styles.reviewersList}>
+                                    {canManageReviewers ? (
+                                        article.reviewers.map((reviewer) => (
+                                            <Tag key={reviewer.id} icon={<UserOutlined />}>
+                                                {reviewer.name}
+                                            </Tag>
+                                        ))
+                                    ) : currentUser?.role === 'REVIEWER' ? (
+                                        // Reviewers should not see other reviewers; show only themselves.
+                                        article.reviewers
+                                            .filter((reviewer) => {
+                                                const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
+                                                const matchesEmail = reviewer.email?.toLowerCase() === (currentUserEmail ?? '').toLowerCase()
+                                                return !!(matchesUserId || matchesEmail)
+                                            })
+                                            .map((reviewer) => (
+                                                <Tag key={reviewer.id} icon={<UserOutlined />}>Bạn</Tag>
+                                            ))
+                                    ) : (
+                                        // Researchers see anonymized stable reviewer numbering.
+                                        article.reviewers.map((reviewer, index) => (
+                                            <Tag key={reviewer.id} icon={<UserOutlined />}>Người phản biện {reviewer.displayIndex ?? index + 1}</Tag>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {renderStructuredReviewPanel()}
+
+                        {/* Initial Review Note */}
+                        {article.initialReviewNote && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Ghi chú ban đầu</div>
+                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
+                            </div>
+                        )}
+
+                        {/* Initial Review Next Steps */}
+                        {article.initialReviewNextSteps && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Các bước tiếp theo</div>
+                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
+                            </div>
+                        )}
+                    </div>
+                </Drawer>
+            ) : (
+                <div style={styles.sidebarSection}>
+                    <div style={styles.sidebarHeader}>
+                        <Tag>{statusInfo.label}</Tag>
+                    </div>
+
+                    <div style={styles.sidebarScroll}>
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Ngày nộp</div>
+                            <div style={styles.metadataRow}>
+                                <CalendarOutlined />
+                                <Typography.Text>{submittedDate}</Typography.Text>
+                            </div>
+                        </div>
+
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Lĩnh vực</div>
+                            <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
+                        </div>
+
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Tóm tắt</div>
+                            <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
+                        </div>
+
+                        {article.conclusion && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Kết luận</div>
+                                <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
+                            </div>
+                        )}
+
+                        <div style={styles.sectionBlock}>
+                            <div style={styles.sectionLabel}>Tác giả</div>
+                            <div style={styles.authorsList}>
+                                {article.authors.map((author, index) => (
+                                    <div key={author.id || index} style={styles.authorItem}>
+                                        <div>
+                                            <Typography.Text strong>{author.name}</Typography.Text>
+                                            <div>
+                                                <Typography.Text type="secondary">{author.email}</Typography.Text>
+                                            </div>
+                                            <div>
+                                                <Typography.Text type="secondary">{author.institution.name}</Typography.Text>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {article.reviewers && article.reviewers.length > 0 && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Người phản biện</div>
+                                <div style={styles.reviewersList}>
+                                    {canManageReviewers ? (
+                                        article.reviewers.map((reviewer) => (
+                                            <Tag key={reviewer.id} icon={<UserOutlined />}>
+                                                {reviewer.name}
+                                            </Tag>
+                                        ))
+                                    ) : currentUser?.role === 'REVIEWER' ? (
+                                        article.reviewers
+                                            .filter((reviewer) => {
+                                                const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
+                                                const matchesEmail = reviewer.email?.toLowerCase() === (currentUserEmail ?? '').toLowerCase()
+                                                return !!(matchesUserId || matchesEmail)
+                                            })
+                                            .map((reviewer) => (
+                                                <Tag key={reviewer.id} icon={<UserOutlined />}>Bạn</Tag>
+                                            ))
+                                    ) : (
+                                        article.reviewers.map((reviewer, index) => (
+                                            <Tag key={reviewer.id} icon={<UserOutlined />}>Người phản biện {reviewer.displayIndex ?? index + 1}</Tag>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {renderStructuredReviewPanel()}
+
+                        {article.initialReviewNote && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Ghi chú ban đầu</div>
+                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
+                            </div>
+                        )}
+
+                        {article.initialReviewNextSteps && (
+                            <div style={styles.sectionBlock}>
+                                <div style={styles.sectionLabel}>Các bước tiếp theo</div>
+                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Viewer Section */}
-            <div className={classes.viewerSection}>
-                <div className={classes.viewerHeader}>
-                    <Text className={classes.viewerTitle}>{article.title}</Text>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={styles.viewerSection}>
+                <div style={styles.viewerHeader}>
+                    <Typography.Text style={styles.viewerTitle}>{article.title}</Typography.Text>
+                    <div style={{ display: 'flex', gap: 8 }}>
                         {pdfUrl && pdfUrl.startsWith('http') && (
                             <Button
-                                appearance="primary"
-                                icon={<DocumentRegular />}
+                                type="primary"
+                                icon={<FilePdfOutlined />}
                                 onClick={() => window.open(pdfUrl, '_blank')}
                                 size="small"
                             >
@@ -817,8 +727,8 @@ function ArticleDetails() {
                                 article.status === ArticleStatus.REJECT_REQUESTED) && (
                                 <>
                                     <Button
-                                        appearance="primary"
-                                        icon={<CheckmarkRegular />}
+                                        type="primary"
+                                        icon={<CheckOutlined />}
                                         size="small"
                                         disabled={isApproving || isRejecting}
                                         onClick={() => {
@@ -830,8 +740,8 @@ function ArticleDetails() {
                                         {isApproving ? 'Đang xử lý...' : 'Chấp thuận'}
                                     </Button>
                                     <Button
-                                        appearance="secondary"
-                                        icon={<DismissRegular />}
+                                        danger
+                                        icon={<CloseOutlined />}
                                         size="small"
                                         disabled={isApproving || isRejecting}
                                         onClick={() => {
@@ -845,36 +755,18 @@ function ArticleDetails() {
                                 </>
                             )}
                         {canDoInitialReview && (
-                            <Button
-                                appearance="primary"
-                                onClick={() => navigate(`/articles/${articleId}?view=initialReview`)}
-                                size="small"
-                            >
-                                Đánh giá ban đầu
-                            </Button>
+                            <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=initialReview`)} size="small">Đánh giá ban đầu</Button>
                         )}
                         {canManageReviewers && (
-                            <Button
-                                appearance="secondary"
-                                onClick={() => setIsInviteReviewersOpen(true)}
-                                size="small"
-                            >
-                                Quản lý reviewer
-                            </Button>
+                            <Button onClick={() => setIsInviteReviewersOpen(true)} size="small">Quản lý reviewer</Button>
                         )}
                         {isAssignedReviewer && (
-                            <Button
-                                appearance="primary"
-                                onClick={() => navigate(`/articles/${articleId}?view=review`)}
-                                size="small"
-                            >
-                                Phản biện bài báo
-                            </Button>
+                            <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=review`)} size="small">Phản biện bài báo</Button>
                         )}
                         {canSubmitRevision && (
                             <Button
-                                appearance="primary"
-                                icon={<DocumentRegular />}
+                                type="primary"
+                                icon={<FilePdfOutlined />}
                                 disabled={isStartingRevisions}
                                 onClick={() => {
                                     if (!safeArticleId) return
@@ -896,38 +788,30 @@ function ArticleDetails() {
                 </div>
 
                 {/* PDF Viewer */}
-                <PdfViewer
-                    fileUrl={pdfUrl}
-                    emptyMessage="Không có bài báo để xem"
-                />
+                <PdfViewer fileUrl={pdfUrl} emptyMessage="Không có bài báo để xem" />
             </div>
 
             {/* Mobile Sidebar Toggle */}
             <Button
-                className={classes.sidebarToggle}
-                appearance="primary"
-                shape="circular"
+                style={{ ...styles.sidebarToggle, display: isMobile ? 'block' : 'none' }}
+                type="primary"
+                shape="circle"
                 size="large"
-                icon={<NavigationRegular />}
+                icon={<MenuOutlined />}
                 onClick={() => setIsSidebarVisible(!isSidebarVisible)}
                 title={isSidebarVisible ? 'Ẩn thông tin' : 'Hiện thông tin'}
             />
 
             {/* Comments Section - Desktop */}
-            <div className={`${classes.commentsSection} ${!isCommentsPanelVisible ? classes.commentsSectionHidden : ''}`}>
-                <div className={classes.commentsHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <CommentRegular />
-                        <Text weight="semibold">Nhận xét ({commentThreads.length})</Text>
+            <div style={{ ...(styles.commentsSection as object), ...(isMobile ? { display: 'none' } : (!isCommentsPanelVisible ? styles.commentsSectionHidden : {})) }}>
+                <div style={styles.commentsHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CommentOutlined style={{ fontSize: 18 }} />
+                        <Typography.Text strong>Nhận xét ({commentThreads.length})</Typography.Text>
                     </div>
 
                     {isCommentsPanelVisible ? (
-                        <Button
-                            appearance="subtle"
-                            icon={<DismissRegular />}
-                            onClick={() => setIsCommentsPanelVisible(false)}
-                            title="Ẩn nhận xét"
-                        />
+                        <Button icon={<CloseOutlined />} onClick={() => setIsCommentsPanelVisible(false)} />
                     ) : null}
                 </div>
                 {renderCommentsList()}
@@ -935,47 +819,28 @@ function ArticleDetails() {
 
             {/* Comments Dialog - Mobile */}
             {isMobile && (
-                <Dialog
+                <Modal
                     open={isCommentsDialogOpen}
-                    onOpenChange={(_, data) => setIsCommentsDialogOpen(data.open)}
+                    onCancel={() => setIsCommentsDialogOpen(false)}
+                    footer={null}
+                    width={520}
+                    bodyStyle={{ padding: 0, maxHeight: '70vh', overflow: 'hidden' }}
+                    title={<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography.Text strong>Nhận xét</Typography.Text>
+                        <Button icon={<CloseOutlined />} onClick={() => setIsCommentsDialogOpen(false)} />
+                    </div>}
                 >
-                    <DialogSurface className={classes.commentsDialogSurface}>
-                        <DialogBody className={classes.commentsDialogBody}>
-                            <DialogTitle>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text weight="semibold" size={500}>
-                                        Nhận xét
-                                    </Text>
-                                    <Button
-                                        appearance="subtle"
-                                        icon={<DismissRegular />}
-                                        onClick={() => setIsCommentsDialogOpen(false)}
-                                    />
-                                </div>
-                            </DialogTitle>
-                            <DialogContent
-                                style={{
-                                    flex: 1,
-                                    overflow: 'hidden',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    padding: 0,
-                                }}
-                            >
-                                {renderCommentsList()}
-                            </DialogContent>
-                        </DialogBody>
-                    </DialogSurface>
-                </Dialog>
+                    <div style={{ height: '60vh', overflow: 'auto' }}>{renderCommentsList()}</div>
+                </Modal>
             )}
 
             {/* Mobile Comments Toggle */}
             <Button
-                className={classes.commentsToggle}
-                appearance="primary"
-                shape="circular"
+                style={{ ...styles.commentsToggle, display: isMobile ? 'block' : 'none' }}
+                type="primary"
+                shape="circle"
                 size="large"
-                icon={<CommentRegular />}
+                icon={<CommentOutlined />}
                 onClick={() => {
                     if (isMobile) {
                         setIsCommentsDialogOpen(!isCommentsDialogOpen)
@@ -983,15 +848,7 @@ function ArticleDetails() {
                         setIsCommentsPanelVisible(!isCommentsPanelVisible)
                     }
                 }}
-                title={
-                    isMobile
-                        ? isCommentsDialogOpen
-                            ? 'Ẩn nhận xét'
-                            : 'Hiện nhận xét'
-                        : isCommentsPanelVisible
-                            ? 'Ẩn nhận xét'
-                            : 'Hiện nhận xét'
-                }
+                title={isMobile ? (isCommentsDialogOpen ? 'Ẩn nhận xét' : 'Hiện nhận xét') : (isCommentsPanelVisible ? 'Ẩn nhận xét' : 'Hiện nhận xét')}
             />
 
             {/* Invite More Reviewers Dialog */}

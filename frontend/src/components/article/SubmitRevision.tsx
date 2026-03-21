@@ -1,21 +1,50 @@
-import { useId } from '@fluentui/react-utilities'
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogSurface,
-  DialogBody,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Textarea,
-  Text,
-  Spinner,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components'
-import { DocumentRegular } from '@fluentui/react-icons'
+import { Modal, Button, Typography, Input, Alert } from 'antd'
+import { FileOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
+
+const { Text } = Typography
+
+const styles = {
+  content: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '24px',
+    width: '100%',
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px',
+  },
+  dropZone: {
+    marginTop: '12px',
+    padding: '32px',
+    borderRadius: '8px',
+    textAlign: 'center' as const,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    backgroundColor: '#fafafa',
+    border: '2px dashed #d9d9d9',
+  },
+  dropZoneActive: {
+    backgroundColor: '#f0f0f0',
+    border: '2px dashed #1890ff',
+  },
+  fileInput: {
+    display: 'none',
+  },
+  fileLabel: {
+    cursor: 'pointer',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: '8px',
+  },
+  helperText: {
+    color: '#8c8c8c',
+  },
+} as const
 
 interface SubmitRevisionProps {
   articleId: string
@@ -24,64 +53,8 @@ interface SubmitRevisionProps {
   onClose: () => void
 }
 
-const useStyles = makeStyles({
-  content: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
-    width: '100%',
-    maxWidth: '560px',
-  },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
-  },
-  dropZone: {
-    marginTop: tokens.spacingVerticalS,
-    padding: tokens.spacingHorizontalL,
-
-    borderRadius: tokens.borderRadiusMedium,
-    textAlign: 'center',
-    cursor: 'pointer',
-    transitionProperty: 'background, border-color',
-    transitionDuration: '150ms',
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  dropZoneActive: {
-    backgroundColor: tokens.colorNeutralBackground3,
-  },
-  fileInput: {
-    display: 'none',
-  },
-  fileLabel: {
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-  },
-  helperText: {
-    color: tokens.colorNeutralForeground3,
-    display: 'flex',
-    marginTop: tokens.spacingVerticalXS,
-  },
-  errorBox: {
-    padding: tokens.spacingHorizontalM,
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorPaletteRedBackground1,
-  },
-  errorText: {
-    color: tokens.colorPaletteRedForeground2,
-  },
-  textArea: {
-    marginTop: tokens.spacingVerticalS,
-    width: '100%',
-  },
-})
-
 export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: SubmitRevisionProps) => {
-  const classes = useStyles()
-  const fileInputId = useId('submit-revision-file')
+  const fileInputId = 'submit-revision-file'
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -135,113 +108,94 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(_, data) => !data.open && onClose()}>
-      <DialogSurface>
-        <DialogBody>
-          <DialogTitle>Nộp Bài Sửa Chữa</DialogTitle>
-          <DialogContent className={classes.content}>
-            <div className={classes.section}>
-              <Text weight="semibold" size={300}>
-                Tệp PDF sửa chữa
-              </Text>
-              <div
-                className={`${classes.dropZone} ${isDragActive ? classes.dropZoneActive : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setIsDragActive(true)
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault()
-                  setIsDragActive(false)
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  setIsDragActive(false)
-                  const files = e.dataTransfer.files
-                  if (files && files.length > 0) {
-                    const file = files[0]
-                    if (file.name.toLowerCase().endsWith('.pdf')) {
-                      setSelectedFile(file)
-                      setError(null)
-                    } else {
-                      setError('Vui lòng chọn tệp PDF')
-                    }
-                  }
-                }}
-              >
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className={classes.fileInput}
-                  id={fileInputId}
-                />
-                <label htmlFor={fileInputId} className={classes.fileLabel}>
-                  <DocumentRegular fontSize={32} style={{ marginBottom: tokens.spacingVerticalS }} />
-                  {selectedFile ? (
-                    <>
-                      <Text size={300} weight="semibold">
-                        {selectedFile.name}
-                      </Text>
-                      <Text size={200} className={classes.helperText}>
-                        ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text size={300} weight="semibold">
-                        Kéo thả tệp PDF hoặc bấm để chọn
-                      </Text>
-                      <Text size={200} className={classes.helperText}>
-                        Chỉ hỗ trợ tệp PDF
-                      </Text>
-                    </>
-                  )}
-                </label>
-              </div>
-            </div>
+    <Modal
+      title="Nộp Bài Sửa Chữa"
+      open={isOpen}
+      onCancel={onClose}
+      footer={[
+        <Button key="cancel" onClick={onClose} disabled={isLoading}>
+          Hủy
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          onClick={handleSubmit}
+          disabled={!selectedFile}
+          loading={isLoading}
+        >
+          Nộp Bài Sửa Chữa
+        </Button>,
+      ]}
+      width={600}
+    >
+      <div style={styles.content}>
+        <div style={styles.section}>
+          <Text strong>Tệp PDF sửa chữa</Text>
+          <div
+            style={isDragActive ? { ...styles.dropZone, ...styles.dropZoneActive } : styles.dropZone}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setIsDragActive(true)
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault()
+              setIsDragActive(false)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              setIsDragActive(false)
+              const files = e.dataTransfer.files
+              if (files && files.length > 0) {
+                const file = files[0]
+                if (file.name.toLowerCase().endsWith('.pdf')) {
+                  setSelectedFile(file)
+                  setError(null)
+                } else {
+                  setError('Vui lòng chọn tệp PDF')
+                }
+              }
+            }}
+          >
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              style={styles.fileInput}
+              id={fileInputId}
+            />
+            <label htmlFor={fileInputId} style={styles.fileLabel}>
+              <FileOutlined style={{ fontSize: '32px', marginBottom: '8px' }} />
+              {selectedFile ? (
+                <>
+                  <Text strong>{selectedFile.name}</Text>
+                  <Text style={styles.helperText}>
+                    ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text strong>Kéo thả tệp PDF hoặc bấm để chọn</Text>
+                  <Text style={styles.helperText}>Chỉ hỗ trợ tệp PDF</Text>
+                </>
+              )}
+            </label>
+          </div>
+        </div>
 
-            <div className={classes.section}>
-              <Text weight="semibold" size={300}>
-                Ghi chú sửa chữa (tùy chọn)
-              </Text>
-              <Textarea
-                value={notes}
-                onChange={(_, data) => setNotes(data.value)}
-                placeholder="Mô tả những thay đổi bạn đã thực hiện..."
-                rows={6}
-                className={classes.textArea}
-              />
-            </div>
+        <div style={styles.section}>
+          <Text strong>Ghi chú sửa chữa (tùy chọn)</Text>
+          <Input.TextArea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Mô tả những thay đổi bạn đã thực hiện..."
+            rows={6}
+          />
+        </div>
 
-            {error && (
-              <div className={classes.errorBox}>
-                <Text size={300} className={classes.errorText}>
-                  {error}
-                </Text>
-              </div>
-            )}
-          </DialogContent>
-
-          <DialogActions>
-            <Button
-              appearance="secondary"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Hủy
-            </Button>
-            <Button
-              appearance="primary"
-              onClick={handleSubmit}
-              disabled={!selectedFile || isLoading}
-              icon={isLoading ? <Spinner size="tiny" /> : undefined}
-            >
-              {isLoading ? 'Đang nộp...' : 'Nộp Bài Sửa Chữa'}
-            </Button>
-          </DialogActions>
-        </DialogBody>
-      </DialogSurface>
-    </Dialog>
+        {error && (
+          <Alert message={error} type="error" showIcon />
+        )}
+      </div>
+    </Modal>
   )
 }

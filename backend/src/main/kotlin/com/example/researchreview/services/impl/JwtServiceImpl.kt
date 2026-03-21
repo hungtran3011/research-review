@@ -27,40 +27,46 @@ class JwtServiceImpl(
     private fun refreshRedisKey(userId: String) = "refresh:$userId"
 
     // Removed default value from `authorities` here because overrides must not declare defaults
-    override fun createAccessToken(subject: String, authorities: List<String>): Pair<String, Instant> {
+    override fun createAccessToken(subject: String, authorities: List<String>, deviceFingerprintHash: String?): Pair<String, Instant> {
         val now = Instant.now()
         val exp = now.plusSeconds(accessExpiryMillisecs)
-        val claims = JwtClaimsSet.builder()
+        val claimsBuilder = JwtClaimsSet.builder()
             .issuer("research-review")
             .issuedAt(now)
             .expiresAt(exp)
             .subject(subject)
             .id(UUID.randomUUID().toString())
             .claim("roles", authorities)
-            .build()
+        if (!deviceFingerprintHash.isNullOrBlank()) {
+            claimsBuilder.claim("device_fp", deviceFingerprintHash)
+        }
+        val claims = claimsBuilder.build()
         val token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).tokenValue
         return token to exp
     }
 
-    override fun createRefreshToken(subject: String): Pair<String, Instant> {
+    override fun createRefreshToken(subject: String, deviceFingerprintHash: String?): Pair<String, Instant> {
         val now = Instant.now()
         // refreshExpiryMillisecs is configured in seconds; use plusSeconds for consistency
         val exp = now.plusSeconds(refreshExpiryMillisecs)
-        val claims = JwtClaimsSet.builder()
+        val claimsBuilder = JwtClaimsSet.builder()
             .issuer("research-review")
             .issuedAt(now)
             .expiresAt(exp)
             .subject(subject)
             .id(UUID.randomUUID().toString()) // jti
             .claim("typ", "refresh")
-            .build()
+        if (!deviceFingerprintHash.isNullOrBlank()) {
+            claimsBuilder.claim("device_fp", deviceFingerprintHash)
+        }
+        val claims = claimsBuilder.build()
         val token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).tokenValue
         return token to exp
     }
 
-    override fun issueTokensForUser(userId: String, authorities: List<String>): Tokens {
-        val (access, accessExp) = createAccessToken(userId, authorities)
-        val (refresh, refreshExp) = createRefreshToken(userId)
+    override fun issueTokensForUser(userId: String, authorities: List<String>, deviceFingerprintHash: String?): Tokens {
+        val (access, accessExp) = createAccessToken(userId, authorities, deviceFingerprintHash)
+        val (refresh, refreshExp) = createRefreshToken(userId, deviceFingerprintHash)
         val hashed = JwtUtil.hashToken(refresh)
         val key = refreshRedisKey(userId)
         redisTemplate.opsForValue().set(key, hashed, refreshExpiryMillisecs, TimeUnit.MILLISECONDS)
@@ -70,7 +76,7 @@ class JwtServiceImpl(
     override fun validateAccessToken(token: String): Jwt = jwtDecoder.decode(token)
 
     @Throws(RuntimeException::class)
-    override fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String>): Tokens {
+    override fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String>, deviceFingerprintHash: String?): Tokens {
         val key = refreshRedisKey(userId)
         val storedHash = redisTemplate.opsForValue().get(key) ?: throw RuntimeException("Refresh token not found")
         val providedHash = JwtUtil.hashToken(providedRefreshToken)
@@ -81,8 +87,8 @@ class JwtServiceImpl(
         }
 
         // rotate: issue new tokens and replace stored refresh hash
-        val (access, accessExp) = createAccessToken(userId, authorities)
-        val (newRefresh, newRefreshExp) = createRefreshToken(userId)
+        val (access, accessExp) = createAccessToken(userId, authorities, deviceFingerprintHash)
+        val (newRefresh, newRefreshExp) = createRefreshToken(userId, deviceFingerprintHash)
         val newHash = JwtUtil.hashToken(newRefresh)
         redisTemplate.opsForValue().set(key, newHash, refreshExpiryMillisecs, TimeUnit.MILLISECONDS)
         return Tokens(access, accessExp, newRefresh, newRefreshExp)

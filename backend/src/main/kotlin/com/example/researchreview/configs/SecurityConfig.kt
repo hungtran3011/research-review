@@ -1,7 +1,6 @@
 package com.example.researchreview.configs
 
 import com.example.researchreview.dtos.BaseResponseDto
-import com.example.researchreview.constants.SpecialErrorCode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
@@ -74,7 +73,7 @@ class SecurityConfig(
         response.contentType = "application/json"
         val body = when (code) {
             401, 403 -> BaseResponseDto(code = code, message = message, data = null)
-            else -> BaseResponseDto(code = SpecialErrorCode.GENERAL_ERROR.value, message = message, data = null)
+            else -> BaseResponseDto(code = 500, message = message, data = null)
         }
         response.writer.use { it.write(objectMapper.writeValueAsString(body)) }
     }

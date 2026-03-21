@@ -1,17 +1,8 @@
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router';
-import { Spinner, makeStyles } from '@fluentui/react-components';
+import { Spin } from 'antd';
 import { useAuthStore } from '../../stores/authStore';
 import { useCurrentUser } from '../../hooks/useUser';
-
-const useStyles = makeStyles({
-  loadingWrapper: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '48px 16px',
-  },
-});
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
@@ -20,7 +11,6 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ allowedRoles = [], children, redirectTo = '/signin' }: ProtectedRouteProps) => {
-  const classes = useStyles();
   const { isAuthenticated } = useAuthStore();
   const { data, isLoading, isError } = useCurrentUser(isAuthenticated);
 
@@ -30,8 +20,8 @@ const ProtectedRoute = ({ allowedRoles = [], children, redirectTo = '/signin' }:
 
   if (isLoading) {
     return (
-      <div className={classes.loadingWrapper}>
-        <Spinner label="Đang kiểm tra quyền truy cập..." />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 16px', minHeight: '50vh' }}>
+        <Spin tip="Đang kiểm tra quyền truy cập..." />
       </div>
     );
   }
