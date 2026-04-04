@@ -20,6 +20,7 @@ import { adminTrackService } from '../../services/admin-track.service';
 import type { ColumnsType } from 'antd/es/table';
 import type { TopicDto, TopicCreateRequestDto, TopicUpdateRequestDto } from '../../models';
 import { useBasicToast } from '../../hooks/useBasicToast';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -48,6 +49,7 @@ const styles = {
 const TopicManagement = () => {
   const queryClient = useQueryClient();
   const { success, error } = useBasicToast();
+  const { t } = useTranslation();
   const [selectedConferenceId, setSelectedConferenceId] = useState<string>('');
   const [selectedTrackFilter, setSelectedTrackFilter] = useState<string | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -101,11 +103,11 @@ const TopicManagement = () => {
   // Create mutation
   const createTopic = useMutation({
     mutationFn: async (data: TopicCreateRequestDto) => {
-      if (!selectedConferenceId) throw new Error('No conference selected');
+      if (!selectedConferenceId) throw new Error(t('topicManagement.errors.selectConferenceFirst'));
       return await topicService.create(selectedConferenceId, data);
     },
     onSuccess: () => {
-      success('Đã tạo chủ đề thành công');
+      success(t('topicManagement.messages.createSuccess'));
       queryClient.invalidateQueries({ queryKey: ['topics'] });
       resetForm();
       setIsModalVisible(false);
@@ -114,20 +116,20 @@ const TopicManagement = () => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Tạo chủ đề thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('topicManagement.messages.unknownError')
+        : t('topicManagement.messages.unknownError');
+      error(t('topicManagement.messages.createFailedPrefix') + message);
     },
   });
 
   // Update mutation
   const updateTopic = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: TopicUpdateRequestDto }) => {
-      if (!selectedConferenceId) throw new Error('No conference selected');
+      if (!selectedConferenceId) throw new Error(t('topicManagement.errors.selectConferenceFirst'));
       return await topicService.update(selectedConferenceId, id, data);
     },
     onSuccess: () => {
-      success('Đã cập nhật chủ đề thành công');
+      success(t('topicManagement.messages.updateSuccess'));
       queryClient.invalidateQueries({ queryKey: ['topics'] });
       resetForm();
       setIsModalVisible(false);
@@ -137,29 +139,29 @@ const TopicManagement = () => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Cập nhật chủ đề thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('topicManagement.messages.unknownError')
+        : t('topicManagement.messages.unknownError');
+      error(t('topicManagement.messages.updateFailedPrefix') + message);
     },
   });
 
   // Delete mutation
   const deleteTopic = useMutation({
     mutationFn: async (id: string) => {
-      if (!selectedConferenceId) throw new Error('No conference selected');
+      if (!selectedConferenceId) throw new Error(t('topicManagement.errors.selectConferenceFirst'));
       return await topicService.delete(selectedConferenceId, id);
     },
     onSuccess: () => {
-      success('Đã xóa chủ đề thành công');
+      success(t('topicManagement.messages.deleteSuccess'));
       queryClient.invalidateQueries({ queryKey: ['topics'] });
     },
     onError: (err: unknown) => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Xóa chủ đề thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('topicManagement.messages.unknownError')
+        : t('topicManagement.messages.unknownError');
+      error(t('topicManagement.messages.deleteFailedPrefix') + message);
     },
   });
 
@@ -175,7 +177,7 @@ const TopicManagement = () => {
 
   const handleCreate = () => {
     if (!selectedConferenceId) {
-      error('Vui lòng chọn hội nghị trước');
+      error(t('topicManagement.errors.selectConferenceFirst'));
       return;
     }
     resetForm();
@@ -195,7 +197,7 @@ const TopicManagement = () => {
 
   const handleSubmit = () => {
     if (!formName.trim()) {
-      error('Tên chủ đề là bắt buộc');
+      error(t('topicManagement.errors.topicNameRequired'));
       return;
     }
 
@@ -216,53 +218,53 @@ const TopicManagement = () => {
 
   const handleDelete = (id: string) => {
     Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: 'Bạn có chắc chắn muốn xóa chủ đề này không?',
+      title: t('topicManagement.confirmDelete.title'),
+      content: t('topicManagement.confirmDelete.content'),
       onOk: () => deleteTopic.mutate(id),
-      okText: 'Xóa',
-      cancelText: 'Hủy',
+      okText: t('topicManagement.actions.delete'),
+      cancelText: t('topicManagement.actions.cancel'),
       okButtonProps: { danger: true },
     });
   };
 
   const columns: ColumnsType<TopicDto> = [
     {
-      title: 'Tên chủ đề',
+      title: t('topicManagement.columns.name'),
       dataIndex: 'name',
       key: 'name',
       width: '25%',
     },
     {
-      title: 'Track',
+      title: t('topicManagement.columns.track'),
       key: 'track',
       width: '20%',
       render: (_, record) => {
-        if (!record.trackId) return <Text type="secondary">- (Chung conference) -</Text>;
+        if (!record.trackId) return <Text type="secondary">{t('topicManagement.common.conferenceWide')}</Text>;
         const track = tracks.find((t) => t.id === record.trackId);
         return track?.name || record.trackId;
       },
     },
     {
-      title: 'Mô tả',
+      title: t('topicManagement.columns.description'),
       dataIndex: 'description',
       key: 'description',
       width: '30%',
-      render: (desc: string | null) => desc || '-',
+      render: (desc: string | null) => desc || t('topicManagement.common.dash'),
     },
     {
-      title: 'Thứ tự',
+      title: t('topicManagement.columns.orderIndex'),
       dataIndex: 'orderIndex',
       key: 'orderIndex',
       width: '10%',
     },
     {
-      title: 'Kích hoạt',
+      title: t('topicManagement.columns.active'),
       key: 'isActive',
       width: '10%',
       render: (_, record) => <Switch checked={record.isActive} disabled />,
     },
     {
-      title: 'Hành động',
+      title: t('topicManagement.columns.actions'),
       key: 'actions',
       width: '15%',
       render: (_, record) => (
@@ -273,7 +275,7 @@ const TopicManagement = () => {
             onClick={() => handleEdit(record)}
             disabled={isMutating}
           >
-            Sửa
+            {t('topicManagement.actions.edit')}
           </Button>
           <Button
             size="small"
@@ -282,7 +284,7 @@ const TopicManagement = () => {
             onClick={() => handleDelete(record.id)}
             disabled={isMutating}
           >
-            Xóa
+            {t('topicManagement.actions.delete')}
           </Button>
         </Space>
       ),
@@ -295,20 +297,20 @@ const TopicManagement = () => {
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <div>
             <Text strong style={{ fontSize: '24px' }}>
-              Quản lý Chủ đề (Topic)
+              {t('topicManagement.title')}
             </Text>
           </div>
 
           <Space direction="vertical" style={{ width: '100%' }}>
             <div style={styles.field}>
-              <Text strong>Chọn hội nghị *</Text>
+              <Text strong>{t('topicManagement.selectConferenceLabel')}</Text>
               <Select
                 value={selectedConferenceId || undefined}
                 onChange={(value) => {
                   setSelectedConferenceId(value);
                   setSelectedTrackFilter(undefined);
                 }}
-                placeholder="Chọn hội nghị để quản lý topics"
+                placeholder={t('topicManagement.selectConferencePlaceholder')}
                 loading={conferencesQuery.isLoading}
                 options={conferences.map((conf) => ({
                   value: conf.id,
@@ -320,11 +322,11 @@ const TopicManagement = () => {
 
             {selectedConferenceId && (
               <div style={styles.field}>
-                <Text strong>Lọc theo Track (tùy chọn)</Text>
+                <Text strong>{t('topicManagement.filterByTrackLabel')}</Text>
                 <Select
                   value={selectedTrackFilter}
                   onChange={setSelectedTrackFilter}
-                  placeholder="Tất cả các topics"
+                  placeholder={t('topicManagement.filterByTrackPlaceholder')}
                   allowClear
                   loading={tracksQuery.isLoading}
                   options={tracks.map((track) => ({
@@ -339,7 +341,7 @@ const TopicManagement = () => {
 
           {!selectedConferenceId && (
             <Alert
-              message="Vui lòng chọn hội nghị để xem và quản lý các chủ đề"
+              message={t('topicManagement.selectConferenceHint')}
               type="info"
               showIcon
             />
@@ -349,7 +351,7 @@ const TopicManagement = () => {
             <>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                  Tạo chủ đề mới
+                  {t('topicManagement.actions.createNew')}
                 </Button>
               </div>
 
@@ -360,7 +362,7 @@ const TopicManagement = () => {
                 loading={isLoading}
                 pagination={{ pageSize: 15 }}
                 locale={{
-                  emptyText: 'Không có chủ đề nào',
+                  emptyText: t('topicManagement.empty'),
                 }}
               />
             </>
@@ -369,7 +371,7 @@ const TopicManagement = () => {
       </Card>
 
       <Modal
-        title={editingId ? 'Chỉnh sửa chủ đề' : 'Tạo chủ đề mới'}
+        title={editingId ? t('topicManagement.modal.editTitle') : t('topicManagement.modal.createTitle')}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -385,31 +387,31 @@ const TopicManagement = () => {
               setEditingId(null);
             }}
           >
-            Hủy
+            {t('topicManagement.actions.cancel')}
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isMutating}>
-            {editingId ? 'Cập nhật' : 'Tạo mới'}
+            {editingId ? t('topicManagement.actions.update') : t('topicManagement.actions.create')}
           </Button>,
         ]}
         width={700}
       >
         <div style={{ ...styles.formGrid, marginTop: '24px' }}>
           <div style={{ ...styles.field, gridColumn: '1 / -1' }}>
-            <Text strong>Tên chủ đề *</Text>
+            <Text strong>{t('topicManagement.form.nameLabel')}</Text>
             <Input
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              placeholder="VD: Machine Learning, Natural Language Processing"
+              placeholder={t('topicManagement.form.namePlaceholder')}
               disabled={isMutating}
             />
           </div>
 
           <div style={styles.field}>
-            <Text strong>Track (tùy chọn)</Text>
+            <Text strong>{t('topicManagement.form.trackLabel')}</Text>
             <Select
               value={formTrackId}
               onChange={setFormTrackId}
-              placeholder="Chung cho cả conference"
+              placeholder={t('topicManagement.form.trackPlaceholder')}
               allowClear
               disabled={isMutating || tracksQuery.isLoading}
               options={tracks.map((track) => ({
@@ -420,7 +422,7 @@ const TopicManagement = () => {
           </div>
 
           <div style={styles.field}>
-            <Text strong>Thứ tự hiển thị</Text>
+            <Text strong>{t('topicManagement.form.orderIndexLabel')}</Text>
             <InputNumber
               value={formOrderIndex}
               onChange={(value) => setFormOrderIndex(value || 0)}
@@ -431,12 +433,12 @@ const TopicManagement = () => {
           </div>
 
           <div style={{ ...styles.field, gridColumn: '1 / -1' }}>
-            <Text strong>Mô tả</Text>
+            <Text strong>{t('topicManagement.form.descriptionLabel')}</Text>
             <Input.TextArea
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
               rows={3}
-              placeholder="Mô tả chi tiết về chủ đề"
+              placeholder={t('topicManagement.form.descriptionPlaceholder')}
               disabled={isMutating}
             />
           </div>
@@ -444,7 +446,7 @@ const TopicManagement = () => {
           <div style={styles.field}>
             <Space>
               <Switch checked={formIsActive} onChange={setFormIsActive} disabled={isMutating} />
-              <Text>Kích hoạt</Text>
+              <Text>{t('topicManagement.form.activeLabel')}</Text>
             </Space>
           </div>
         </div>

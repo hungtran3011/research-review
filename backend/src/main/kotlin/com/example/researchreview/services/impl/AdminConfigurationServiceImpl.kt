@@ -283,7 +283,7 @@ class AdminConfigurationServiceImpl(
     ): ConferenceMembershipDto {
         val conference = findConferenceOrThrow(conferenceId)
         val user = userRepository.findByIdAndDeletedFalse(request.userId)
-            .orElseThrow { ResourceNotFoundException("User not found with id ${request.userId}") }
+            .orElseThrow { ResourceNotFoundException("user.notFound") }
 
         val existing = userConferenceMembershipRepository
             .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, request.userId)
@@ -309,29 +309,29 @@ class AdminConfigurationServiceImpl(
         findConferenceOrThrow(conferenceId)
         val membership = userConferenceMembershipRepository
             .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, userId)
-            .orElseThrow { ResourceNotFoundException("Conference membership not found for user $userId in conference $conferenceId") }
+            .orElseThrow { ResourceNotFoundException("conferenceMembership.notFound") }
         membership.deleted = true
     }
 
     private fun findConferenceOrThrow(conferenceId: String): Conference {
         return conferenceRepository.findByIdAndDeletedFalse(conferenceId)
-            .orElseThrow { ResourceNotFoundException("Conference not found with id $conferenceId") }
+            .orElseThrow { ResourceNotFoundException("conference.notFound") }
     }
 
     private fun findTrackOrThrow(conferenceId: String, trackId: String): Track {
         return trackRepository.findByIdAndConferenceIdAndDeletedFalse(trackId, conferenceId)
-            .orElseThrow { ResourceNotFoundException("Track not found with id $trackId in conference $conferenceId") }
+            .orElseThrow { ResourceNotFoundException("track.notFoundInConference") }
     }
 
     private fun findTopicOrThrow(conferenceId: String, topicId: String): Topic {
         return topicRepository.findByIdAndConferenceIdAndDeletedFalse(topicId, conferenceId)
-            .orElseThrow { ResourceNotFoundException("Topic not found with id $topicId in conference $conferenceId") }
+            .orElseThrow { ResourceNotFoundException("topic.notFoundInConference") }
     }
 
     private fun validateConferenceShortName(shortName: String, idToExclude: String? = null) {
         val normalized = shortName.trim()
         if (normalized.isBlank()) {
-            throw BusinessLogicException("shortName must not be blank")
+            throw BusinessLogicException("conference.shortNameRequired")
         }
 
         val exists = if (idToExclude == null) {
@@ -341,14 +341,17 @@ class AdminConfigurationServiceImpl(
         }
 
         if (exists) {
-            throw BusinessLogicException("conference shortName already exists: $normalized")
+            throw BusinessLogicException("conference.shortNameAlreadyExists")
         }
     }
 
     private fun validateReviewThreshold(fieldName: String, value: Int) {
         if (value < MIN_COMPLETED_REVIEWS_MIN || value > MIN_COMPLETED_REVIEWS_MAX) {
             throw BusinessLogicException(
-                "$fieldName must be between $MIN_COMPLETED_REVIEWS_MIN and $MIN_COMPLETED_REVIEWS_MAX"
+                when (fieldName) {
+                    "reviewPolicyMinCompletedReviews" -> "track.reviewPolicyMinCompletedReviewsOutOfRange"
+                    else -> "conference.minimumCompletedReviewsOutOfRange"
+                }
             )
         }
     }
@@ -373,7 +376,7 @@ class AdminConfigurationServiceImpl(
         return AdminTrackConfigDto(
             id = track.id,
             conferenceId = track.conference?.id
-                ?: throw BusinessLogicException("Track ${track.id} is not linked to any conference"),
+                ?: throw BusinessLogicException("track.conferenceLinkMissing"),
             name = track.name,
             description = track.description,
             isActive = track.isActive,

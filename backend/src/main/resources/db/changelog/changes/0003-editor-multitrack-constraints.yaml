@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0003-1-drop-editor-legacy-unique-user
+      author: copilot
+      comment: Drop legacy unique constraint on editor.user_id from old one-to-one mapping
+      preConditions:
+        onFail: MARK_RAN
+        and:
+          - tableExists:
+              tableName: editor
+          - uniqueConstraintExists:
+              tableName: editor
+              constraintName: ukjhrniu8kj891sx2i73mgtgc0v
+      changes:
+        - dropUniqueConstraint:
+            tableName: editor
+            constraintName: ukjhrniu8kj891sx2i73mgtgc0v
+
+  - changeSet:
+      id: 0003-2-drop-editor-legacy-unique-track
+      author: copilot
+      comment: Drop legacy unique constraint on editor.track_id from old one-to-one mapping
+      preConditions:
+        onFail: MARK_RAN
+        and:
+          - tableExists:
+              tableName: editor
+          - uniqueConstraintExists:
+              tableName: editor
+              constraintName: ukn79isk0mt3i3yd7lpuyrjnxtp
+      changes:
+        - dropUniqueConstraint:
+            tableName: editor
+            constraintName: ukn79isk0mt3i3yd7lpuyrjnxtp
+
+  - changeSet:
+      id: 0003-3-add-editor-user-track-deleted-unique
+      author: copilot
+      comment: Ensure one active editor assignment per (user, track)
+      preConditions:
+        onFail: MARK_RAN
+        and:
+          - tableExists:
+              tableName: editor
+          - not:
+              uniqueConstraintExists:
+                tableName: editor
+                constraintName: uq_editor_user_track_deleted
+      changes:
+        - addUniqueConstraint:
+            tableName: editor
+            columnNames: user_id, track_id, deleted
+            constraintName: uq_editor_user_track_deleted

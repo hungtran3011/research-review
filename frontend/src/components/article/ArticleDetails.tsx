@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
-import { Button, Typography, Spin, Card, Input, Modal, Tag, Drawer } from 'antd'
+import { Button, Typography, Spin, Card, Input, Modal, Tag, Drawer, Select, theme as antdTheme } from 'antd'
 import {
     ArrowLeftOutlined,
     FilePdfOutlined,
@@ -23,7 +23,9 @@ import { SubmitRevision } from './SubmitRevision'
 import { useStartRevisions } from '../../hooks/useArticles'
 import { InviteReviewersDialog } from './InviteReviewersDialog'
 import { useAnonymizedStructuredReviews, useChairStructuredReviews } from '../../hooks/useStructuredReviews'
-import type { CommentDto, CommentThreadDto } from '../../models'
+import type { ArticleVersionDto, CommentDto, CommentThreadDto, VersionSupplementDto } from '../../models'
+import { articleVersionService } from '../../services/article-version.service'
+import { useTranslation } from 'react-i18next'
 
 const styles: Record<string, React.CSSProperties> = {
     root: {
@@ -33,14 +35,15 @@ const styles: Record<string, React.CSSProperties> = {
         overflow: 'hidden',
         flexDirection: 'row',
         position: 'relative',
+        background: 'var(--article-bg, transparent)',
     },
     sidebarSection: {
         width: 320,
         flexShrink: 0,
-        borderRight: '1px solid #f0f0f0',
+        borderRight: '1px solid var(--article-border-color, #f0f0f0)',
+        background: 'var(--article-panel-bg, transparent)',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#fff',
         overflow: 'hidden',
         transition: 'transform 0.3s ease-in-out',
         zIndex: 1002,
@@ -50,8 +53,8 @@ const styles: Record<string, React.CSSProperties> = {
     },
     sidebarHeader: {
         padding: 16,
-        borderBottom: '1px solid #f0f0f0',
-        backgroundColor: '#fafafa',
+        borderBottom: '1px solid var(--article-border-color, #f0f0f0)',
+        background: 'var(--article-panel-bg, transparent)',
         display: 'flex',
         alignItems: 'center',
         gap: 8,
@@ -62,35 +65,48 @@ const styles: Record<string, React.CSSProperties> = {
         padding: 16,
     },
     sectionBlock: { marginBottom: 16 },
-    sectionLabel: { fontSize: 12, textTransform: 'uppercase', marginBottom: 6, color: '#8c8c8c' },
-    sectionContent: { fontSize: 14, color: '#000', wordBreak: 'break-word' },
-    metadataRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: '#595959' },
+    sectionLabel: { fontSize: 12, textTransform: 'uppercase', marginBottom: 6, color: 'var(--article-text-secondary, inherit)' },
+    sectionContent: { fontSize: 14, wordBreak: 'break-word', color: 'var(--article-text, inherit)' },
+    metadataRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--article-text-secondary, inherit)' },
     authorsList: { display: 'flex', flexDirection: 'column', gap: 8 },
-    authorItem: { padding: 8, backgroundColor: '#fafafa', borderRadius: 6, fontSize: 13 },
+    authorItem: { padding: 8, borderRadius: 6, fontSize: 13, background: 'var(--article-muted-bg, transparent)' },
     reviewersList: { display: 'flex', flexWrap: 'wrap', gap: 6 },
     viewerSection: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' },
-    viewerHeader: { padding: 16, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
+    viewerHeader: { padding: 16, borderBottom: '1px solid var(--article-border-color, #f0f0f0)', background: 'var(--article-panel-bg, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
     viewerTitle: { fontSize: 20, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    overlay: { position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1000 },
+    overlay: { position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, zIndex: 1000, background: 'var(--article-overlay-bg, rgba(0,0,0,0.45))' },
     sidebarToggle: { position: 'fixed', bottom: 24, left: 24, zIndex: 1003 },
     centerContent: { minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, padding: 24, textAlign: 'center' },
-    commentsSection: { width: 400, flexShrink: 0, borderLeft: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', backgroundColor: '#fff', overflow: 'hidden', transition: 'transform 0.3s ease-in-out' },
+    commentsSection: { width: 400, flexShrink: 0, borderLeft: '1px solid var(--article-border-color, #f0f0f0)', background: 'var(--article-panel-bg, transparent)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'transform 0.3s ease-in-out' },
     commentsSectionHidden: { transform: 'translateX(100%)' },
     commentsDialogSurface: { maxWidth: '90vw', width: 520, maxHeight: '90vh' },
     commentsDialogBody: { display: 'flex', flexDirection: 'column', maxHeight: 'calc(90vh - 100px)', overflow: 'hidden' },
-    commentsHeader: { padding: 16, borderBottom: '1px solid #f0f0f0', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    commentsHeader: { padding: 16, borderBottom: '1px solid var(--article-border-color, #f0f0f0)', background: 'var(--article-panel-bg, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
     commentsScroll: { flex: 1, overflow: 'auto', padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12 },
     commentCard: { padding: 12, width: '100%', alignSelf: 'stretch', flexShrink: 0 },
     commentHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-    commentMeta: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: '#8c8c8c', marginBottom: 8 },
+    commentMeta: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, marginBottom: 8, color: 'var(--article-text-secondary, inherit)' },
     commentContent: { marginBottom: 8 },
-    commentReplies: { marginLeft: 16, marginTop: 12, paddingLeft: 12, borderLeft: '2px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 8 },
-    replyItem: { padding: 8, backgroundColor: '#fafafa', borderRadius: 6 },
-    replyForm: { marginTop: 8, padding: 12, backgroundColor: '#fafafa', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 8 },
-    commentsToggle: { position: 'fixed', bottom: 80, right: 24, zIndex: 1003 },
+    commentReplies: { marginLeft: 16, marginTop: 12, paddingLeft: 12, borderLeft: '2px solid var(--article-border-color, #f0f0f0)', display: 'flex', flexDirection: 'column', gap: 8 },
+    replyItem: { padding: 8, borderRadius: 6, background: 'var(--article-muted-bg, transparent)' },
+    replyForm: { marginTop: 8, padding: 12, borderRadius: 6, background: 'var(--article-muted-bg, transparent)', display: 'flex', flexDirection: 'column', gap: 8 },
+    commentsToggle: { position: 'fixed', bottom: 24, right: 24, zIndex: 1003 },
 }
 
 function ArticleDetails() {
+    const { t, i18n } = useTranslation('common')
+    const { token } = antdTheme.useToken()
+    const articleThemeVars = React.useMemo(() => ({
+        '--article-bg': token.colorBgLayout,
+        '--article-panel-bg': token.colorBgContainer,
+        '--article-muted-bg': token.colorFillQuaternary,
+        '--article-border-color': token.colorBorderSecondary,
+        '--article-overlay-bg': token.colorBgMask,
+        '--article-text': token.colorText,
+        '--article-text-secondary': token.colorTextSecondary,
+        '--article-warning-border': token.colorWarningBorder,
+    }) as React.CSSProperties, [token])
+
     const params = useParams<{ articleId: string }>()
     const navigate = useNavigate()
     const articleId = params.articleId
@@ -105,6 +121,12 @@ function ArticleDetails() {
     const [replyingTo, setReplyingTo] = useState<string | null>(null)
     const [replyText, setReplyText] = useState('')
     const [showSubmitRevision, setShowSubmitRevision] = useState(false)
+    const [versions, setVersions] = useState<ArticleVersionDto[]>([])
+    const [currentVersion, setCurrentVersion] = useState<number>(1)
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+    const [isLoadingMaterials, setIsLoadingMaterials] = useState(false)
+    const [materialsError, setMaterialsError] = useState<string | null>(null)
+    const [downloadingSupplementId, setDownloadingSupplementId] = useState<string | null>(null)
     const { mutate: startRevisions, isPending: isStartingRevisions } = useStartRevisions(safeArticleId)
     const [isInviteReviewersOpen, setIsInviteReviewersOpen] = useState(false)
 
@@ -160,6 +182,104 @@ function ArticleDetails() {
 
     const article = articleResponse?.data
     const commentThreads = commentsResponse?.data ?? []
+    const dateTimeLocale = i18n.language.toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US'
+
+    useEffect(() => {
+        if (!article?.id) return
+        let cancelled = false
+
+        void (async () => {
+            setIsLoadingMaterials(true)
+            setMaterialsError(null)
+            try {
+                const response = await articleVersionService.listVersions(article.id)
+                const loadedVersions = response.data ?? []
+                if (cancelled) return
+                setVersions(loadedVersions)
+                const latestVersion = loadedVersions.length > 0
+                    ? Math.max(...loadedVersions.map((versionItem) => versionItem.versionNumber))
+                    : 1
+                setCurrentVersion(latestVersion)
+            } catch (error) {
+                if (cancelled) return
+                setVersions([])
+                setCurrentVersion(1)
+                setMaterialsError(error instanceof Error ? error.message : t('articleDetails.loadMaterialsFailed'))
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingMaterials(false)
+                }
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [article?.id, t])
+
+    useEffect(() => {
+        if (!article?.id) return
+        let cancelled = false
+
+        void (async () => {
+            try {
+                const response = await articleVersionService.mainDownloadUrl(article.id, currentVersion)
+                if (cancelled) return
+                if (response.data) {
+                    setPdfUrl(response.data)
+                    return
+                }
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+                setPdfUrl(`${apiBaseUrl}/articles/${article.id}/pdf?version=${currentVersion}`)
+            } catch {
+                if (cancelled) return
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+                setPdfUrl(`${apiBaseUrl}/articles/${article.id}/pdf?version=${currentVersion}`)
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [article?.id, currentVersion])
+
+    const selectedVersionData = versions.find((versionItem) => versionItem.versionNumber === currentVersion)
+
+    const triggerBrowserDownload = (blob: Blob, fileName: string) => {
+        const objectUrl = URL.createObjectURL(blob)
+        const anchor = document.createElement('a')
+        anchor.href = objectUrl
+        anchor.download = fileName
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+        URL.revokeObjectURL(objectUrl)
+    }
+
+    const handleDownloadMain = async () => {
+        if (!article?.id) return
+        try {
+            const blob = await articleVersionService.downloadMainFile(article.id, currentVersion)
+            const fileName = selectedVersionData?.mainAttachment?.fileName
+                ?? `${article.title || 'article'}-v${currentVersion}.pdf`
+            triggerBrowserDownload(blob, fileName)
+        } catch (error) {
+            console.error('Cannot download main manuscript', error)
+        }
+    }
+
+    const handleDownloadSupplement = async (supplement: VersionSupplementDto) => {
+        if (!article?.id || !supplement.id) return
+        setDownloadingSupplementId(supplement.id)
+        try {
+            const blob = await articleVersionService.downloadSupplementFile(supplement.id)
+            triggerBrowserDownload(blob, supplement.fileName)
+        } catch (error) {
+            console.error('Cannot download supplement', error)
+        } finally {
+            setDownloadingSupplementId(null)
+        }
+    }
 
     const isMyComment = (comment?: CommentDto | null): boolean => {
         if (!comment || !currentUserId) return false
@@ -167,13 +287,13 @@ function ArticleDetails() {
     }
 
     const displayAuthorName = (comment: CommentDto): string => {
-        return isMyComment(comment) ? 'Bạn' : comment.authorName
+        return isMyComment(comment) ? t('articleDetails.you') : comment.authorName
     }
 
     const getThreadReviewerLabel = (thread: CommentThreadDto): string => {
         // If the latest/first comment is authored by current user, show "Bạn".
         if (thread.comments && thread.comments.length > 0 && isMyComment(thread.comments[0])) {
-            return 'Bạn'
+            return t('articleDetails.you')
         }
 
         // Prefer stable anonymized label from backend.
@@ -185,10 +305,10 @@ function ArticleDetails() {
         if (thread.reviewerId && article?.reviewers) {
             const reviewer = article.reviewers.find((r) => r.id === thread.reviewerId)
             if (reviewer?.displayIndex != null) {
-                return `Người phản biện ${reviewer.displayIndex}`
+                return t('articleDetails.reviewerLabel', { index: reviewer.displayIndex })
             }
         }
-        return 'Người phản biện'
+        return t('articleDetails.reviewer')
     }
 
     const currentRoles: string[] = (() => {
@@ -208,7 +328,7 @@ function ArticleDetails() {
             threadId,
             data: { 
                 content: replyText,
-                authorName: currentUser?.name ?? currentUserEmail ?? 'Người dùng',
+                authorName: currentUser?.name ?? currentUserEmail ?? t('articleDetails.user'),
                 authorId: currentUser?.id,
             },
         }, {
@@ -249,23 +369,23 @@ function ArticleDetails() {
     const canDoInitialReview = canManageReviewers && article?.status === ArticleStatus.SUBMITTED
 
     const statusLabelMap: Record<ArticleStatusType, { label: string; color: 'brand' | 'informative' | 'important' | 'success' | 'warning' | 'danger' }> = {
-        [ArticleStatus.SUBMITTED]: { label: 'Đã nộp', color: 'informative' },
-        [ArticleStatus.PENDING_REVIEW]: { label: 'Chờ phản biện', color: 'informative' },
-        [ArticleStatus.IN_REVIEW]: { label: 'Đang phản biện', color: 'brand' },
-        [ArticleStatus.REVIEWS_COMPLETED]: { label: 'Phản biện hoàn thành', color: 'brand' },
-        [ArticleStatus.REVISIONS_REQUESTED]: { label: 'Yêu cầu sửa chữa', color: 'warning' },
-        [ArticleStatus.REVISIONS]: { label: 'Đang sửa chữa', color: 'important' },
-        [ArticleStatus.ACCEPTED]: { label: 'Đã chấp nhận', color: 'success' },
-        [ArticleStatus.REJECTED]: { label: 'Đã từ chối', color: 'danger' },
-        [ArticleStatus.ACCEPT_REQUESTED]: { label: 'Đề nghị chấp thuận', color: 'warning' },
-        [ArticleStatus.REJECT_REQUESTED]: { label: 'Đề nghị loại bỏ', color: 'warning' },
+        [ArticleStatus.SUBMITTED]: { label: t('notifications.articleStatus.submitted'), color: 'informative' },
+        [ArticleStatus.PENDING_REVIEW]: { label: t('notifications.articleStatus.pendingReview'), color: 'informative' },
+        [ArticleStatus.IN_REVIEW]: { label: t('notifications.articleStatus.inReview'), color: 'brand' },
+        [ArticleStatus.REVIEWS_COMPLETED]: { label: t('notifications.articleStatus.reviewsCompleted'), color: 'brand' },
+        [ArticleStatus.REVISIONS_REQUESTED]: { label: t('notifications.articleStatus.revisionsRequested'), color: 'warning' },
+        [ArticleStatus.REVISIONS]: { label: t('notifications.articleStatus.revisions'), color: 'important' },
+        [ArticleStatus.ACCEPTED]: { label: t('notifications.articleStatus.accepted'), color: 'success' },
+        [ArticleStatus.REJECTED]: { label: t('notifications.articleStatus.rejected'), color: 'danger' },
+        [ArticleStatus.ACCEPT_REQUESTED]: { label: t('notifications.articleStatus.acceptRequested'), color: 'warning' },
+        [ArticleStatus.REJECT_REQUESTED]: { label: t('notifications.articleStatus.rejectRequested'), color: 'warning' },
     }
 
     // Loading state - center content
     if (isLoading && !article) {
         return (
             <div style={styles.centerContent}>
-                <Spin size="large" tip="Đang tải thông tin bài báo..." />
+                <Spin size="large" tip={t('articleDetails.loading')} />
             </div>
         )
     }
@@ -274,14 +394,14 @@ function ArticleDetails() {
     if (isError || !article) {
         return (
             <div style={styles.centerContent}>
-                <Typography.Text strong>Không thể tải thông tin bài báo</Typography.Text>
+                <Typography.Text strong>{t('articleDetails.loadFailed')}</Typography.Text>
                 <Button
                     type="primary"
                     icon={<ArrowLeftOutlined />}
                     onClick={() => navigate('/')}
                     style={{ marginTop: 12 }}
                 >
-                    Quay lại trang chủ
+                    {t('articleDetails.backHome')}
                 </Button>
             </div>
         )
@@ -308,28 +428,10 @@ function ArticleDetails() {
         chairStructuredReviews.map((review) => review.reviewerDisplayIndex)
     )
 
-    // Determine PDF URL for viewer - use same logic as ReviewArticle
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
-    const pdfUrl = (() => {
-        if (!articleId) return null
-        const proxyUrl = `${apiBaseUrl}/articles/${articleId}/pdf`
-        const link = (article.link ?? '').trim()
-
-        // Prefer proxy when link is missing or clearly an expiring presigned URL.
-        if (!link) return proxyUrl
-        if (link.includes('X-Amz-') || link.includes('x-amz-')) return proxyUrl
-
-        // If link is already our proxy URL, use it.
-        if (link.endsWith(`/articles/${articleId}/pdf`)) return link
-
-        // Otherwise allow external/manual links.
-        return link
-    })()
-
-    const trackName = article.track?.name ?? 'Chưa gán'
+    const trackName = article.track?.name ?? t('articleDetails.unassigned')
     const submittedDate = article.createdAt
-        ? new Date(article.createdAt).toLocaleString('vi-VN')
-        : 'Chưa cập nhật'
+        ? new Date(article.createdAt).toLocaleString(dateTimeLocale)
+        : t('articleDetails.notUpdated')
 
     const renderStructuredReviewPanel = () => {
         if (!isChair && !isAuthor) return null
@@ -337,18 +439,18 @@ function ArticleDetails() {
         if (isChair) {
             return (
                 <div style={styles.sectionBlock}>
-                    <div style={styles.sectionLabel}>Structured review (Chair)</div>
+                    <div style={styles.sectionLabel}>{t('articleDetails.structuredReviewChair')}</div>
                     <Card size="small" style={{ marginBottom: 8 }}>
                         <Typography.Text style={{ display: 'block' }}>
-                            Hoàn tất phản biện: {reviewSubmissionCount}/{assignedReviewerCount}
+                            {t('articleDetails.reviewProgress', { submitted: reviewSubmissionCount, total: assignedReviewerCount })}
                         </Typography.Text>
                         <Typography.Text style={{ display: 'block' }}>
-                            Điểm overall trung bình: {averageOverallScore ?? 'Chưa có'}
+                            {t('articleDetails.avgOverallScore', { score: averageOverallScore ?? t('articleDetails.notAvailable') })}
                         </Typography.Text>
                         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {Object.entries(recommendationDistribution).length > 0 ? Object.entries(recommendationDistribution).map(([recommendation, count]) => (
                                 <Tag key={recommendation}>{recommendation}: {count}</Tag>
-                            )) : <Typography.Text type="secondary">Chưa có khuyến nghị</Typography.Text>}
+                            )) : <Typography.Text type="secondary">{t('articleDetails.noRecommendation')}</Typography.Text>}
                         </div>
                     </Card>
 
@@ -359,7 +461,10 @@ function ArticleDetails() {
                             return (
                                 <div key={reviewer.id} style={styles.authorItem}>
                                     <Typography.Text>
-                                        Reviewer {displayIndex}: {submitted ? 'Đã nộp' : 'Chưa nộp'}
+                                        {t('articleDetails.reviewerStatus', {
+                                            index: displayIndex,
+                                            status: submitted ? t('articleDetails.submitted') : t('articleDetails.notSubmitted')
+                                        })}
                                     </Typography.Text>
                                 </div>
                             )
@@ -371,10 +476,10 @@ function ArticleDetails() {
 
         return (
             <div style={styles.sectionBlock}>
-                <div style={styles.sectionLabel}>Structured review (Ẩn danh)</div>
+                <div style={styles.sectionLabel}>{t('articleDetails.structuredReviewAnonymous')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {anonymizedStructuredReviews.length === 0 ? (
-                        <Typography.Text type="secondary">Chưa có phản biện ẩn danh.</Typography.Text>
+                        <Typography.Text type="secondary">{t('articleDetails.noAnonymousReviews')}</Typography.Text>
                     ) : anonymizedStructuredReviews.map((review) => (
                         <Card key={review.id} size="small">
                             <Typography.Text strong>{review.reviewerLabel}</Typography.Text>
@@ -388,7 +493,7 @@ function ArticleDetails() {
                             </div>
                             {review.submittedAt && (
                                 <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                                    Nộp lúc: {new Date(review.submittedAt).toLocaleString('vi-VN')}
+                                    {t('articleDetails.submittedAt')}: {new Date(review.submittedAt).toLocaleString(dateTimeLocale)}
                                 </Typography.Text>
                             )}
                         </Card>
@@ -398,6 +503,62 @@ function ArticleDetails() {
         )
     }
 
+    const renderMaterialsSection = () => (
+        <div style={styles.sectionBlock}>
+            <div style={styles.sectionLabel}>{t('articleDetails.materialsByVersion')}</div>
+            {isLoadingMaterials ? (
+                <Spin size="small" />
+            ) : (
+                <>
+                    <Select
+                        style={{ width: '100%', marginBottom: 8 }}
+                        value={currentVersion}
+                        options={(versions.length > 0 ? versions : [{ versionNumber: 1 } as ArticleVersionDto]).map((versionItem) => ({
+                            label: t('articleDetails.versionLabel', { version: versionItem.versionNumber }),
+                            value: versionItem.versionNumber,
+                        }))}
+                        onChange={(value) => setCurrentVersion(Number(value))}
+                    />
+
+                    {materialsError && (
+                        <Typography.Text type="danger" style={{ display: 'block', marginBottom: 8 }}>
+                            {materialsError}
+                        </Typography.Text>
+                    )}
+
+                    <div style={{ marginBottom: 8 }}>
+                        <Typography.Text strong>{t('articleDetails.mainManuscript')}</Typography.Text>
+                        <div>
+                            <Typography.Text type="secondary">
+                                {selectedVersionData?.mainAttachment?.fileName ?? t('articleDetails.noPdf')}
+                            </Typography.Text>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <Typography.Text strong>{t('articleDetails.supplements')}</Typography.Text>
+                        {(selectedVersionData?.supplements?.length ?? 0) === 0 ? (
+                            <Typography.Text type="secondary">{t('articleDetails.noSupplements')}</Typography.Text>
+                        ) : (
+                            selectedVersionData?.supplements.map((supplement) => (
+                                <Button
+                                    key={supplement.id}
+                                    size="small"
+                                    onClick={() => {
+                                        void handleDownloadSupplement(supplement)
+                                    }}
+                                    disabled={downloadingSupplementId === supplement.id}
+                                >
+                                    {supplement.fileName}
+                                </Button>
+                            ))
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
+    )
+
     const renderCommentsList = () => (
         <div style={styles.commentsScroll}>
             {isCommentsLoading ? (
@@ -405,9 +566,9 @@ function ArticleDetails() {
                     <Spin />
                 </div>
             ) : commentThreads.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 24, color: '#8c8c8c' }}>
+                <div style={{ textAlign: 'center', padding: 24 }}>
                     <CommentOutlined style={{ fontSize: 48, opacity: 0.3 }} />
-                    <Typography.Text style={{ display: 'block', marginTop: 8 }}>Chưa có nhận xét nào</Typography.Text>
+                    <Typography.Text style={{ display: 'block', marginTop: 8 }}>{t('articleDetails.noComments')}</Typography.Text>
                 </div>
             ) : (
                 commentThreads.map((thread) => (
@@ -427,19 +588,19 @@ function ArticleDetails() {
                                     <Typography.Text>•</Typography.Text>
                                 </>
                             )}
-                            <Typography.Text>Trang {thread.pageNumber}</Typography.Text>
+                            <Typography.Text>{t('notifications.pageNumber', { page: thread.pageNumber })}</Typography.Text>
                             {thread.createdAt && (
                                 <>
                                     <Typography.Text>•</Typography.Text>
                                     <Typography.Text>
-                                        {new Date(thread.createdAt).toLocaleDateString('vi-VN')}
+                                        {new Date(thread.createdAt).toLocaleDateString(dateTimeLocale)}
                                     </Typography.Text>
                                 </>
                             )}
                         </div>
 
                         {thread.selectedText && (
-                            <div style={{ padding: 8, backgroundColor: '#fafafa', borderLeft: '3px solid #faad14', marginBottom: 8, fontSize: 13, fontStyle: 'italic' }}>
+                            <div style={{ padding: 8, borderLeft: '3px solid var(--article-warning-border, #faad14)', marginBottom: 8, fontSize: 13, fontStyle: 'italic' }}>
                                 "{thread.selectedText}"
                             </div>
                         )}
@@ -456,8 +617,8 @@ function ArticleDetails() {
                                             <div key={reply.id} style={styles.replyItem}>
                                                 <Typography.Text strong>{displayAuthorName(reply)}</Typography.Text>
                                                 {reply.createdAt && (
-                                                    <Typography.Text style={{ color: '#8c8c8c', marginLeft: 8 }}>
-                                                        {new Date(reply.createdAt).toLocaleDateString('vi-VN')}
+                                                    <Typography.Text type='secondary' style={{ marginLeft: 8 }}>
+                                                        {new Date(reply.createdAt).toLocaleDateString(dateTimeLocale)}
                                                     </Typography.Text>
                                                 )}
                                                 <Typography.Text style={{ display: 'block', marginTop: 4 }}>{reply.content}</Typography.Text>
@@ -472,16 +633,16 @@ function ArticleDetails() {
                                             <Input.TextArea
                                                 value={replyText}
                                                 onChange={(e) => setReplyText(e.target.value)}
-                                                placeholder="Nhập câu trả lời..."
+                                                placeholder={t('articleDetails.replyPlaceholder')}
                                                 rows={3}
                                             />
                                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                                <Button size="small" onClick={() => { setReplyingTo(null); setReplyText('') }}>Hủy</Button>
-                                                <Button size="small" type="primary" icon={<SendOutlined />} onClick={() => handleReply(thread.id)} disabled={!replyText.trim() || isReplying}>Gửi</Button>
+                                                <Button size="small" onClick={() => { setReplyingTo(null); setReplyText('') }}>{t('articleDetails.cancel')}</Button>
+                                                <Button size="small" type="primary" icon={<SendOutlined />} onClick={() => handleReply(thread.id)} disabled={!replyText.trim() || isReplying}>{t('articleDetails.send')}</Button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <Button size="small" onClick={() => setReplyingTo(thread.id)} style={{ marginTop: 8 }} icon={<CommentOutlined />}>Trả lời</Button>
+                                        <Button size="small" onClick={() => setReplyingTo(thread.id)} style={{ marginTop: 8 }} icon={<CommentOutlined />}>{t('articleDetails.reply')}</Button>
                                     )
                                 ) : null}
                             </>
@@ -493,7 +654,7 @@ function ArticleDetails() {
     )
 
     return (
-        <div style={styles.root}>
+        <div style={{ ...styles.root, ...articleThemeVars }}>
             {isMobile ? (
                 <Drawer
                     placement="left"
@@ -511,7 +672,7 @@ function ArticleDetails() {
                     <div style={styles.sidebarScroll}>
                         {/* Basic Info */}
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Ngày nộp</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.submittedDate')}</div>
                             <div style={styles.metadataRow}>
                                 <CalendarOutlined />
                                 <Typography.Text>{submittedDate}</Typography.Text>
@@ -519,27 +680,27 @@ function ArticleDetails() {
                         </div>
 
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Lĩnh vực</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.track')}</div>
                             <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
                         </div>
 
                         {/* Abstract */}
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Tóm tắt</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.abstract')}</div>
                             <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
                         </div>
 
                         {/* Conclusion */}
                         {article.conclusion && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Kết luận</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.conclusion')}</div>
                                 <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
                             </div>
                         )}
 
                         {/* Authors */}
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Tác giả</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.authors')}</div>
                             <div style={styles.authorsList}>
                                 {article.authors.map((author, index) => (
                                     <div key={author.id || index} style={styles.authorItem}>
@@ -560,7 +721,7 @@ function ArticleDetails() {
                         {/* Reviewers */}
                         {article.reviewers && article.reviewers.length > 0 && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Người phản biện</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.reviewers')}</div>
                                 <div style={styles.reviewersList}>
                                     {canManageReviewers ? (
                                         article.reviewers.map((reviewer) => (
@@ -577,12 +738,12 @@ function ArticleDetails() {
                                                 return !!(matchesUserId || matchesEmail)
                                             })
                                             .map((reviewer) => (
-                                                <Tag key={reviewer.id} icon={<UserOutlined />}>Bạn</Tag>
+                                                <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.you')}</Tag>
                                             ))
                                     ) : (
                                         // Researchers see anonymized stable reviewer numbering.
                                         article.reviewers.map((reviewer, index) => (
-                                            <Tag key={reviewer.id} icon={<UserOutlined />}>Người phản biện {reviewer.displayIndex ?? index + 1}</Tag>
+                                            <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.reviewerLabel', { index: reviewer.displayIndex ?? index + 1 })}</Tag>
                                         ))
                                     )}
                                 </div>
@@ -591,10 +752,12 @@ function ArticleDetails() {
 
                         {renderStructuredReviewPanel()}
 
+                        {renderMaterialsSection()}
+
                         {/* Initial Review Note */}
                         {article.initialReviewNote && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Ghi chú ban đầu</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.initialReviewNote')}</div>
                                 <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
                             </div>
                         )}
@@ -602,7 +765,7 @@ function ArticleDetails() {
                         {/* Initial Review Next Steps */}
                         {article.initialReviewNextSteps && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Các bước tiếp theo</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.nextSteps')}</div>
                                 <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
                             </div>
                         )}
@@ -616,7 +779,7 @@ function ArticleDetails() {
 
                     <div style={styles.sidebarScroll}>
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Ngày nộp</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.submittedDate')}</div>
                             <div style={styles.metadataRow}>
                                 <CalendarOutlined />
                                 <Typography.Text>{submittedDate}</Typography.Text>
@@ -624,24 +787,24 @@ function ArticleDetails() {
                         </div>
 
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Lĩnh vực</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.track')}</div>
                             <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
                         </div>
 
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Tóm tắt</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.abstract')}</div>
                             <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
                         </div>
 
                         {article.conclusion && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Kết luận</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.conclusion')}</div>
                                 <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
                             </div>
                         )}
 
                         <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>Tác giả</div>
+                            <div style={styles.sectionLabel}>{t('articleDetails.authors')}</div>
                             <div style={styles.authorsList}>
                                 {article.authors.map((author, index) => (
                                     <div key={author.id || index} style={styles.authorItem}>
@@ -661,7 +824,7 @@ function ArticleDetails() {
 
                         {article.reviewers && article.reviewers.length > 0 && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Người phản biện</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.reviewers')}</div>
                                 <div style={styles.reviewersList}>
                                     {canManageReviewers ? (
                                         article.reviewers.map((reviewer) => (
@@ -677,11 +840,11 @@ function ArticleDetails() {
                                                 return !!(matchesUserId || matchesEmail)
                                             })
                                             .map((reviewer) => (
-                                                <Tag key={reviewer.id} icon={<UserOutlined />}>Bạn</Tag>
+                                                <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.you')}</Tag>
                                             ))
                                     ) : (
                                         article.reviewers.map((reviewer, index) => (
-                                            <Tag key={reviewer.id} icon={<UserOutlined />}>Người phản biện {reviewer.displayIndex ?? index + 1}</Tag>
+                                            <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.reviewerLabel', { index: reviewer.displayIndex ?? index + 1 })}</Tag>
                                         ))
                                     )}
                                 </div>
@@ -690,16 +853,18 @@ function ArticleDetails() {
 
                         {renderStructuredReviewPanel()}
 
+                        {renderMaterialsSection()}
+
                         {article.initialReviewNote && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Ghi chú ban đầu</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.initialReviewNote')}</div>
                                 <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
                             </div>
                         )}
 
                         {article.initialReviewNextSteps && (
                             <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>Các bước tiếp theo</div>
+                                <div style={styles.sectionLabel}>{t('articleDetails.nextSteps')}</div>
                                 <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
                             </div>
                         )}
@@ -712,14 +877,25 @@ function ArticleDetails() {
                 <div style={styles.viewerHeader}>
                     <Typography.Text style={styles.viewerTitle}>{article.title}</Typography.Text>
                     <div style={{ display: 'flex', gap: 8 }}>
+                        <Select
+                            style={{ minWidth: 140 }}
+                            value={currentVersion}
+                            options={(versions.length > 0 ? versions : [{ versionNumber: 1 } as ArticleVersionDto]).map((versionItem) => ({
+                                label: t('articleDetails.versionLabel', { version: versionItem.versionNumber }),
+                                value: versionItem.versionNumber,
+                            }))}
+                            onChange={(value) => setCurrentVersion(Number(value))}
+                        />
                         {pdfUrl && pdfUrl.startsWith('http') && (
                             <Button
                                 type="primary"
                                 icon={<FilePdfOutlined />}
-                                onClick={() => window.open(pdfUrl, '_blank')}
+                                onClick={() => {
+                                    void handleDownloadMain()
+                                }}
                                 size="small"
                             >
-                                Tải xuống
+                                {t('articleDetails.download')}
                             </Button>
                         )}
                         {canManageReviewers &&
@@ -732,12 +908,12 @@ function ArticleDetails() {
                                         size="small"
                                         disabled={isApproving || isRejecting}
                                         onClick={() => {
-                                            const ok = window.confirm('Chấp thuận bài báo này?')
+                                            const ok = window.confirm(t('articleDetails.confirmApprove'))
                                             if (!ok) return
                                             approveArticle()
                                         }}
                                     >
-                                        {isApproving ? 'Đang xử lý...' : 'Chấp thuận'}
+                                        {isApproving ? t('articleDetails.processing') : t('articleDetails.approve')}
                                     </Button>
                                     <Button
                                         danger
@@ -745,23 +921,23 @@ function ArticleDetails() {
                                         size="small"
                                         disabled={isApproving || isRejecting}
                                         onClick={() => {
-                                            const ok = window.confirm('Từ chối bài báo này?')
+                                            const ok = window.confirm(t('articleDetails.confirmReject'))
                                             if (!ok) return
                                             rejectArticle()
                                         }}
                                     >
-                                        {isRejecting ? 'Đang xử lý...' : 'Từ chối'}
+                                        {isRejecting ? t('articleDetails.processing') : t('articleDetails.reject')}
                                     </Button>
                                 </>
                             )}
                         {canDoInitialReview && (
-                            <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=initialReview`)} size="small">Đánh giá ban đầu</Button>
+                            <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=initialReview`)} size="small">{t('articleDetails.initialReview')}</Button>
                         )}
                         {canManageReviewers && (
-                            <Button onClick={() => setIsInviteReviewersOpen(true)} size="small">Quản lý reviewer</Button>
+                            <Button onClick={() => setIsInviteReviewersOpen(true)} size="small">{t('articleDetails.manageReviewers')}</Button>
                         )}
                         {isAssignedReviewer && (
-                            <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=review`)} size="small">Phản biện bài báo</Button>
+                            <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=review`)} size="small">{t('articleDetails.reviewArticle')}</Button>
                         )}
                         {canSubmitRevision && (
                             <Button
@@ -781,14 +957,14 @@ function ArticleDetails() {
                                 }}
                                 size="small"
                             >
-                                {isStartingRevisions ? 'Đang xử lý...' : 'Nộp Bài Sửa Chữa'}
+                                {isStartingRevisions ? t('articleDetails.processing') : t('articleDetails.submitRevision')}
                             </Button>
                         )}
                     </div>
                 </div>
 
                 {/* PDF Viewer */}
-                <PdfViewer fileUrl={pdfUrl} emptyMessage="Không có bài báo để xem" />
+                <PdfViewer fileUrl={pdfUrl} emptyMessage={t('articleDetails.noPdf')} />
             </div>
 
             {/* Mobile Sidebar Toggle */}
@@ -799,7 +975,7 @@ function ArticleDetails() {
                 size="large"
                 icon={<MenuOutlined />}
                 onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                title={isSidebarVisible ? 'Ẩn thông tin' : 'Hiện thông tin'}
+                title={isSidebarVisible ? t('articleDetails.hideInfo') : t('articleDetails.showInfo')}
             />
 
             {/* Comments Section - Desktop */}
@@ -807,7 +983,7 @@ function ArticleDetails() {
                 <div style={styles.commentsHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <CommentOutlined style={{ fontSize: 18 }} />
-                        <Typography.Text strong>Nhận xét ({commentThreads.length})</Typography.Text>
+                        <Typography.Text strong>{t('articleDetails.commentsCount', { count: commentThreads.length })}</Typography.Text>
                     </div>
 
                     {isCommentsPanelVisible ? (
@@ -825,10 +1001,7 @@ function ArticleDetails() {
                     footer={null}
                     width={520}
                     bodyStyle={{ padding: 0, maxHeight: '70vh', overflow: 'hidden' }}
-                    title={<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography.Text strong>Nhận xét</Typography.Text>
-                        <Button icon={<CloseOutlined />} onClick={() => setIsCommentsDialogOpen(false)} />
-                    </div>}
+                    title={t('articleDetails.comments')}
                 >
                     <div style={{ height: '60vh', overflow: 'auto' }}>{renderCommentsList()}</div>
                 </Modal>
@@ -848,7 +1021,7 @@ function ArticleDetails() {
                         setIsCommentsPanelVisible(!isCommentsPanelVisible)
                     }
                 }}
-                title={isMobile ? (isCommentsDialogOpen ? 'Ẩn nhận xét' : 'Hiện nhận xét') : (isCommentsPanelVisible ? 'Ẩn nhận xét' : 'Hiện nhận xét')}
+                title={isMobile ? (isCommentsDialogOpen ? t('articleDetails.hideComments') : t('articleDetails.showComments')) : (isCommentsPanelVisible ? t('articleDetails.hideComments') : t('articleDetails.showComments'))}
             />
 
             {/* Invite More Reviewers Dialog */}

@@ -10,6 +10,7 @@ import com.example.researchreview.constants.Role
 import com.example.researchreview.constants.ConferenceMembershipRole
 import com.example.researchreview.configs.FeatureFlagsProperties
 import com.example.researchreview.dtos.ArticleDto
+import com.example.researchreview.dtos.ArticleDashboardStatsDto
 import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.AuthorDto
 import com.example.researchreview.dtos.InitialReviewRequestDto
@@ -54,7 +55,9 @@ import org.apache.http.client.utils.URIBuilder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
@@ -92,8 +95,55 @@ class ArticlesServiceImpl(
 
     @Transactional(readOnly = true)
     override fun getAll(pageable: Pageable): Page<ArticleDto> {
-        val page = articleAccessGuard.listAccessibleArticles(pageable)
+        val effectivePageable = pageable.withDefaultCreatedAtDescSort()
+        val page = articleAccessGuard.listAccessibleArticles(effectivePageable)
         return page.map { toDto(it) }
+    }
+
+    @Transactional(readOnly = true)
+    override fun getAll(
+        pageable: Pageable,
+        title: String?,
+        author: String?,
+        status: ArticleStatus?
+    ): Page<ArticleDto> {
+        val effectivePageable = pageable.withDefaultCreatedAtDescSort()
+        val page = articleAccessGuard.listAccessibleArticles(effectivePageable, title, author, status)
+        return page.map { toDto(it) }
+    }
+
+    private fun Pageable.withDefaultCreatedAtDescSort(): Pageable {
+        if (sort.isSorted) return this
+        return PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"))
+    }
+
+    @Transactional(readOnly = true)
+    override fun getDashboardStats(
+        title: String?,
+        author: String?,
+        status: ArticleStatus?
+    ): ArticleDashboardStatsDto {
+        val total = articleAccessGuard.countAccessibleArticles(title, author, status)
+        val accepted = articleAccessGuard.countAccessibleArticles(title, author, ArticleStatus.ACCEPTED)
+        val rejected = articleAccessGuard.countAccessibleArticles(title, author, ArticleStatus.REJECTED)
+
+        val pendingStatuses = listOf(
+            ArticleStatus.SUBMITTED,
+            ArticleStatus.PENDING_REVIEW,
+            ArticleStatus.IN_REVIEW,
+            ArticleStatus.REVISIONS_REQUESTED,
+            ArticleStatus.REVISIONS,
+        )
+        val pending = pendingStatuses.sumOf {
+            articleAccessGuard.countAccessibleArticles(title, author, it)
+        }
+
+        return ArticleDashboardStatsDto(
+            total = total,
+            pending = pending,
+            accepted = accepted,
+            rejected = rejected,
+        )
     }
 
     @Transactional(readOnly = true)
@@ -103,14 +153,14 @@ class ArticlesServiceImpl(
     override fun create(articleDto: ArticleRequestDto): ArticleDto {
         val currentUser = currentUserService.requireUser()
         if (!currentUser.hasRole(com.example.researchreview.constants.Role.RESEARCHER)) {
-            throw AccessDeniedException("Only RESEARCHER can submit articles")
+            throw AccessDeniedException("articles.onlyResearcherCanSubmit")
         }
         val conference = conferenceRepository.findByIdAndDeletedFalse(articleDto.conferenceId)
-            .orElseThrow { EntityNotFoundException("Conference not found with id ${articleDto.conferenceId}") }
+            .orElseThrow { EntityNotFoundException("conference.notFound") }
         ensureConferenceOpenForSubmission(conference.status, conference.submissionDeadline)
 
         val track = trackRepository.findByIdAndConferenceIdAndDeletedFalse(articleDto.trackId, conference.id)
-            .orElseThrow { EntityNotFoundException("Track not found with id ${articleDto.trackId} in conference ${conference.id}") }
+            .orElseThrow { EntityNotFoundException("track.notFoundInConference") }
         val topics = resolveSubmissionTopics(conference.id, track.id, articleDto.topicIds)
 
         val article = Article().apply {
@@ -131,13 +181,13 @@ class ArticlesServiceImpl(
 
     @Transactional
     override fun update(articleDto: ArticleRequestDto): ArticleDto {
-        val articleId = articleDto.id ?: throw IllegalArgumentException("Article id is required for update")
+        val articleId = articleDto.id ?: throw IllegalArgumentException("articles.idRequiredForUpdate")
         val article = fetchArticle(articleId)
 
         val conference = conferenceRepository.findByIdAndDeletedFalse(articleDto.conferenceId)
-            .orElseThrow { EntityNotFoundException("Conference not found with id ${articleDto.conferenceId}") }
+            .orElseThrow { EntityNotFoundException("conference.notFound") }
         val track = trackRepository.findByIdAndConferenceIdAndDeletedFalse(articleDto.trackId, conference.id)
-            .orElseThrow { EntityNotFoundException("Track not found with id ${articleDto.trackId} in conference ${conference.id}") }
+            .orElseThrow { EntityNotFoundException("track.notFoundInConference") }
         val topics = resolveSubmissionTopics(conference.id, track.id, articleDto.topicIds)
 
         article.title = articleDto.title
@@ -184,7 +234,7 @@ class ArticlesServiceImpl(
     @Transactional
     override fun unassignReviewer(id: String, reviewerId: String): ArticleDto {
         val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(id, reviewerId)
-            ?: throw EntityNotFoundException("Reviewer relation not found")
+            ?: throw EntityNotFoundException("reviewer.relationNotFound")
         relation.deleted = true
         val savedRelation = reviewerArticleRepository.save(relation)
         notifyReviewerRevocation(savedRelation)
@@ -197,7 +247,7 @@ class ArticlesServiceImpl(
         val article = fetchArticle(id)
         ensureChairDecisionPermission(currentUser, article)
         if (article.status != ArticleStatus.REVIEWS_COMPLETED) {
-            throw IllegalStateException("Reject decision is only allowed when article is REVIEWS_COMPLETED")
+            throw IllegalStateException("articles.rejectOnlyWhenReviewsCompleted")
         }
         updateStatus(id, ArticleStatus.REJECTED)
         val updatedArticle = fetchArticle(id)
@@ -210,7 +260,7 @@ class ArticlesServiceImpl(
         val article = fetchArticle(id)
         ensureChairDecisionPermission(currentUser, article)
         if (article.status != ArticleStatus.REVIEWS_COMPLETED) {
-            throw IllegalStateException("Approve decision is only allowed when article is REVIEWS_COMPLETED")
+            throw IllegalStateException("articles.approveOnlyWhenReviewsCompleted")
         }
         updateStatus(id, ArticleStatus.ACCEPTED)
         val updatedArticle = fetchArticle(id)
@@ -225,7 +275,7 @@ class ArticlesServiceImpl(
     override fun markReviewsCompleted(id: String): ArticleDto {
         val article = fetchArticle(id)
         if (article.status != ArticleStatus.IN_REVIEW) {
-            throw IllegalStateException("Review completion mark is only allowed when article is IN_REVIEW")
+            throw IllegalStateException("articles.reviewCompletionOnlyWhenInReview")
         }
 
         if (featureFlagsProperties.reviewThresholdGateEnabled) {
@@ -240,7 +290,7 @@ class ArticlesServiceImpl(
                 ?: 3
             if (completedCount < threshold) {
                 throw IllegalStateException(
-                    "Cannot mark REVIEWS_COMPLETED before threshold is met: $completedCount/$threshold completed reviews"
+                    "articles.reviewThresholdNotMet"
                 )
             }
         }
@@ -255,7 +305,7 @@ class ArticlesServiceImpl(
         val article = fetchArticle(id)
         ensureChairDecisionPermission(currentUser, article)
         if (article.status != ArticleStatus.REVIEWS_COMPLETED) {
-            throw IllegalStateException("Revision request is only allowed when article is REVIEWS_COMPLETED")
+            throw IllegalStateException("articles.revisionRequestOnlyWhenReviewsCompleted")
         }
         updateStatus(id, ArticleStatus.REVISIONS_REQUESTED)
         val updatedArticle = fetchArticle(id)
@@ -268,7 +318,7 @@ class ArticlesServiceImpl(
         val article = fetchArticle(articleId)
         val previousStatus = article.status
         if (previousStatus != ArticleStatus.SUBMITTED) {
-            throw IllegalStateException("Initial review is only allowed when article is SUBMITTED")
+            throw IllegalStateException("articles.initialReviewOnlyWhenSubmitted")
         }
         article.initialReviewNote = request.note
         article.initialReviewNextSteps = request.nextSteps
@@ -311,7 +361,7 @@ class ArticlesServiceImpl(
         }
         // Ensure we have a managed article instance by fetching it fresh
         val managedArticle = articleRepository.findById(article.id)
-            .orElseThrow { EntityNotFoundException("Article not found with id ${article.id}") }
+            .orElseThrow { EntityNotFoundException("article.notFound") }
         authors.forEachIndexed { index, dto ->
             val savedAuthor = persistAuthor(dto)
             val relation = ArticleAuthor().apply {
@@ -331,7 +381,7 @@ class ArticlesServiceImpl(
         }
 
         val managedArticle = articleRepository.findById(article.id)
-            .orElseThrow { EntityNotFoundException("Article not found with id ${article.id}") }
+            .orElseThrow { EntityNotFoundException("article.notFound") }
 
         topics.forEach { topic ->
             articleTopicRepository.save(
@@ -346,7 +396,7 @@ class ArticlesServiceImpl(
     private fun resolveSubmissionTopics(conferenceId: String, trackId: String, topicIds: List<String>): List<Topic> {
         val normalizedTopicIds = topicIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (normalizedTopicIds.isEmpty()) {
-            throw IllegalArgumentException("At least one topic must be selected")
+            throw IllegalArgumentException("articles.atLeastOneTopicRequired")
         }
 
         val topics = topicRepository.findAllByIdInAndConferenceIdAndTrackIdAndDeletedFalse(
@@ -356,10 +406,10 @@ class ArticlesServiceImpl(
         )
 
         if (topics.size != normalizedTopicIds.size) {
-            throw IllegalArgumentException("One or more topicIds are invalid for the selected conference/track")
+            throw IllegalArgumentException("articles.invalidTopicIdsForConferenceTrack")
         }
         if (topics.any { !it.isActive }) {
-            throw IllegalArgumentException("One or more selected topics are inactive")
+            throw IllegalArgumentException("articles.inactiveTopicsSelected")
         }
 
         return topics
@@ -367,18 +417,18 @@ class ArticlesServiceImpl(
 
     private fun ensureConferenceOpenForSubmission(status: ConferenceStatus, submissionDeadline: LocalDateTime?) {
         if (status != ConferenceStatus.ACTIVE) {
-            throw IllegalStateException("Submission is allowed only for ACTIVE conferences")
+            throw IllegalStateException("articles.submissionOnlyForActiveConference")
         }
         if (submissionDeadline != null && LocalDateTime.now().isAfter(submissionDeadline)) {
-            throw IllegalStateException("Submission deadline has passed")
+            throw IllegalStateException("articles.submissionDeadlinePassed")
         }
     }
 
     private fun persistAuthor(dto: AuthorDto): Author {
         val institutionId = dto.institution.id
-        require(institutionId.isNotBlank()) { "Institution id is required for author ${dto.name}" }
+        require(institutionId.isNotBlank()) { "articles.authorInstitutionIdRequired" }
         val institution = institutionRepository.findById(institutionId)
-            .orElseThrow { EntityNotFoundException("Institution not found with id $institutionId") }
+            .orElseThrow { EntityNotFoundException("institution.notFound") }
         
         // Resolve user: try explicit dto.user.id first, then search by email
         val user = dto.user?.id?.takeIf { it.isNotBlank() }?.let { id ->
@@ -402,7 +452,7 @@ class ArticlesServiceImpl(
     private fun resolveReviewer(dto: ReviewerRequestDto): Reviewer {
         val institutionId = dto.institutionId
         val institution = institutionRepository.findById(institutionId)
-            .orElseThrow { EntityNotFoundException("Institution not found with id $institutionId") }
+            .orElseThrow { EntityNotFoundException("institution.notFound") }
         val reviewer = reviewerRepository.findByEmail(dto.email) ?: Reviewer()
         reviewer.name = dto.name
         reviewer.email = dto.email
@@ -709,7 +759,7 @@ class ArticlesServiceImpl(
             aa.author.user?.id == currentUser.id
         }
         if (!isAuthor) {
-            throw AccessDeniedException("Only article authors can start revisions")
+            throw AccessDeniedException("articles.onlyAuthorsCanStartRevisions")
         }
 
         if (article.status == ArticleStatus.REVISIONS) {
@@ -718,7 +768,7 @@ class ArticlesServiceImpl(
 
         if (article.status != ArticleStatus.REVISIONS_REQUESTED) {
             throw IllegalStateException(
-                "Starting revisions is only allowed when article is REVISIONS_REQUESTED. Current status: ${article.status}"
+                "articles.startRevisionsOnlyWhenRequested"
             )
         }
 
@@ -747,19 +797,19 @@ class ArticlesServiceImpl(
         }
 
         if (!isAuthor) {
-            throw AccessDeniedException("Only article authors can submit revisions")
+            throw AccessDeniedException("articles.onlyAuthorsCanSubmitRevisions")
         }
 
         // Verify article status allows revision submission
         if (article.status != ArticleStatus.REVISIONS && article.status != ArticleStatus.REVISIONS_REQUESTED) {
             throw IllegalStateException(
-                "Revision submission is only allowed when article is REVISIONS or REVISIONS_REQUESTED. Current status: ${article.status}"
+                "articles.submitRevisionOnlyWhenAllowedStatus"
             )
         }
 
         // Validate file is PDF
         if (file.contentType != "application/pdf") {
-            throw IllegalArgumentException("Only PDF files are allowed")
+            throw IllegalArgumentException("articles.onlyPdfAllowed")
         }
 
         // Determine next logical article version.
@@ -854,7 +904,7 @@ class ArticlesServiceImpl(
 
     private fun ensureChairDecisionPermission(user: User, article: Article) {
         val conferenceId = article.conference?.id
-            ?: throw IllegalStateException("Article conference is required for decision permission check")
+            ?: throw IllegalStateException("articles.conferenceRequiredForDecisionPermission")
 
         val conferenceMembership = userConferenceMembershipRepository
             .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, user.id)
@@ -862,7 +912,7 @@ class ArticlesServiceImpl(
 
         val hasChairMembership = conferenceMembership?.membershipRole == ConferenceMembershipRole.CHAIR
         if (!hasChairMembership) {
-            throw AccessDeniedException("Only conference chair can send final decisions")
+            throw AccessDeniedException("articles.onlyConferenceChairCanSendFinalDecisions")
         }
     }
 }

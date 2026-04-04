@@ -49,7 +49,7 @@ class NotificationController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to update notification"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }

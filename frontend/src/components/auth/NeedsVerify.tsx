@@ -1,13 +1,16 @@
 import React from 'react';
-import { Button, Typography } from 'antd';
+import { Button, Typography, theme as antdTheme } from 'antd';
 import { MailOutlined } from '@ant-design/icons';
 import { useResendMagicLink } from '../../hooks/useAuth';
 import { useAuthStore } from '../../stores/authStore';
 import { useResendTimer } from '../../hooks/useResendTimer';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text, Link } = Typography;
 
 function NeedsVerify() {
+  const { t } = useTranslation('common');
+  const { token } = antdTheme.useToken();
   const email = useAuthStore((state) => state.email);
   const isSignUp = useAuthStore((state) => state.isSignUp);
   const { mutate: resendMagicLink, isPending, isSuccess, isError } = useResendMagicLink();
@@ -18,7 +21,7 @@ function NeedsVerify() {
     cooldownSeconds: 60,
   });
 
-  document.title = "Xác thực email - Research Review";
+  document.title = `${t('needsVerify.pageTitle')} - Research Review`;
 
   // Start timer after successful resend
   React.useEffect(() => {
@@ -40,61 +43,75 @@ function NeedsVerify() {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: '16px',
-      height: '100%',
-      flexGrow: 1,
-      padding: '0 16px',
+      minHeight: 'calc(100vh - 64px)',
+      padding: '24px 16px',
+      background: token.colorBgLayout,
     }}>
       <div style={{
+        width: '100%',
+        maxWidth: '520px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        textAlign: 'center',
-        gap: '8px',
+        gap: '16px',
+        padding: '28px 24px',
+        borderRadius: '12px',
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        boxShadow: token.boxShadowTertiary,
       }}>
-        <MailOutlined style={{ fontSize: '48px' }} />
-        <Title level={1}>Kiểm tra email của bạn</Title>
-      </div>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '8px',
-      }}>
-        <Text>
-          Chúng tôi đã gửi một liên kết xác thực đến <strong>{email}</strong>
-        </Text>
-        <Text type="secondary">
-          Nhấp vào liên kết trong email để hoàn tất {isSignUp ? 'đăng ký' : 'đăng nhập'}
-        </Text>
-      </div>
-      {isSuccess && (
-        <Text style={{ color: '#52c41a' }}>
-          ✓ Email xác thực mới đã được gửi thành công!
-        </Text>
-      )}
-      {isError && (
-        <Text style={{ color: '#ff4d4f' }}>
-          ✗ Không thể gửi email. Vui lòng thử lại sau.
-        </Text>
-      )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Text>Không nhận được email? </Text>
-        {!canResend ? (
-          <Text type="secondary">Gửi lại sau {formatTime(secondsRemaining)}</Text>
-        ) : (
-          <Button
-            type="link"
-            onClick={handleResend}
-            loading={isPending}
-            disabled={isPending}
-            style={{ padding: 0, height: 'auto' }}
-          >
-            Gửi lại
-          </Button>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: '8px',
+        }}>
+          <MailOutlined style={{ fontSize: '48px', color: token.colorPrimary }} />
+          <Title level={1} style={{ margin: 0, color: token.colorText }}>{t('needsVerify.title')}</Title>
+        </div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          textAlign: 'center',
+        }}>
+          <Text style={{ color: token.colorText }}>
+            {t('needsVerify.sentTo')} <strong>{email}</strong>
+          </Text>
+          <Text type="secondary">
+            {t('needsVerify.instruction', { action: isSignUp ? t('needsVerify.signUpAction') : t('needsVerify.signInAction') })}
+          </Text>
+        </div>
+        {isSuccess && (
+          <Text type='success'>
+            {t('needsVerify.resendSuccess')}
+          </Text>
         )}
+        {isError && (
+          <Text type='danger'>
+            {t('needsVerify.resendFailed')}
+          </Text>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Text style={{ color: token.colorTextSecondary }}>{t('needsVerify.notReceived')}</Text>
+          {!canResend ? (
+            <Text type="secondary">{t('needsVerify.resendAfter', { time: formatTime(secondsRemaining) })}</Text>
+          ) : (
+            <Button
+              type="link"
+              onClick={handleResend}
+              loading={isPending}
+              disabled={isPending}
+              style={{ padding: 0, height: 'auto' }}
+            >
+              {t('needsVerify.resend')}
+            </Button>
+          )}
+        </div>
+        <Link href={isSignUp ? "/signup" : "/signin"}>{t('needsVerify.back')}</Link>
       </div>
-      <Link href={isSignUp ? "/signup" : "/signin"}>Quay lại</Link>
     </div>
   );
 }

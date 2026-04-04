@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { getAppLocale } from '../i18n';
 
 type BaseResponseLike = {
   data?: {
@@ -40,8 +41,12 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
+    const locale = getAppLocale();
+    config.headers = config.headers ?? {};
+
+    config.headers['Accept-Language'] = locale;
+
     if (token) {
-      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Button, Form, Select, Spin, Typography, Row, Col } from 'antd'
+import { Input, Button, Form, Select, Spin, Typography, Row, Col, DatePicker, theme as antdTheme } from 'antd'
 import { MailOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 import { getWorldData } from '../../services/country.service'
@@ -9,27 +9,28 @@ import { useCurrentUser, useUpdateUser } from '../../hooks/useUser'
 import { Gender, AcademicStatus, Role, RoleOptions, type RoleType } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 import { Navigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
+import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
 const styles = {
+    page: {
+        width: '100%',
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '32px 16px',
+    },
     root: {
         display: 'flex',
         flexDirection: 'column' as const,
         justifyContent: 'center',
         alignItems: 'center',
         gap: '32px',
-        height: '100%',
+        width: '100%',
         flexGrow: 1,
-        padding: '32px 16px',
         maxWidth: '800px',
-        margin: '0 auto',
-    },
-    success: {
-        color: '#52c41a',
-    },
-    error: {
-        color: '#ff4d4f',
     },
     submitButton: {
         margin: 'auto',
@@ -43,6 +44,8 @@ const styles = {
 }
 
 function Profile() {
+    const { t } = useTranslation('common')
+    const { token } = antdTheme.useToken()
     const [form] = Form.useForm()
     const { email, isAuthenticated } = useAuthStore()
     const { data: worldData } = useQuery({
@@ -60,12 +63,17 @@ function Profile() {
 
     const effectiveRoles = (currentUser?.roles?.length ? currentUser.roles : [currentUser?.role]).filter(Boolean)
     const isAdmin = effectiveRoles.includes(Role.ADMIN)
-    const roleOptions = RoleOptions.filter(({ value }) => isAdmin || value !== Role.ADMIN)
+    const roleOptions = RoleOptions
+        .filter(({ value }) => isAdmin || value !== Role.ADMIN)
+        .map(({ value }) => ({
+            value,
+            label: t(`profile.roleOptions.${value.toLowerCase()}`),
+        }))
     
     const [formData, setFormData] = useState<UserRequestDto>({
         email: email || '',
         name: '',
-        role: 'USER',
+        role: Role.USER,
         avatarId: '',
         institutionId: '',
         institutionName: '',
@@ -128,7 +136,7 @@ function Profile() {
         setFormData({ ...formData, name: `${value} ${additionalFields.firstName}`.trim() })
     }
 
-    document.title = "Thông tin cá nhân - Research Review"
+    document.title = `${t('profile.pageTitle')} - Research Review`
 
     if (!isAuthenticated) {
         return <Navigate to="/signin" replace />
@@ -136,39 +144,42 @@ function Profile() {
 
     if (userLoading) {
         return (
-            <div style={styles.root}>
-                <div style={styles.loadingContainer}>
-                    <Spin size="large" tip="Đang tải thông tin..." />
+            <div style={{ ...styles.page, backgroundColor: token.colorBgLayout, color: token.colorText }}>
+                <div style={styles.root}>
+                    <div style={styles.loadingContainer}>
+                        <Spin size="large" tip={t('profile.common.loading')} />
+                    </div>
                 </div>
             </div>
         )
     }
 
     return (
-        <div style={styles.root}>
-            <Title level={1}>Thông tin cá nhân</Title>
+        <div style={{ ...styles.page, backgroundColor: token.colorBgLayout, color: token.colorText }}>
+            <div style={styles.root}>
+                <Title level={1}>{t('profile.title')}</Title>
             
-            {updateUser.isSuccess && (
-                <Text style={styles.success}>Cập nhật thông tin thành công!</Text>
-            )}
-            {updateUser.isError && (
-                <Text style={styles.error}>Có lỗi xảy ra khi cập nhật thông tin</Text>
-            )}
+                {updateUser.isSuccess && (
+                    <Text type='success'>{t('profile.updateSuccess')}</Text>
+                )}
+                {updateUser.isError && (
+                    <Text type='danger'>{t('profile.updateError')}</Text>
+                )}
 
-            <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ width: '100%' }}>
-                <Form.Item label="Email" required>
-                    <Input 
-                        prefix={<MailOutlined />}
-                        placeholder='email@example.com' 
-                        disabled 
-                        value={formData.email} 
-                    />
-                </Form.Item>
+                <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ width: '100%' }}>
+                    <Form.Item label={t('profile.fields.email.label')} required>
+                        <Input 
+                            prefix={<MailOutlined />}
+                            placeholder={t('profile.fields.email.placeholder')} 
+                            disabled 
+                            value={formData.email} 
+                        />
+                    </Form.Item>
                 <Row gutter={16}>
                     <Col xs={24} sm={12}>
-                        <Form.Item label="Họ" required tooltip="Họ và tên đệm, ví dụ Nguyễn Văn">
+                        <Form.Item label={t('profile.fields.lastName.label')} required tooltip={t('profile.fields.lastName.tooltip')}>
                             <Input 
-                                placeholder='VD: Nguyễn Văn' 
+                                placeholder={t('profile.fields.lastName.placeholder')} 
                                 value={additionalFields.lastName}
                                 onChange={(e) => handleLastNameChange(e.target.value)}
                                 required
@@ -176,9 +187,9 @@ function Profile() {
                         </Form.Item>
                     </Col>
                     <Col xs={24} sm={12}>
-                        <Form.Item label="Tên" required tooltip="Tên của bạn, ví dụ A">
+                        <Form.Item label={t('profile.fields.firstName.label')} required tooltip={t('profile.fields.firstName.tooltip')}>
                             <Input 
-                                placeholder='VD: A' 
+                                placeholder={t('profile.fields.firstName.placeholder')} 
                                 value={additionalFields.firstName}
                                 onChange={(e) => handleFirstNameChange(e.target.value)}
                                 required
@@ -188,9 +199,9 @@ function Profile() {
                 </Row>
                 <Row gutter={16}>
                     <Col xs={24} sm={12}>
-                        <Form.Item label="Số điện thoại" tooltip="Số điện thoại 10 số">
+                        <Form.Item label={t('profile.fields.phone.label')} tooltip={t('profile.fields.phone.tooltip')}>
                             <Input 
-                                placeholder='VD: 0123456789' 
+                                placeholder={t('profile.fields.phone.placeholder')} 
                                 value={additionalFields.phoneNumber}
                                 onChange={(e) => setAdditionalFields({ ...additionalFields, phoneNumber: e.target.value })}
                                 type='tel'
@@ -198,49 +209,52 @@ function Profile() {
                         </Form.Item>
                     </Col>
                     <Col xs={24} sm={12}>
-                        <Form.Item label="Ngày tháng năm sinh" tooltip="Ngày tháng năm sinh của bạn">
-                            <Input 
-                                placeholder='VD: 01/01/2000' 
-                                value={additionalFields.dateOfBirth}
-                                onChange={(e) => setAdditionalFields({ ...additionalFields, dateOfBirth: e.target.value })}
-                                type='date'
+                        <Form.Item label={t('profile.fields.dateOfBirth.label')} tooltip={t('profile.fields.dateOfBirth.tooltip')}>
+                            <DatePicker
+                                placeholder={t('profile.fields.dateOfBirth.placeholder')} 
+                                value={additionalFields.dateOfBirth ? dayjs(additionalFields.dateOfBirth) : null}
+                                onChange={(value) =>
+                                    setAdditionalFields({
+                                        ...additionalFields,
+                                        dateOfBirth: value ? value.format('YYYY-MM-DD') : ''
+                                    })
+                                }
+                                format="YYYY-MM-DD"
+                                style={{ width: '100%' }}
                             />
                         </Form.Item>
                     </Col>
                 </Row>
                 <Row gutter={16}>
                     <Col xs={24} sm={8}>
-                        <Form.Item label="Loại tài khoản" required tooltip="Chọn loại tài khoản của bạn">
+                        <Form.Item label={t('profile.fields.role.label')} required tooltip={t('profile.fields.role.tooltip')}>
                             <Select
-                                placeholder='Loại tài khoản'
+                                placeholder={t('profile.fields.role.placeholder')}
                                 value={formData.role || undefined}
                                 onChange={(value) => setFormData({ ...formData, role: value as RoleType })}
                                 disabled={!isAdmin}
-                                options={roleOptions.map(({ value, label }) => ({
-                                    value,
-                                    label
-                                }))}
+                                options={roleOptions}
                             />
                         </Form.Item>
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Form.Item label="Giới tính" required tooltip="Giới tính của bạn">
+                        <Form.Item label={t('profile.fields.gender.label')} required tooltip={t('profile.fields.gender.tooltip')}>
                             <Select
-                                placeholder='Giới tính của bạn'
+                                placeholder={t('profile.fields.gender.placeholder')}
                                 value={formData.gender || undefined}
                                 onChange={(value) => setFormData({ ...formData, gender: value })}
                                 options={[
-                                    { value: Gender.MALE, label: 'Nam' },
-                                    { value: Gender.FEMALE, label: 'Nữ' },
-                                    { value: Gender.OTHER, label: 'Khác' },
+                                    { value: Gender.MALE, label: t('profile.genderOptions.male') },
+                                    { value: Gender.FEMALE, label: t('profile.genderOptions.female') },
+                                    { value: Gender.OTHER, label: t('profile.genderOptions.other') },
                                 ]}
                             />
                         </Form.Item>
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Form.Item label="Quốc tịch" required tooltip="Quốc tịch của bạn">
+                        <Form.Item label={t('profile.fields.nationality.label')} required tooltip={t('profile.fields.nationality.tooltip')}>
                             <Select
-                                placeholder='Quốc tịch của bạn'
+                                placeholder={t('profile.fields.nationality.placeholder')}
                                 value={formData.nationality || undefined}
                                 onChange={(value) => setFormData({ ...formData, nationality: value })}
                                 options={worldData?.map((data) => ({
@@ -254,9 +268,9 @@ function Profile() {
                 {!isAdmin && (
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
-                            <Form.Item label="Nơi công tác" required tooltip="Nơi công tác của bạn">
+                            <Form.Item label={t('profile.fields.institution.label')} required tooltip={t('profile.fields.institution.tooltip')}>
                                 <Select
-                                    placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
+                                    placeholder={institutionsLoading ? t('profile.common.loading') : t('profile.fields.institution.placeholder')}
                                     value={formData.institutionId || undefined}
                                     onChange={(value) => {
                                         const selectedInstitution = institutions.find(i => i.id === value)
@@ -276,9 +290,9 @@ function Profile() {
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
-                            <Form.Item label="Lĩnh vực nghiên cứu (Track)" required tooltip="Lĩnh vực nghiên cứu của bạn">
+                            <Form.Item label={t('profile.fields.track.label')} required tooltip={t('profile.fields.track.tooltip')}>
                                 <Select
-                                    placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực nghiên cứu'}
+                                    placeholder={tracksLoading ? t('profile.common.loading') : t('profile.fields.track.placeholder')}
                                     value={formData.trackId || undefined}
                                     onChange={(value) => setFormData({ ...formData, trackId: value })}
                                     loading={tracksLoading}
@@ -295,17 +309,17 @@ function Profile() {
                 {!isAdmin && (
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
-                            <Form.Item label="Học hàm, học vị" required tooltip="Học hàm, học vị của bạn">
+                            <Form.Item label={t('profile.fields.academicStatus.label')} required tooltip={t('profile.fields.academicStatus.tooltip')}>
                                 <Select
-                                    placeholder='Học hàm, học vị của bạn'
+                                    placeholder={t('profile.fields.academicStatus.placeholder')}
                                     value={formData.academicStatus || undefined}
                                     onChange={(value) => setFormData({ ...formData, academicStatus: value })}
                                     options={[
-                                        { value: AcademicStatus.GSTS, label: 'Giáo sư - Tiến sĩ' },
-                                        { value: AcademicStatus.PGSTS, label: 'Phó giáo sư - Tiến sĩ' },
-                                        { value: AcademicStatus.TS, label: 'Tiến sĩ' },
-                                        { value: AcademicStatus.THS, label: 'Thạc sĩ' },
-                                        { value: AcademicStatus.CN, label: 'Cử nhân' },
+                                        { value: AcademicStatus.GSTS, label: t('profile.academicStatusOptions.gsts') },
+                                        { value: AcademicStatus.PGSTS, label: t('profile.academicStatusOptions.pgsts') },
+                                        { value: AcademicStatus.TS, label: t('profile.academicStatusOptions.ts') },
+                                        { value: AcademicStatus.THS, label: t('profile.academicStatusOptions.ths') },
+                                        { value: AcademicStatus.CN, label: t('profile.academicStatusOptions.cn') },
                                     ]}
                                 />
                             </Form.Item>
@@ -313,17 +327,18 @@ function Profile() {
                     </Row>
                 )}
 
-                <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginTop: '24px' }}>
-                    <Button 
-                        type="primary" 
-                        htmlType="submit"
-                        style={styles.submitButton}
-                        loading={updateUser.isPending}
-                    >
-                        {updateUser.isPending ? 'Đang cập nhật...' : 'Cập nhật thông tin'}
-                    </Button>
-                </div>
-            </Form>
+                    <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginTop: '24px' }}>
+                        <Button 
+                            type="primary" 
+                            htmlType="submit"
+                            style={styles.submitButton}
+                            loading={updateUser.isPending}
+                        >
+                            {updateUser.isPending ? t('profile.actions.updating') : t('profile.actions.update')}
+                        </Button>
+                    </div>
+                </Form>
+            </div>
         </div>
     )
 }

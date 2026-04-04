@@ -71,7 +71,7 @@ class CommentController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "Thread not found"
+                    message = ex.message ?: "comments.threadNotFound"
                 )
             )
         }
@@ -95,7 +95,7 @@ class CommentController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "Thread not found"
+                    message = ex.message ?: "comments.threadNotFound"
                 )
             )
         }

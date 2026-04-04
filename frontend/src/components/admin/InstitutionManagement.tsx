@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Spin, Table, Typography, Space, Form } from 'antd';
 import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import type { InstitutionDto } from '../../models';
+import { useTranslation } from 'react-i18next';
 import {
   useInstitutions,
   useCreateInstitution,
@@ -35,6 +36,7 @@ type InstitutionDraft = {
 };
 
 const InstitutionManagement = () => {
+  const { t } = useTranslation('common');
   const { data, isLoading } = useInstitutions(0, 100);
   const createInstitution = useCreateInstitution();
   const updateInstitution = useUpdateInstitution();
@@ -122,7 +124,7 @@ const InstitutionManagement = () => {
 
   const columns: ColumnsType<InstitutionDto & { draft?: InstitutionDraft }> = [
     {
-      title: 'Tên',
+      title: t('institutionManagement.columns.name'),
       key: 'name',
       render: (_, record) => (
         <Input
@@ -133,7 +135,7 @@ const InstitutionManagement = () => {
       ),
     },
     {
-      title: 'Quốc gia',
+      title: t('institutionManagement.columns.country'),
       key: 'country',
       render: (_, record) => (
         <Input
@@ -144,7 +146,7 @@ const InstitutionManagement = () => {
       ),
     },
     {
-      title: 'Website',
+      title: t('institutionManagement.columns.website'),
       key: 'website',
       render: (_, record) => (
         <Input
@@ -155,7 +157,7 @@ const InstitutionManagement = () => {
       ),
     },
     {
-      title: 'Logo',
+      title: t('institutionManagement.columns.logo'),
       key: 'logo',
       render: (_, record) => (
         <Input
@@ -166,7 +168,7 @@ const InstitutionManagement = () => {
       ),
     },
     {
-      title: 'Hành động',
+      title: t('institutionManagement.columns.actions'),
       key: 'actions',
       render: (_, record) => {
         const draft = draftById[record.id];
@@ -178,14 +180,14 @@ const InstitutionManagement = () => {
               onClick={() => handleSave(record.id)}
               disabled={isMutating || !draft?.name.trim()}
             >
-              Lưu
+              {t('institutionManagement.actions.save')}
             </Button>
             <Button
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record.id)}
               disabled={isMutating}
             >
-              Xóa
+              {t('institutionManagement.actions.delete')}
             </Button>
           </Space>
         );
@@ -196,36 +198,36 @@ const InstitutionManagement = () => {
   return (
     <div style={styles.container}>
       <Text strong style={{ fontSize: '24px', marginBottom: '8px' }}>
-        Quản lý Nơi công tác
+        {t('institutionManagement.title')}
       </Text>
 
       <div style={styles.formRow}>
-        <Form.Item label="Tên" required>
+        <Form.Item label={t('institutionManagement.form.nameLabel')} required>
           <Input
             value={createForm.name}
             onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder="VD: Trường Đại học ABC"
+            placeholder={t('institutionManagement.form.namePlaceholder')}
           />
         </Form.Item>
-        <Form.Item label="Quốc gia">
+        <Form.Item label={t('institutionManagement.form.countryLabel')}>
           <Input
             value={createForm.country}
             onChange={(e) => setCreateForm((p) => ({ ...p, country: e.target.value }))}
-            placeholder="VD: Vietnam"
+            placeholder={t('institutionManagement.form.countryPlaceholder')}
           />
         </Form.Item>
-        <Form.Item label="Website">
+        <Form.Item label={t('institutionManagement.form.websiteLabel')}>
           <Input
             value={createForm.website}
             onChange={(e) => setCreateForm((p) => ({ ...p, website: e.target.value }))}
-            placeholder="https://example.edu"
+            placeholder={t('institutionManagement.form.websitePlaceholder')}
           />
         </Form.Item>
-        <Form.Item label="Logo">
+        <Form.Item label={t('institutionManagement.form.logoLabel')}>
           <Input
             value={createForm.logo}
             onChange={(e) => setCreateForm((p) => ({ ...p, logo: e.target.value }))}
-            placeholder="https://.../logo.png"
+            placeholder={t('institutionManagement.form.logoPlaceholder')}
           />
         </Form.Item>
         <Button
@@ -234,19 +236,19 @@ const InstitutionManagement = () => {
           disabled={isMutating || !createForm.name.trim()}
           onClick={handleCreate}
         >
-          Tạo
+          {t('institutionManagement.actions.create')}
         </Button>
       </div>
 
       {isLoading ? (
-        <Spin size="large" tip="Đang tải danh sách nơi công tác..." />
+        <Spin size="large" tip={t('institutionManagement.loading')} />
       ) : (
         <Table
           columns={columns}
           dataSource={institutions}
           rowKey="id"
           locale={{
-            emptyText: 'Chưa có nơi công tác nào.',
+            emptyText: t('institutionManagement.empty'),
           }}
           pagination={false}
         />

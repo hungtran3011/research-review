@@ -1,6 +1,7 @@
-import React from 'react'
-import { Card, Typography, Button, Space } from 'antd'
+import React, { useEffect } from 'react'
+import { Card, Typography, Button, Space, theme as antdTheme } from 'antd'
 import { MailOutlined, FileTextOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -9,7 +10,6 @@ const containerStyle: React.CSSProperties = {
   padding: 32,
   display: 'flex',
   justifyContent: 'center',
-  background: '#f5f7fa',
 }
 
 const innerStyle: React.CSSProperties = {
@@ -27,8 +27,15 @@ const sectionBodyStyle: React.CSSProperties = {
 }
 
 function HelpCenter() {
+  const { t } = useTranslation('common')
+  const { token } = antdTheme.useToken()
+
+  useEffect(() => {
+    document.title = `${t('nav.help')} - Research Review`
+  }, [t])
+
   return (
-    <div style={containerStyle}>
+    <div style={{ ...containerStyle, background: token.colorBgLayout }}>
       <div style={innerStyle}>
         <Card>
           <Title level={4}>Trung tâm trợ giúp</Title>

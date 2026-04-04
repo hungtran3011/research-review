@@ -34,7 +34,7 @@ class TemplateController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Errors when creating template: ${e.message}",
+                    message = "error.internal.server",
                     data = TemplateDto()
                 )
             )

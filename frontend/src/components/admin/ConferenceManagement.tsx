@@ -24,6 +24,7 @@ import type {
 } from '../../models';
 import dayjs from 'dayjs';
 import { useBasicToast } from '../../hooks/useBasicToast';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -58,6 +59,7 @@ const styles = {
 const ConferenceManagement = () => {
   const queryClient = useQueryClient();
   const { success, error } = useBasicToast();
+  const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   
@@ -89,7 +91,7 @@ const ConferenceManagement = () => {
       return await conferenceService.create(data);
     },
     onSuccess: () => {
-      success('Đã tạo hội nghị thành công');
+      success(t('conferenceManagement.messages.createSuccess'));
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
       resetForm();
       setIsModalVisible(false);
@@ -98,9 +100,9 @@ const ConferenceManagement = () => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Tạo hội nghị thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('conferenceManagement.messages.unknownError')
+        : t('conferenceManagement.messages.unknownError');
+      error(t('conferenceManagement.messages.createFailedPrefix') + message);
     },
   });
 
@@ -110,7 +112,7 @@ const ConferenceManagement = () => {
       return await conferenceService.update(id, data);
     },
     onSuccess: () => {
-      success('Đã cập nhật hội nghị thành công');
+      success(t('conferenceManagement.messages.updateSuccess'));
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
       resetForm();
       setIsModalVisible(false);
@@ -120,9 +122,9 @@ const ConferenceManagement = () => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Cập nhật hội nghị thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('conferenceManagement.messages.unknownError')
+        : t('conferenceManagement.messages.unknownError');
+      error(t('conferenceManagement.messages.updateFailedPrefix') + message);
     },
   });
 
@@ -132,16 +134,16 @@ const ConferenceManagement = () => {
       return await conferenceService.delete(id);
     },
     onSuccess: () => {
-      success('Đã xóa hội nghị thành công');
+      success(t('conferenceManagement.messages.deleteSuccess'));
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
     },
     onError: (err: unknown) => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Xóa hội nghị thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('conferenceManagement.messages.unknownError')
+        : t('conferenceManagement.messages.unknownError');
+      error(t('conferenceManagement.messages.deleteFailedPrefix') + message);
     },
   });
 
@@ -180,7 +182,7 @@ const ConferenceManagement = () => {
 
   const handleSubmit = () => {
     if (!formName.trim() || !formShortName.trim()) {
-      error('Tên và mã ngắn là bắt buộc');
+      error(t('conferenceManagement.errors.nameAndShortNameRequired'));
       return;
     }
 
@@ -204,41 +206,41 @@ const ConferenceManagement = () => {
 
   const handleDelete = (id: string) => {
     Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: 'Bạn có chắc chắn muốn xóa hội nghị này không?',
+      title: t('conferenceManagement.confirmDelete.title'),
+      content: t('conferenceManagement.confirmDelete.content'),
       onOk: () => deleteConference.mutate(id),
-      okText: 'Xóa',
-      cancelText: 'Hủy',
+      okText: t('conferenceManagement.actions.delete'),
+      cancelText: t('conferenceManagement.actions.cancel'),
       okButtonProps: { danger: true },
     });
   };
 
   const columns: ColumnsType<ConferenceDto> = [
     {
-      title: 'Tên hội nghị',
+      title: t('conferenceManagement.columns.name'),
       dataIndex: 'name',
       key: 'name',
       width: '20%',
     },
     {
-      title: 'Mã ngắn',
+      title: t('conferenceManagement.columns.shortName'),
       dataIndex: 'shortName',
       key: 'shortName',
       width: '12%',
     },
     {
-      title: 'Mùa/Năm',
+      title: t('conferenceManagement.columns.seasonYear'),
       key: 'season',
       width: '12%',
       render: (_, record) => {
         const parts: string[] = [];
         if (record.season) parts.push(record.season);
         if (record.year) parts.push(record.year.toString());
-        return parts.length > 0 ? parts.join(' ') : '-';
+        return parts.length > 0 ? parts.join(' ') : t('conferenceManagement.common.dash');
       },
     },
     {
-      title: 'Trạng thái',
+      title: t('conferenceManagement.columns.status'),
       dataIndex: 'status',
       key: 'status',
       width: '12%',
@@ -248,23 +250,23 @@ const ConferenceManagement = () => {
       },
     },
     {
-      title: 'Hạn nộp',
+      title: t('conferenceManagement.columns.deadline'),
       key: 'deadline',
       width: '14%',
       render: (_, record) => {
         return record.submissionDeadline
           ? dayjs(record.submissionDeadline).format('DD/MM/YYYY HH:mm')
-          : '-';
+          : t('conferenceManagement.common.dash');
       },
     },
     {
-      title: 'SL Review',
+      title: t('conferenceManagement.columns.minReviewsShort'),
       dataIndex: 'minimumCompletedReviews',
       key: 'minReviews',
       width: '10%',
     },
     {
-      title: 'Hành động',
+      title: t('conferenceManagement.columns.actions'),
       key: 'actions',
       width: '20%',
       render: (_, record) => (
@@ -275,7 +277,7 @@ const ConferenceManagement = () => {
             onClick={() => handleEdit(record)}
             disabled={isMutating}
           >
-            Sửa
+            {t('conferenceManagement.actions.edit')}
           </Button>
           <Button
             size="small"
@@ -284,7 +286,7 @@ const ConferenceManagement = () => {
             onClick={() => handleDelete(record.id)}
             disabled={isMutating}
           >
-            Xóa
+            {t('conferenceManagement.actions.delete')}
           </Button>
         </Space>
       ),
@@ -297,10 +299,10 @@ const ConferenceManagement = () => {
         <div style={styles.header}>
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Text strong style={{ fontSize: '24px' }}>
-              Quản lý Hội nghị
+              {t('conferenceManagement.title')}
             </Text>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-              Tạo hội nghị mới
+              {t('conferenceManagement.actions.createNew')}
             </Button>
           </Space>
         </div>
@@ -312,13 +314,13 @@ const ConferenceManagement = () => {
           loading={isLoading}
           pagination={{ pageSize: 10 }}
           locale={{
-            emptyText: 'Không có hội nghị nào',
+            emptyText: t('conferenceManagement.empty'),
           }}
         />
       </Card>
 
       <Modal
-        title={editingId ? 'Chỉnh sửa hội nghị' : 'Tạo hội nghị mới'}
+        title={editingId ? t('conferenceManagement.modal.editTitle') : t('conferenceManagement.modal.createTitle')}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -334,51 +336,51 @@ const ConferenceManagement = () => {
               setEditingId(null);
             }}
           >
-            Hủy
+            {t('conferenceManagement.actions.cancel')}
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isMutating}>
-            {editingId ? 'Cập nhật' : 'Tạo mới'}
+            {editingId ? t('conferenceManagement.actions.update') : t('conferenceManagement.actions.create')}
           </Button>,
         ]}
         width={800}
       >
         <div style={{ ...styles.formGrid, marginTop: '24px' }}>
           <div style={styles.field}>
-            <Text strong>Tên hội nghị *</Text>
+            <Text strong>{t('conferenceManagement.form.nameLabel')}</Text>
             <Input
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              placeholder="VD: AI Summit 2026"
+              placeholder={t('conferenceManagement.form.namePlaceholder')}
               disabled={isMutating}
             />
           </div>
 
           <div style={styles.field}>
-            <Text strong>Mã ngắn *</Text>
+            <Text strong>{t('conferenceManagement.form.shortNameLabel')}</Text>
             <Input
               value={formShortName}
               onChange={(e) => setFormShortName(e.target.value)}
-              placeholder="VD: AI2026"
+              placeholder={t('conferenceManagement.form.shortNamePlaceholder')}
               disabled={isMutating}
             />
           </div>
 
           <div style={styles.field}>
-            <Text strong>Mùa</Text>
+            <Text strong>{t('conferenceManagement.form.seasonLabel')}</Text>
             <Input
               value={formSeason}
               onChange={(e) => setFormSeason(e.target.value)}
-              placeholder="VD: Spring, Fall"
+              placeholder={t('conferenceManagement.form.seasonPlaceholder')}
               disabled={isMutating}
             />
           </div>
 
           <div style={styles.field}>
-            <Text strong>Năm</Text>
+            <Text strong>{t('conferenceManagement.form.yearLabel')}</Text>
             <InputNumber
               value={formYear}
               onChange={(value) => setFormYear(value)}
-              placeholder="VD: 2026"
+              placeholder={t('conferenceManagement.form.yearPlaceholder')}
               min={1900}
               max={9999}
               style={{ width: '100%' }}
@@ -387,7 +389,7 @@ const ConferenceManagement = () => {
           </div>
 
           <div style={styles.field}>
-            <Text strong>Trạng thái *</Text>
+            <Text strong>{t('conferenceManagement.form.statusLabel')}</Text>
             <Select
               value={formStatus}
               onChange={setFormStatus}
@@ -397,20 +399,20 @@ const ConferenceManagement = () => {
           </div>
 
           <div style={styles.field}>
-            <Text strong>Hạn nộp bài</Text>
+            <Text strong>{t('conferenceManagement.form.deadlineLabel')}</Text>
             <DatePicker
               value={formDeadline}
               onChange={setFormDeadline}
               showTime
               format="DD/MM/YYYY HH:mm"
               style={{ width: '100%' }}
-              placeholder="Chọn thời hạn"
+              placeholder={t('conferenceManagement.form.deadlinePlaceholder')}
               disabled={isMutating}
             />
           </div>
 
           <div style={styles.field}>
-            <Text strong>Số review tối thiểu</Text>
+            <Text strong>{t('conferenceManagement.form.minReviewsLabel')}</Text>
             <InputNumber
               value={formMinReviews}
               onChange={(value) => setFormMinReviews(value || 3)}
@@ -421,12 +423,12 @@ const ConferenceManagement = () => {
           </div>
 
           <div style={{ ...styles.field, gridColumn: '1 / -1' }}>
-            <Text strong>Mô tả</Text>
+            <Text strong>{t('conferenceManagement.form.descriptionLabel')}</Text>
             <Input.TextArea
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
               rows={3}
-              placeholder="Mô tả chi tiết về hội nghị"
+              placeholder={t('conferenceManagement.form.descriptionPlaceholder')}
               disabled={isMutating}
             />
           </div>

@@ -3,6 +3,8 @@ package com.example.researchreview.exceptions
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.ErrorResponseDto
 import jakarta.persistence.EntityNotFoundException
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -15,7 +17,15 @@ import org.springframework.web.context.request.WebRequest
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 
 @RestControllerAdvice
-class ExceptionController: ResponseEntityExceptionHandler() {
+class ExceptionController(
+    private val messageSource: MessageSource,
+) : ResponseEntityExceptionHandler() {
+
+    private fun msg(code: String): String = messageSource.getMessage(code, null, LocaleContextHolder.getLocale()) ?: code
+    private fun resolveMessage(message: String?, fallbackCode: String): String {
+        if (message.isNullOrBlank()) return msg(fallbackCode)
+        return messageSource.getMessage(message, null, message, LocaleContextHolder.getLocale()) ?: message
+    }
 
     override fun handleMethodArgumentNotValid(
         ex: MethodArgumentNotValidException,
@@ -28,7 +38,8 @@ class ExceptionController: ResponseEntityExceptionHandler() {
             "email" -> 400
             else -> 500
         }
-        val errorResponse = BaseResponseDto<Any>(code = code, message = "Invalid input: ${ex.bindingResult.fieldErrors.getOrNull(0)?.defaultMessage}")
+        val detail = ex.bindingResult.fieldErrors.getOrNull(0)?.defaultMessage
+        val errorResponse = BaseResponseDto<Any>(code = code, message = resolveMessage(detail, "error.invalid.request"))
         return ResponseEntity.badRequest().body(errorResponse)
     }
 
@@ -38,7 +49,7 @@ class ExceptionController: ResponseEntityExceptionHandler() {
         status: HttpStatusCode,
         request: WebRequest
     ): ResponseEntity<Any> {
-        val errorResponse = mapOf("message" to "Invalid input: ${ex.message}")
+        val errorResponse = mapOf("message" to resolveMessage(ex.message, "error.invalid.request"))
         return ResponseEntity.badRequest().body(errorResponse)
     }
 
@@ -48,7 +59,7 @@ class ExceptionController: ResponseEntityExceptionHandler() {
             ErrorResponseDto(
                 status = HttpStatus.NOT_FOUND.value(),
                 errorCode = "RESOURCE_NOT_FOUND",
-                message = ex.message ?: "Resource not found",
+                message = resolveMessage(ex.message, "error.not.found"),
             )
         )
     }
@@ -59,7 +70,7 @@ class ExceptionController: ResponseEntityExceptionHandler() {
             ErrorResponseDto(
                 status = HttpStatus.BAD_REQUEST.value(),
                 errorCode = "INVALID_REQUEST",
-                message = ex.message ?: "Invalid request",
+                message = resolveMessage(ex.message, "error.invalid.request"),
             )
         )
     }
@@ -70,7 +81,7 @@ class ExceptionController: ResponseEntityExceptionHandler() {
             ErrorResponseDto(
                 status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 errorCode = "INTERNAL_SERVER_ERROR",
-                message = ex.message ?: "Unexpected error",
+                message = msg("error.internal.server"),
             )
         )
     }

@@ -16,9 +16,7 @@ import com.example.researchreview.utils.*
 import org.apache.http.client.utils.URIBuilder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.web.server.ResponseStatusException
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.TimeUnit
@@ -70,10 +68,11 @@ class AuthServiceImpl(
 
     override fun signUpWithMail(email: String, deviceFingerprint: String?): MagicLinkSendResult {
         if (usersService.getByEmail(email) !== null) {
-            throw EmailExistedException("Email already exists")
+            throw EmailExistedException("auth.emailExists")
         }
         if (redisTemplate.opsForValue().get(emailKey(email, deviceFingerprint)) !== null) {
-            throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Please wait before requesting another code")
+            val ttl = redisTemplate.getExpire(emailKey(email, deviceFingerprint), TimeUnit.SECONDS)?.coerceAtLeast(0)
+            throw TooManyCodeRequestException(ttl ?: 30)
         }
         if (redisTemplate.opsForValue().get(verifyKey(email)) == "verified") {
             throw VerifiedEmailException()

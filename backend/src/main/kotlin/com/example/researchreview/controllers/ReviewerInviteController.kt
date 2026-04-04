@@ -5,6 +5,8 @@ import com.example.researchreview.dtos.ReviewerInviteDecisionDto
 import com.example.researchreview.dtos.ReviewerInviteResolveDto
 import com.example.researchreview.services.ReviewerInviteDecisionService
 import com.example.researchreview.services.ReviewerInviteService
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -18,8 +20,15 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/reviewer-invites")
 class ReviewerInviteController(
     private val reviewerInviteService: ReviewerInviteService,
-    private val reviewerInviteDecisionService: ReviewerInviteDecisionService
+    private val reviewerInviteDecisionService: ReviewerInviteDecisionService,
+    private val messageSource: MessageSource,
 ) {
+
+    private fun msg(code: String): String = messageSource.getMessage(code, null, LocaleContextHolder.getLocale()) ?: code
+    private fun resolveMessage(message: String?, fallbackCode: String): String {
+        if (message.isNullOrBlank()) return msg(fallbackCode)
+        return messageSource.getMessage(message, null, message, LocaleContextHolder.getLocale()) ?: message
+    }
 
     @GetMapping("/resolve")
     fun resolve(@RequestParam token: String): ResponseEntity<BaseResponseDto<ReviewerInviteResolveDto>> {
@@ -28,7 +37,7 @@ class ReviewerInviteController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Invitation resolved",
+                    message = msg("reviewerInvite.resolved"),
                     data = dto
                 )
             )
@@ -36,7 +45,7 @@ class ReviewerInviteController(
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = e.message ?: "Invalid token",
+                    message = resolveMessage(e.message, "reviewerInvite.invalidToken"),
                     data = null
                 )
             )
@@ -44,7 +53,7 @@ class ReviewerInviteController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error: ${e.message}",
+                    message = msg("error.internal.server"),
                     data = null
                 )
             )
@@ -59,7 +68,7 @@ class ReviewerInviteController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Invitation accepted",
+                    message = msg("reviewerInvite.accepted"),
                     data = dto
                 )
             )
@@ -67,7 +76,7 @@ class ReviewerInviteController(
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = e.message ?: "Failed to accept invitation",
+                    message = resolveMessage(e.message, "reviewerInvite.acceptFailed"),
                     data = null
                 )
             )
@@ -82,7 +91,7 @@ class ReviewerInviteController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Invitation declined",
+                    message = msg("reviewerInvite.declined"),
                     data = dto
                 )
             )
@@ -90,7 +99,7 @@ class ReviewerInviteController(
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = e.message ?: "Failed to decline invitation",
+                    message = resolveMessage(e.message, "reviewerInvite.declineFailed"),
                     data = null
                 )
             )

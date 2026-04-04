@@ -1,7 +1,6 @@
 package com.example.researchreview.repositories
 
 import com.example.researchreview.entities.Editor
-import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
@@ -11,7 +10,9 @@ interface EditorRepository : JpaRepository<Editor, String> {
 
     fun findByIdAndDeletedFalse(id: String): java.util.Optional<Editor>
 
-    fun findByUserIdAndDeletedFalse(userId: String): java.util.Optional<Editor>
+    fun findAllByUserIdAndDeletedFalse(userId: String): List<Editor>
+
+    fun findByUserIdAndTrackIdAndDeletedFalse(userId: String, trackId: String): java.util.Optional<Editor>
 
     fun findAllByTrackIdAndDeletedFalse(trackId: String): List<Editor>
 

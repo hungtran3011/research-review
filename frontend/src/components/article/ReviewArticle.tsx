@@ -1,32 +1,26 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
-    makeStyles,
-    Button,
-    Text,
-    Textarea,
-    Card,
-    Badge,
-    Dropdown,
-    Option,
-    tokens,
-    Dialog,
-    DialogSurface,
-    DialogBody,
-    DialogTitle,
-    DialogContent,
-} from '@fluentui/react-components'
+    Button as AntButton,
+    Typography,
+    Input,
+    Card as AntCard,
+    Tag,
+    Select,
+    Modal,
+    Spin,
+    theme as antdTheme,
+} from 'antd'
 import {
-    CommentRegular,
-    DismissRegular,
-    CheckmarkRegular,
-    PanelRightContractRegular,
-    PanelRightExpandRegular,
-    NavigationRegular,
-    DocumentRegular,
-} from '@fluentui/react-icons'
+    CommentOutlined as CommentRegular,
+    CloseOutlined as DismissRegular,
+    CheckOutlined as CheckmarkRegular,
+    MenuFoldOutlined as PanelRightContractRegular,
+    MenuUnfoldOutlined as PanelRightExpandRegular,
+    OrderedListOutlined as NavigationRegular,
+    FileOutlined as DocumentRegular,
+} from '@ant-design/icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
-import type { ArticleVersionDto } from '../../models'
 import { CommentStatus } from '../../constants'
 import type { CommentStatusType } from '../../constants'
 import { ArticleStatus } from '../../constants'
@@ -36,260 +30,187 @@ import { useArticleComments, useCreateComment, useUpdateCommentStatus } from '..
 import { useReplyComment } from '../../hooks/useComments'
 import { useAuthStore } from '../../stores/authStore'
 import { useCurrentUser } from '../../hooks/useUser'
-import { Spinner } from '@fluentui/react-components'
 import { useMyStructuredReview, useSubmitStructuredReview } from '../../hooks/useStructuredReviews'
 import { ReviewRecommendation } from '../../models'
-import { attachmentService } from '../../services/attachment.service'
+import { articleVersionService } from '../../services/article-version.service'
 import { AttachmentKind } from '../../constants/attachment-kind'
+import type { AttachmentKindType } from '../../constants/attachment-kind'
 import { AttachmentStatus } from '../../constants/attachment-status'
+import type { ArticleVersionDto, VersionSupplementDto } from '../../models'
+import { useTranslation } from 'react-i18next'
+import './ReviewArticle.css'
 
-const useStyles = makeStyles({
-    root: {
-        display: 'flex',
-        height: 'calc(100vh - 64px)',
-        width: '100%',
-        overflow: 'hidden',
-        flexDirection: 'row',
-        position: 'relative',
-        '@media (max-width: 1024px)': {
-            flexDirection: 'column',
-        },
-    },
-    tocWrapper: {
-        width: '280px',
-        flexShrink: 0,
-        height: '100%',
-        position: 'relative',
-        zIndex: 100,
-        transition: 'transform 0.3s ease-in-out',
-        '@media (max-width: 1024px)': {
-            position: 'fixed',
-            left: 0,
-            top: '64px',
-            height: 'calc(100vh - 64px)',
-            boxShadow: tokens.shadow16,
-            zIndex: 1002,
-        },
-    },
-    tocWrapperHidden: {
-        '@media (max-width: 1024px)': {
-            transform: 'translateX(-100%)',
-        },
-        '@media (min-width: 1025px)': {
-            transform: 'translateX(-100%)',
-        },
-    },
-    // PDF Viewer Section
-    viewerSection: {
-        flex: 1,
-        minWidth: '0',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-        '@media (max-width: 1024px)': {
-            height: 'calc(100vh - 64px)',
-        },
-    },
-    viewerHeader: {
-        padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '8px',
-    },
-    // Comments Section
-    commentsSection: {
-        width: '400px',
-        flexShrink: 0,
-        borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: tokens.colorNeutralBackground1,
-        overflow: 'hidden',
-        transition: 'transform 0.3s ease-in-out',
-        '@media (max-width: 1024px)': {
-            display: 'none', // Hide on mobile, use modal instead
-        },
-    },
-    commentsSectionCollapsed: {
-        '@media (max-width: 1024px)': {
-            transform: 'translateY(calc(100% - 56px))',
-        },
-    },
-    commentsSectionHidden: {
-        '@media (min-width: 1025px)': {
-            transform: 'translateX(100%)',
-        },
-        '@media (max-width: 1024px)': {
-            transform: 'translateY(100%)',
-        },
-    },
-    commentsDialogSurface: {
-        maxWidth: '90vw',
-        width: '500px',
-        maxHeight: '90vh',
-        '@media (max-width: 1024px)': {
-            width: '95vw',
-            maxWidth: '95vw',
-        },
-    },
-    commentsDialogBody: {
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: 'calc(90vh - 100px)',
-        overflow: 'hidden',
-    },
-    commentsHeader: {
-        padding: '16px',
-        borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        flexShrink: 0,
-    },
-    commentsList: {
-        flex: 1,
-        overflow: 'auto',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        minHeight: 0,
-    },
-    commentCard: {
-        padding: '12px',
-        cursor: 'pointer',
-        transition: 'box-shadow 0.2s',
-        ':hover': {
-            boxShadow: tokens.shadow8,
-        },
-        flexShrink: 0,
-    },
-    commentCardSelected: {
-        boxShadow: tokens.shadow16,
-    },
-    commentHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '8px',
-    },
-    commentMeta: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: '8px',
-    },
-    commentContent: {
-        marginTop: '8px',
-        padding: '8px',
-        backgroundColor: tokens.colorNeutralBackground2,
-        borderRadius: '4px',
-    },
-    commentActions: {
-        display: 'flex',
-        gap: '8px',
-        marginTop: '8px',
-    },
-    newCommentForm: {
-        padding: '16px',
-        borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-        backgroundColor: tokens.colorNeutralBackground2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        flexShrink: 0,
-        '@media (max-width: 1024px)': {
-            minHeight: '200px',
-        },
-    },
-    annotationMarker: {
-        position: 'absolute',
-        width: '24px',
-        height: '24px',
-        borderRadius: '50%',
-        backgroundColor: tokens.colorPaletteYellowBackground2,
-        border: `2px solid ${tokens.colorPaletteYellowBorder2}`,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '14px',
-        boxShadow: tokens.shadow4,
-        zIndex: 1000,
-        transition: 'transform 0.2s',
-        ':hover': {
-            transform: 'scale(1.2)',
-            boxShadow: tokens.shadow8,
-        },
-    },
-    highlightOverlay: {
-        position: 'absolute',
-        backgroundColor: 'rgba(255, 255, 0, 0.3)',
-        pointerEvents: 'none',
-        zIndex: 999,
-    },
-    floatingButton: {
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        zIndex: 1001,
-        boxShadow: tokens.shadow16,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    tocToggleButton: {
-        position: 'fixed',
-        bottom: '24px',
-        left: '24px',
-        zIndex: 1001,
-        boxShadow: tokens.shadow16,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    commentsToggleButton: {
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    overlay: {
-        position: 'fixed',
-        top: '64px',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        zIndex: 999,
-        '@media (min-width: 1025px)': {
-            display: 'none',
-        },
-    },
-    structuredForm: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-    },
-    scoreRow: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 90px',
-        alignItems: 'center',
-        gap: '8px',
-    },
-    numberInput: {
-        width: '90px',
-        padding: '6px 8px',
-        border: `1px solid ${tokens.colorNeutralStroke1}`,
-        borderRadius: '6px',
-        backgroundColor: tokens.colorNeutralBackground1,
-        color: tokens.colorNeutralForeground1,
-    },
+const sizeToFontPx: Record<number, number> = {
+    100: 12,
+    200: 13,
+    300: 14,
+    400: 16,
+    500: 20,
+}
+
+const Button = ({
+    appearance,
+    icon,
+    children,
+    size,
+    shape,
+    ...rest
+}: {
+    appearance?: 'primary' | 'secondary' | 'subtle'
+    icon?: React.ReactNode
+    children?: React.ReactNode
+    size?: 'small' | 'medium' | 'large'
+    shape?: 'circular'
+    [key: string]: unknown
+}) => {
+    const antType = appearance === 'primary' ? 'primary' : 'default'
+    const antSize = size === 'large' ? 'large' : size === 'small' ? 'small' : 'middle'
+    return (
+        <AntButton
+            {...(rest as object)}
+            type={antType}
+            size={antSize}
+            icon={icon as React.ReactNode}
+            shape={shape === 'circular' ? 'circle' : 'default'}
+        >
+            {shape === 'circular' ? null : children}
+        </AntButton>
+    )
+}
+
+const Text = ({ children, weight, size, style }: { children?: React.ReactNode; weight?: 'semibold'; size?: number; style?: React.CSSProperties }) => (
+    <Typography.Text style={{ fontWeight: weight === 'semibold' ? 600 : undefined, fontSize: size ? sizeToFontPx[size] : undefined, ...(style ?? {}) }}>
+        {children}
+    </Typography.Text>
+)
+
+const Textarea = ({ value, onChange, rows, placeholder, resize, disabled }: {
+    value?: string
+    onChange?: (_event: unknown, data: { value: string }) => void
+    rows?: number
+    placeholder?: string
+    resize?: 'vertical'
+    disabled?: boolean
+}) => (
+    <Input.TextArea
+        value={value}
+        rows={rows}
+        placeholder={placeholder}
+        autoSize={resize === 'vertical' ? { minRows: rows, maxRows: rows ? Math.max(rows, rows + 4) : 8 } : undefined}
+        disabled={disabled}
+        onChange={(event) => onChange?.(event, { value: event.target.value })}
+    />
+)
+
+const Card = ({ children, className, style, onClick }: { children?: React.ReactNode; className?: string; style?: React.CSSProperties; onClick?: () => void }) => (
+    <AntCard className={className} style={style} onClick={onClick} bodyStyle={{ padding: 12 }}>
+        {children}
+    </AntCard>
+)
+
+const Badge = ({ children, color, appearance, style }: { children?: React.ReactNode; color?: 'warning' | 'success' | 'informative' | 'brand'; appearance?: 'filled' | 'outline'; size?: 'small'; style?: React.CSSProperties }) => {
+    const colorMap: Record<string, string> = {
+        warning: 'orange',
+        success: 'green',
+        informative: 'blue',
+        brand: 'geekblue',
+    }
+    const tagColor = color ? colorMap[color] ?? 'default' : undefined
+    void appearance
+    return <Tag color={tagColor} style={style}>{children}</Tag>
+}
+
+const Option = (props: { value: string; text?: string; children?: React.ReactNode; disabled?: boolean }) => {
+    void props
+    return null
+}
+
+const Dropdown = ({
+    children,
+    placeholder,
+    value,
+    onOptionSelect,
+    selectedOptions,
+    disabled,
+}: {
+    children?: React.ReactNode
+    placeholder?: string
+    value?: string
+    onOptionSelect?: (_event: unknown, data: { optionValue?: string }) => void
+    selectedOptions?: string[]
+    disabled?: boolean
+}) => {
+    const options = React.Children.toArray(children)
+        .filter(React.isValidElement)
+        .map((child) => {
+            const props = child.props as { value: string; text?: string; children?: React.ReactNode; disabled?: boolean }
+            return {
+                value: props.value,
+                label: props.text ?? props.children,
+                disabled: props.disabled,
+            }
+        })
+
+    return (
+        <Select
+            placeholder={placeholder}
+            value={selectedOptions?.[0] ?? value}
+            options={options}
+            disabled={disabled}
+            onChange={(next) => onOptionSelect?.(null, { optionValue: String(next) })}
+            style={{ minWidth: 180 }}
+        />
+    )
+}
+
+const Dialog = ({ open, onOpenChange, children }: { open: boolean; onOpenChange?: (_event: unknown, data: { open: boolean }) => void; children?: React.ReactNode }) => (
+    <Modal open={open} onCancel={() => onOpenChange?.(null, { open: false })} footer={null} destroyOnClose>
+        {children}
+    </Modal>
+)
+
+const DialogSurface = ({ children, className }: { children?: React.ReactNode; className?: string }) => <div className={className}>{children}</div>
+const DialogBody = ({ children, className }: { children?: React.ReactNode; className?: string }) => <div className={className}>{children}</div>
+const DialogTitle = ({ children }: { children?: React.ReactNode }) => <Typography.Title level={4} style={{ margin: 0 }}>{children}</Typography.Title>
+const DialogContent = ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) => <div style={style}>{children}</div>
+const Spinner = ({ size, label }: { size?: 'small' | 'large'; label?: string }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <Spin size={size === 'small' ? 'small' : 'large'} />
+        {label ? <Text size={200}>{label}</Text> : null}
+    </div>
+)
+
+const useStyles = () => ({
+    root: 'review-root',
+    tocWrapper: 'review-tocWrapper',
+    tocWrapperHidden: 'review-tocWrapperHidden',
+    viewerSection: 'review-viewerSection',
+    viewerHeader: 'review-viewerHeader',
+    commentsSection: 'review-commentsSection',
+    commentsSectionCollapsed: 'review-commentsSectionCollapsed',
+    commentsSectionHidden: 'review-commentsSectionHidden',
+    commentsDialogSurface: 'review-commentsDialogSurface',
+    commentsDialogBody: 'review-commentsDialogBody',
+    commentsHeader: 'review-commentsHeader',
+    commentsList: 'review-commentsList',
+    commentCard: 'review-commentCard',
+    commentCardSelected: 'review-commentCardSelected',
+    commentHeader: 'review-commentHeader',
+    commentMeta: 'review-commentMeta',
+    commentContent: 'review-commentContent',
+    commentActions: 'review-commentActions',
+    newCommentForm: 'review-newCommentForm',
+    annotationMarker: 'review-annotationMarker',
+    highlightOverlay: 'review-highlightOverlay',
+    floatingButton: 'review-floatingButton',
+    tocToggleButton: 'review-tocToggleButton',
+    commentsToggleButton: 'review-commentsToggleButton',
+    overlay: 'review-overlay',
+    structuredForm: 'review-structuredForm',
+    scoreRow: 'review-scoreRow',
+    attachmentsBar: 'review-attachmentsBar',
+    attachmentsList: 'review-attachmentsList',
+    numberInput: 'review-numberInput',
 })
 
 type CommentItem = {
@@ -304,8 +225,50 @@ type CommentItem = {
     selectedText?: string
 }
 
+type VersionView = {
+    version: number
+    fileUrl: string | null
+    uploadedAt: string
+    uploadedBy: string
+    mainAttachment?: VersionSupplementDto
+    supplements: VersionSupplementDto[]
+}
+
 function ReviewArticle() {
+    const { t, i18n } = useTranslation('common')
+    const { token } = antdTheme.useToken()
+    const tokens = useMemo(() => ({
+        shadow16: token.boxShadowSecondary,
+        shadow8: token.boxShadow,
+        shadow4: token.boxShadowTertiary,
+        colorNeutralStroke1: token.colorBorderSecondary,
+        colorNeutralStroke2: token.colorBorder,
+        colorNeutralBackground1: token.colorBgContainer,
+        colorNeutralBackground2: token.colorBgLayout,
+        colorNeutralBackground3: token.colorFillTertiary,
+        colorNeutralForeground1: token.colorText,
+        colorNeutralForeground3: token.colorTextSecondary,
+        colorPaletteDarkOrangeForeground1: token.colorWarning,
+        colorPaletteYellowBackground2: token.colorWarningBg,
+        colorPaletteYellowBorder2: token.colorWarningBorder,
+    }), [token])
+
+    const reviewThemeVars = useMemo(() => ({
+        '--review-bg': token.colorBgLayout,
+        '--review-panel-bg': token.colorBgContainer,
+        '--review-muted-bg': token.colorFillQuaternary,
+        '--review-border-color': token.colorBorderSecondary,
+        '--review-input-border': token.colorBorder,
+        '--review-input-bg': token.colorBgContainer,
+        '--review-input-text': token.colorText,
+        '--review-overlay-bg': token.colorBgMask,
+        '--review-shadow-hover': token.boxShadow,
+        '--review-shadow-selected': token.boxShadowSecondary,
+        '--review-mobile-shadow': token.boxShadowSecondary,
+    }) as React.CSSProperties, [token])
+
     const classes = useStyles()
+    const dateTimeLocale = i18n.language.toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US'
 
     // State management
     const params = useParams<{ articleId: string }>()
@@ -333,8 +296,8 @@ function ReviewArticle() {
     const { data: currentUserData } = useCurrentUser()
     const currentUserId = currentUserData?.data?.id
     const currentUserName = currentUserData?.data?.name
-    const reviewerName = useAuthStore((state) => state.email) ?? 'Reviewer'
-    const [versions, setVersions] = useState<ArticleVersionDto[]>([])
+    const reviewerName = useAuthStore((state) => state.email) ?? t('reviewArticle.reviewer')
+    const [versions, setVersions] = useState<VersionView[]>([])
     const [currentVersion, setCurrentVersion] = useState<number>(1)
     const [pdfUrl, setPdfUrl] = useState<string | null>(null)
     const [tocData, setTocData] = useState<TocItem[]>([])
@@ -348,13 +311,15 @@ function ReviewArticle() {
     const [selectedText, setSelectedText] = useState<string>('')
     const [jumpToPage, setJumpToPage] = useState<number | null>(null)
     const [currentPdfPage, setCurrentPdfPage] = useState<number>(1)
-    const [isTocVisible, setIsTocVisible] = useState<boolean>(true)
-    const [isCommentsVisible, setIsCommentsVisible] = useState<boolean>(true)
-    const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 1024)
+    const initialIsMobile = typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
+    const [isTocVisible, setIsTocVisible] = useState<boolean>(!initialIsMobile)
+    const [isCommentsVisible, setIsCommentsVisible] = useState<boolean>(!initialIsMobile)
+    const [isMobile, setIsMobile] = useState<boolean>(initialIsMobile)
     const [isStructuredDialogOpen, setIsStructuredDialogOpen] = useState(false)
     const [structuredRecommendation, setStructuredRecommendation] = useState<keyof typeof ReviewRecommendation>('BORDERLINE')
     const [structuredSummary, setStructuredSummary] = useState('')
     const [structuredConfidentialRemarks, setStructuredConfidentialRemarks] = useState('')
+    const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null)
     const [structuredScores, setStructuredScores] = useState<Record<string, number>>({
         originality: 6,
         technical_quality: 6,
@@ -371,22 +336,6 @@ function ReviewArticle() {
         return `${base}?version=${encodeURIComponent(String(version))}`
     }, [apiBaseUrl])
 
-    const resolvedPdfUrl = useMemo(() => {
-        if (!article?.id) return null
-        const proxyUrl = `${apiBaseUrl}/articles/${article.id}/pdf`
-        const link = (article.link ?? '').trim()
-
-        // Prefer proxy when link is missing or clearly an expiring presigned URL.
-        if (!link) return proxyUrl
-        if (link.includes('X-Amz-') || link.includes('x-amz-')) return proxyUrl
-
-        // If link is already our proxy URL, use it.
-        if (link.endsWith(`/articles/${article.id}/pdf`)) return link
-
-        // Otherwise allow external/manual links.
-        return link
-    }, [article?.id, article?.link, apiBaseUrl])
-
     const pdfDocumentRef = useRef<unknown>(null)
     const commentThreads = useMemo(() => commentsResponse?.data ?? [], [commentsResponse])
     const commentItems = useMemo<CommentItem[]>(() => {
@@ -400,13 +349,13 @@ function ReviewArticle() {
                 pageNumber: thread.pageNumber,
                 status: thread.status,
                 content: latest?.content ?? '',
-                author: isMine ? 'Bạn' : (latest?.authorName ?? 'Reviewer'),
+                author: isMine ? t('reviewArticle.you') : (latest?.authorName ?? t('reviewArticle.reviewer')),
                 createdAt: createdAtSource ? new Date(createdAtSource) : new Date(),
                 section: thread.section ?? undefined,
                 selectedText: thread.selectedText ?? undefined,
             }
         })
-    }, [commentThreads, currentUserId])
+    }, [commentThreads, currentUserId, t])
 
     const isMyComment = useCallback((comment?: { createdBy?: string | null; authorId?: string | null } | null) => {
         if (!comment || !currentUserId) return false
@@ -414,10 +363,80 @@ function ReviewArticle() {
     }, [currentUserId])
 
     const displayAuthorName = useCallback((comment: { authorName: string; createdBy?: string | null; authorId?: string | null }) => {
-        return isMyComment(comment) ? 'Bạn' : comment.authorName
-    }, [isMyComment])
+        return isMyComment(comment) ? t('reviewArticle.you') : comment.authorName
+    }, [isMyComment, t])
 
     const isStructuredReviewSubmitted = !!myStructuredReview?.submittedAt
+    const canSubmitStructuredReview = !!article && (
+        article.status === ArticleStatus.IN_REVIEW || article.status === ArticleStatus.REVIEWS_COMPLETED
+    )
+
+    const kindLabels: Record<string, string> = {
+        [AttachmentKind.SUBMISSION]: t('reviewArticle.attachmentKinds.submission'),
+        [AttachmentKind.REVISION]: t('reviewArticle.attachmentKinds.revision'),
+        [AttachmentKind.SUPPLEMENTAL]: t('reviewArticle.attachmentKinds.supplemental'),
+    }
+
+    const selectedVersionData = useMemo(
+        () => versions.find((versionData) => versionData.version === currentVersion) ?? null,
+        [versions, currentVersion],
+    )
+
+    const versionAttachments = useMemo(() => {
+        if (!selectedVersionData) return []
+        const attachments: Array<{ kind: AttachmentKindType; fileName: string; fileSize: number; id: string }> = []
+        if (selectedVersionData.mainAttachment) {
+            attachments.push({
+                kind: selectedVersionData.mainAttachment.kind,
+                fileName: selectedVersionData.mainAttachment.fileName,
+                fileSize: selectedVersionData.mainAttachment.fileSize,
+                id: selectedVersionData.mainAttachment.id,
+            })
+        }
+        selectedVersionData.supplements.forEach((supplement) => {
+            attachments.push({
+                kind: supplement.kind,
+                fileName: supplement.fileName,
+                fileSize: supplement.fileSize,
+                id: supplement.id,
+            })
+        })
+        return attachments
+    }, [selectedVersionData])
+
+    const formatFileSize = useCallback((bytes: number) => {
+        if (!bytes || bytes <= 0) return t('reviewArticle.fileSize.zero')
+        const units = t('reviewArticle.fileSize.units', { returnObjects: true }) as string[]
+        const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+        const value = bytes / Math.pow(1024, index)
+        return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+    }, [t])
+
+    const triggerBrowserDownload = useCallback((blob: Blob, fileName: string) => {
+        const objectUrl = URL.createObjectURL(blob)
+        const anchor = document.createElement('a')
+        anchor.href = objectUrl
+        anchor.download = fileName
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+        URL.revokeObjectURL(objectUrl)
+    }, [])
+
+    const handleDownloadAttachment = useCallback(async (attachment: { id: string; kind: AttachmentKindType; fileName: string }) => {
+        if (!article?.id || !attachment.id) return
+        setDownloadingAttachmentId(attachment.id)
+        try {
+            const blob = attachment.kind === AttachmentKind.SUPPLEMENTAL
+                ? await articleVersionService.downloadSupplementFile(attachment.id)
+                : await articleVersionService.downloadMainFile(article.id, currentVersion)
+            triggerBrowserDownload(blob, attachment.fileName)
+        } catch (downloadError) {
+            console.error('Cannot download attachment', downloadError)
+        } finally {
+            setDownloadingAttachmentId(null)
+        }
+    }, [article?.id, currentVersion, triggerBrowserDownload])
 
     useEffect(() => {
         if (!myStructuredReview) return
@@ -444,10 +463,10 @@ function ReviewArticle() {
     }, [])
 
     const submitStructuredForm = useCallback((finalSubmit: boolean) => {
-        if (!article || article.status !== ArticleStatus.IN_REVIEW) return
+        if (!canSubmitStructuredReview) return
         if (finalSubmit && isStructuredReviewSubmitted) return
         if (!structuredSummary.trim()) {
-            window.alert('Vui lòng nhập tóm tắt phản biện.')
+            window.alert(t('reviewArticle.alerts.summaryRequired'))
             return
         }
 
@@ -471,7 +490,7 @@ function ReviewArticle() {
             },
         })
     }, [
-        article,
+        canSubmitStructuredReview,
         isStructuredReviewSubmitted,
         structuredConfidentialRemarks,
         structuredRecommendation,
@@ -482,6 +501,7 @@ function ReviewArticle() {
         structuredScores.technical_quality,
         structuredSummary,
         submitStructuredReview,
+        t,
     ])
 
     const handleReplyToThread = (threadId: string) => {
@@ -513,39 +533,32 @@ function ReviewArticle() {
 
         ;(async () => {
             const fallbackDate = article.updatedAt ?? article.createdAt ?? new Date().toISOString()
-            const baseVersions: ArticleVersionDto[] = [
+            const baseVersions: VersionView[] = [
                 {
                     version: 1,
                     fileUrl: buildPdfProxyUrl(article.id, 1),
                     uploadedAt: fallbackDate,
-                    uploadedBy: article.createdBy ?? 'Hệ thống',
+                    uploadedBy: article.createdBy ?? t('reviewArticle.system'),
+                    supplements: [],
                 },
             ]
 
             try {
-                const attachmentsResp = await attachmentService.listArticleAttachments(article.id)
-                const attachments = attachmentsResp.data ?? []
+                const versionResp = await articleVersionService.listVersions(article.id)
+                const backendVersions = versionResp.data ?? []
+                const mappedVersions: VersionView[] = backendVersions
+                    .map((versionItem: ArticleVersionDto) => ({
+                        version: versionItem.versionNumber,
+                        fileUrl: buildPdfProxyUrl(article.id, versionItem.versionNumber),
+                        uploadedAt: versionItem.submittedAt ?? versionItem.mainAttachment?.createdAt ?? fallbackDate,
+                        uploadedBy: versionItem.submittedBy ?? versionItem.mainAttachment?.createdBy ?? t('reviewArticle.system'),
+                        mainAttachment: versionItem.mainAttachment,
+                        supplements: (versionItem.supplements ?? [])
+                            .filter((item) => item.status === AttachmentStatus.AVAILABLE),
+                    }))
+                    .sort((a, b) => a.version - b.version)
 
-                const revisionAttachments = attachments
-                    .filter(a => a.kind === AttachmentKind.REVISION && a.status === AttachmentStatus.AVAILABLE)
-                    .sort((a, b) => (a.version ?? 0) - (b.version ?? 0))
-
-                const revisionVersions: ArticleVersionDto[] = []
-                for (const att of revisionAttachments) {
-                    if (!att?.id) continue
-                    revisionVersions.push({
-                        version: att.version,
-                        fileUrl: buildPdfProxyUrl(article.id, att.version),
-                        uploadedAt: att.createdAt ?? fallbackDate,
-                        uploadedBy: att.createdBy ?? 'Hệ thống',
-                    })
-                }
-
-                // Merge and dedupe by version (prefer revision entry when present)
-                const byVersion = new Map<number, ArticleVersionDto>()
-                for (const v of baseVersions) byVersion.set(v.version, v)
-                for (const v of revisionVersions) byVersion.set(v.version, v)
-                const versionList = Array.from(byVersion.values()).sort((a, b) => a.version - b.version)
+                const versionList = mappedVersions.length > 0 ? mappedVersions : baseVersions
 
                 if (cancelled) return
                 setVersions(versionList)
@@ -563,20 +576,28 @@ function ReviewArticle() {
         return () => {
             cancelled = true
         }
-    }, [article?.id, article?.createdAt, article?.updatedAt, article?.createdBy, buildPdfProxyUrl, resolvedPdfUrl])
+    }, [article?.id, article?.createdAt, article?.updatedAt, article?.createdBy, buildPdfProxyUrl, t])
 
     // Track mobile/desktop view
     useEffect(() => {
         const handleResize = () => {
             const nextIsMobile = window.innerWidth <= 1024
-            setIsMobile(nextIsMobile)
+            setIsMobile((prev) => {
+                if (prev === nextIsMobile) return prev
+
+                if (nextIsMobile) {
+                    setIsTocVisible(false)
+                    setIsCommentsVisible(false)
+                } else {
+                    setIsTocVisible(true)
+                    setIsCommentsVisible(true)
+                }
+
+                return nextIsMobile
+            })
 
             // On desktop, always restore side panels.
             // (On mobile we have floating toggles; on desktop those toggles are hidden.)
-            if (!nextIsMobile) {
-                setIsTocVisible(true)
-                setIsCommentsVisible(true)
-            }
         }
 
         window.addEventListener('resize', handleResize)
@@ -665,7 +686,7 @@ function ReviewArticle() {
         const versionData = versions.find(v => v.version === version)
         if (!versionData) return
 
-        setPdfUrl(versionData.fileUrl)
+        setPdfUrl(versionData.fileUrl ?? buildPdfProxyUrl(article?.id ?? '', version))
     }
 
     // Filter comments - show all comments from this version and earlier versions
@@ -782,9 +803,9 @@ function ReviewArticle() {
     // Get status badge
     const getStatusBadge = (status: CommentStatusType) => {
         const config: Record<CommentStatusType, { color: 'warning' | 'success' | 'informative' | 'brand'; text: string }> = {
-            [CommentStatus.OPEN]: { color: 'warning', text: 'Mở' },
-            [CommentStatus.RESOLVED]: { color: 'success', text: 'Đã giải quyết' },
-            [CommentStatus.ADDRESSED]: { color: 'informative', text: 'Đã xử lý' },
+            [CommentStatus.OPEN]: { color: 'warning', text: t('reviewArticle.commentStatus.open') },
+            [CommentStatus.RESOLVED]: { color: 'success', text: t('reviewArticle.commentStatus.resolved') },
+            [CommentStatus.ADDRESSED]: { color: 'informative', text: t('reviewArticle.commentStatus.addressed') },
         }
         const { color, text } = config[status] ?? config[CommentStatus.OPEN]
         return <Badge appearance="filled" color={color}>{text}</Badge>
@@ -792,7 +813,7 @@ function ReviewArticle() {
 
     // Handle overlay click to close TOC on mobile
     const handleOverlayClick = () => {
-        if (isTocVisible) {
+        if (isMobile && isTocVisible) {
             setIsTocVisible(false)
         }
     }
@@ -811,19 +832,19 @@ function ReviewArticle() {
     if (!articleId) {
         return (
             <div style={centeredStateStyles}>
-                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
+                <Text weight="semibold" size={400}>{t('reviewArticle.states.notFoundTitle')}</Text>
                 <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Đường dẫn phản biện không hợp lệ.
+                    {t('reviewArticle.states.invalidPath')}
                 </Text>
             </div>
         )
     }
 
     if (isArticleError) {
-        const errorMessage = articleError instanceof Error ? articleError.message : 'Không thể tải thông tin bài báo.'
+        const errorMessage = articleError instanceof Error ? articleError.message : t('reviewArticle.states.loadArticleFailed')
         return (
             <div style={centeredStateStyles}>
-                <Text weight="semibold" size={400}>Đã xảy ra lỗi</Text>
+                <Text weight="semibold" size={400}>{t('reviewArticle.states.errorTitle')}</Text>
                 <Text size={300} style={{ color: tokens.colorPaletteDarkOrangeForeground1 }}>
                     {errorMessage}
                 </Text>
@@ -834,7 +855,7 @@ function ReviewArticle() {
     if (isArticleLoading && !article) {
         return (
             <div style={centeredStateStyles}>
-                <Spinner size="large" label="Đang tải bài báo..." />
+                <Spinner size="large" label={t('reviewArticle.states.loadingArticle')} />
             </div>
         )
     }
@@ -842,9 +863,9 @@ function ReviewArticle() {
     if (!article) {
         return (
             <div style={centeredStateStyles}>
-                <Text weight="semibold" size={400}>Không tìm thấy bài báo</Text>
+                <Text weight="semibold" size={400}>{t('reviewArticle.states.notFoundTitle')}</Text>
                 <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Bài báo có thể đã bị xóa hoặc bạn không có quyền truy cập.
+                    {t('reviewArticle.states.notFoundDescription')}
                 </Text>
             </div>
         )
@@ -855,11 +876,11 @@ function ReviewArticle() {
         <>
             <div className={classes.commentsHeader}>
                 <Text weight="semibold" size={400}>
-                    Nhận xét ({versionComments.length})
+                    {t('reviewArticle.comments.title', { count: versionComments.length })}
                 </Text>
                 <Dropdown
-                    placeholder="Chọn phiên bản"
-                    value={`Phiên bản ${currentVersion}`}
+                    placeholder={t('reviewArticle.comments.versionPlaceholder')}
+                    value={t('reviewArticle.comments.versionValue', { version: currentVersion })}
                     onOptionSelect={(_, data) => {
                         if (data.optionValue) {
                             handleVersionChange(Number(data.optionValue))
@@ -868,12 +889,15 @@ function ReviewArticle() {
                 >
                     {versions.length === 0 ? (
                         <Option value="0" disabled>
-                            Chưa có phiên bản
+                            {t('reviewArticle.comments.noVersion')}
                         </Option>
                     ) : (
                         versions.map(v => (
-                            <Option key={v.version} value={v.version.toString()} text={`Phiên bản ${v.version}`}>
-                                Phiên bản {v.version} - {new Date(v.uploadedAt).toLocaleDateString('vi-VN')}
+                            <Option key={v.version} value={v.version.toString()} text={t('reviewArticle.comments.versionText', { version: v.version })}>
+                                {t('reviewArticle.comments.versionWithDate', {
+                                    version: v.version,
+                                    date: new Date(v.uploadedAt).toLocaleDateString(dateTimeLocale),
+                                })}
                             </Option>
                         ))
                     )}
@@ -883,15 +907,15 @@ function ReviewArticle() {
             <div className={classes.commentsList}>
                 {isCommentsLoading ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-                        <Spinner size="small" label="Đang tải nhận xét..." />
+                        <Spinner size="small" label={t('reviewArticle.comments.loading')} />
                     </div>
                 ) : isCommentsError ? (
                     <Text style={{ textAlign: 'center', color: tokens.colorPaletteDarkOrangeForeground1 }}>
-                        {(commentsError instanceof Error ? commentsError.message : 'Không thể tải nhận xét.')}
+                        {(commentsError instanceof Error ? commentsError.message : t('reviewArticle.comments.loadFailed'))}
                     </Text>
                 ) : versionThreads.length === 0 ? (
                     <Text style={{ textAlign: 'center', color: tokens.colorNeutralForeground3 }}>
-                        Không có nhận xét cho phiên bản này
+                        {t('reviewArticle.comments.emptyForVersion')}
                     </Text>
                 ) : (
                     versionComments.map(comment => {
@@ -921,7 +945,9 @@ function ReviewArticle() {
                                         size="small"
                                         style={{ marginLeft: '8px' }}
                                     >
-                                        {comment.version === currentVersion ? `hiện tại - v${comment.version}` : `v${comment.version}`}
+                                        {comment.version === currentVersion
+                                            ? t('reviewArticle.comments.currentVersionBadge', { version: comment.version })
+                                            : t('reviewArticle.comments.versionBadge', { version: comment.version })}
                                     </Badge>
                                 </div>
                                 {getStatusBadge(comment.status)}
@@ -939,20 +965,19 @@ function ReviewArticle() {
                                     </>
                                 )}
                                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    Trang {comment.pageNumber}
+                                    {t('reviewArticle.comments.page', { page: comment.pageNumber })}
                                 </Text>
                                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                                     •
                                 </Text>
                                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    {displayedCreatedAt?.toLocaleString('vi-VN')}
+                                    {displayedCreatedAt?.toLocaleString(dateTimeLocale)}
                                 </Text>
                             </div>
 
                             {comment.selectedText && (
                                 <div style={{
                                     padding: '8px',
-                                    backgroundColor: tokens.colorNeutralBackground3,
                                     borderLeft: `3px solid ${tokens.colorPaletteYellowBorder2}`,
                                     marginBottom: '8px',
                                     fontSize: '13px',
@@ -971,24 +996,28 @@ function ReviewArticle() {
                                     <Button
                                         size="small"
                                         appearance="subtle"
-                                        onClick={(e) => {
+                                        onClick={(e: React.MouseEvent<HTMLElement>) => {
                                             e.stopPropagation()
                                             setExpandedThreads((prev) => ({ ...prev, [comment.id]: !prev[comment.id] }))
                                         }}
                                     >
-                                        {isExpanded ? 'Ẩn phản hồi' : repliesCount > 0 ? `Xem phản hồi (${repliesCount})` : 'Xem phản hồi'}
+                                        {isExpanded
+                                            ? t('reviewArticle.comments.hideReplies')
+                                            : repliesCount > 0
+                                                ? t('reviewArticle.comments.viewRepliesCount', { count: repliesCount })
+                                                : t('reviewArticle.comments.viewReplies')}
                                     </Button>
                                     <Button
                                         size="small"
                                         appearance="subtle"
                                         icon={<CommentRegular />}
-                                        onClick={(e) => {
+                                        onClick={(e: React.MouseEvent<HTMLElement>) => {
                                             e.stopPropagation()
                                             setExpandedThreads((prev) => ({ ...prev, [comment.id]: true }))
                                             setReplyingTo(comment.id)
                                         }}
                                     >
-                                        Trả lời
+                                        {t('reviewArticle.comments.reply')}
                                     </Button>
                                 </div>
                             )}
@@ -1004,7 +1033,7 @@ function ReviewArticle() {
                                     }}>
                                         {(thread.comments ?? []).slice(1).length === 0 ? (
                                             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                                Chưa có phản hồi
+                                                {t('reviewArticle.comments.noReplies')}
                                             </Text>
                                         ) : (
                                             (thread.comments ?? []).slice(1).map((c) => (
@@ -1013,7 +1042,6 @@ function ReviewArticle() {
                                                     style={{
                                                         padding: '8px',
                                                         borderRadius: '6px',
-                                                        backgroundColor: tokens.colorNeutralBackground1,
                                                     }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
@@ -1022,7 +1050,7 @@ function ReviewArticle() {
                                                         </Text>
                                                         {c.createdAt && (
                                                             <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                                                                {new Date(c.createdAt).toLocaleString('vi-VN')}
+                                                                {new Date(c.createdAt).toLocaleString(dateTimeLocale)}
                                                             </Text>
                                                         )}
                                                     </div>
@@ -1036,9 +1064,9 @@ function ReviewArticle() {
 
                                     {replyingTo === thread.id && (
                                         <div className={classes.newCommentForm} style={{ marginTop: '12px' }}>
-                                            <Text weight="semibold" size={300}>Phản hồi</Text>
+                                            <Text weight="semibold" size={300}>{t('reviewArticle.comments.replyFormTitle')}</Text>
                                             <Textarea
-                                                placeholder="Viết phản hồi của bạn..."
+                                                placeholder={t('reviewArticle.comments.replyPlaceholder')}
                                                 value={replyText}
                                                 onChange={(_, data) => setReplyText(data.value)}
                                                 rows={3}
@@ -1049,7 +1077,7 @@ function ReviewArticle() {
                                                     onClick={() => handleReplyToThread(thread.id)}
                                                     disabled={!replyText.trim() || isReplying}
                                                 >
-                                                    {isReplying ? 'Đang gửi...' : 'Gửi'}
+                                                    {isReplying ? t('reviewArticle.comments.sending') : t('reviewArticle.comments.send')}
                                                 </Button>
                                                 <Button
                                                     appearance="subtle"
@@ -1058,7 +1086,7 @@ function ReviewArticle() {
                                                         setReplyText('')
                                                     }}
                                                 >
-                                                    Hủy
+                                                    {t('reviewArticle.common.cancel')}
                                                 </Button>
                                             </div>
                                         </div>
@@ -1071,25 +1099,25 @@ function ReviewArticle() {
                                     size="small"
                                     appearance="subtle"
                                     icon={<CheckmarkRegular />}
-                                    onClick={(e) => {
+                                    onClick={(e: React.MouseEvent<HTMLElement>) => {
                                         e.stopPropagation()
                                         handleCommentStatusChange(comment.id, CommentStatus.RESOLVED)
                                     }}
                                     disabled={isUpdatingCommentStatus}
                                 >
-                                    Giải quyết
+                                    {t('reviewArticle.comments.resolve')}
                                 </Button>
                                 <Button
                                     size="small"
                                     appearance="subtle"
                                     icon={<DismissRegular />}
-                                    onClick={(e) => {
+                                    onClick={(e: React.MouseEvent<HTMLElement>) => {
                                         e.stopPropagation()
                                         handleCommentStatusChange(comment.id, CommentStatus.ADDRESSED)
                                     }}
                                     disabled={isUpdatingCommentStatus}
                                 >
-                                    Đánh dấu đã xử lý
+                                    {t('reviewArticle.comments.markAddressed')}
                                 </Button>
                             </div>
                         </Card>
@@ -1100,19 +1128,18 @@ function ReviewArticle() {
 
             {isAddingComment && (
                 <div className={classes.newCommentForm}>
-                    <Text weight="semibold" size={300}>Nhận xét mới</Text>
+                    <Text weight="semibold" size={300}>{t('reviewArticle.comments.newCommentTitle')}</Text>
                     
                     {selectedText && (
                         <div style={{
                             padding: '8px',
-                            backgroundColor: tokens.colorNeutralBackground3,
                             borderLeft: `3px solid ${tokens.colorPaletteYellowBorder2}`,
                             marginBottom: '8px',
                             fontSize: '13px',
                             fontStyle: 'italic',
                         }}>
                             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                Văn bản được chọn:
+                                {t('reviewArticle.comments.selectedTextLabel')}
                             </Text>
                             <Text size={300} style={{ display: 'block', marginTop: '4px' }}>
                                 "{selectedText}"
@@ -1122,29 +1149,28 @@ function ReviewArticle() {
                     
                     <div style={{
                         padding: '8px',
-                        backgroundColor: tokens.colorNeutralBackground2,
                         borderRadius: '4px',
                         marginBottom: '8px',
                     }}>
                         {getSectionForPage(currentPdfPage) && (
                             <Text size={200} style={{ display: 'block', marginBottom: '4px' }}>
-                                Phần: <strong>{getSectionForPage(currentPdfPage)}</strong>
+                                {t('reviewArticle.comments.section')}: <strong>{getSectionForPage(currentPdfPage)}</strong>
                             </Text>
                         )}
                         <Text size={200}>
-                            Trang: <strong>{currentPdfPage}</strong>
+                            {t('reviewArticle.comments.pageLabel')}: <strong>{currentPdfPage}</strong>
                         </Text>
                     </div>
                     
                     <Textarea
-                        placeholder="Viết nhận xét của bạn..."
+                        placeholder={t('reviewArticle.comments.newCommentPlaceholder')}
                         value={newCommentText}
                         onChange={(_, data) => setNewCommentText(data.value)}
                         rows={4}
                     />
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <Button appearance="primary" onClick={handleAddComment} disabled={isCreatingComment}>
-                            {isCreatingComment ? 'Đang đăng...' : 'Đăng nhận xét'}
+                            {isCreatingComment ? t('reviewArticle.comments.posting') : t('reviewArticle.comments.post')}
                         </Button>
                         <Button
                             appearance="subtle"
@@ -1154,7 +1180,7 @@ function ReviewArticle() {
                                 setSelectedText('')
                             }}
                         >
-                            Hủy
+                            {t('reviewArticle.common.cancel')}
                         </Button>
                     </div>
                 </div>
@@ -1163,9 +1189,9 @@ function ReviewArticle() {
     )
 
     return (
-        <div className={classes.root}>
+        <div className={classes.root} style={reviewThemeVars}>
             {/* Overlay for mobile when TOC is visible */}
-            {isTocVisible && (
+            {isMobile && isTocVisible && (
                 <div className={classes.overlay} onClick={handleOverlayClick} />
             )}
 
@@ -1182,7 +1208,7 @@ function ReviewArticle() {
             <div className={classes.viewerSection}>
                 <div className={classes.viewerHeader}>
                     <Text weight="semibold" size={500}>
-                        Phản biện bài báo
+                        {t('reviewArticle.title')}
                     </Text>
                     <Button
                         appearance="primary"
@@ -1192,7 +1218,7 @@ function ReviewArticle() {
                             setIsCommentsVisible(true)
                         }}
                     >
-                        Thêm nhận xét
+                        {t('reviewArticle.actions.addComment')}
                     </Button>
                     <Button
                         appearance="secondary"
@@ -1201,16 +1227,16 @@ function ReviewArticle() {
                             isSubmittingStructuredReview ||
                             isArticleLoading ||
                             !article ||
-                            article.status !== ArticleStatus.IN_REVIEW ||
+                            !canSubmitStructuredReview ||
                             isStructuredReviewSubmitted
                         }
                         onClick={() => setIsStructuredDialogOpen(true)}
                     >
-                        {isStructuredReviewSubmitted ? 'Đã nộp phản biện' : 'Mẫu phản biện cấu trúc'}
+                        {isStructuredReviewSubmitted ? t('reviewArticle.actions.submittedReview') : t('reviewArticle.actions.structuredReviewTemplate')}
                     </Button>
                     {myStructuredReview?.submittedAt && (
                         <Text size={200}>
-                            Đã nộp lúc {new Date(myStructuredReview.submittedAt).toLocaleString('vi-VN')}
+                            {t('reviewArticle.submittedAt', { date: new Date(myStructuredReview.submittedAt).toLocaleString(dateTimeLocale) })}
                         </Text>
                     )}
                     <Button
@@ -1219,12 +1245,33 @@ function ReviewArticle() {
                         icon={isCommentsVisible ? <PanelRightContractRegular /> : <PanelRightExpandRegular />}
                         onClick={() => setIsCommentsVisible(!isCommentsVisible)}
                     >
-                        {isCommentsVisible ? 'Ẩn nhận xét' : 'Hiện nhận xét'}
+                        {isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
                     </Button>
+                </div>
+                <div className={classes.attachmentsBar}>
+                    <Text size={200} weight="semibold">{t('reviewArticle.attachments.title')}</Text>
+                    {versionAttachments.length === 0 ? (
+                        <Text size={200}>{t('reviewArticle.attachments.empty')}</Text>
+                    ) : (
+                        <div className={classes.attachmentsList}>
+                            {versionAttachments.map((attachment) => (
+                                <Button
+                                    key={attachment.id}
+                                    appearance="secondary"
+                                    size="small"
+                                    icon={<DocumentRegular />}
+                                    onClick={() => handleDownloadAttachment(attachment)}
+                                    disabled={downloadingAttachmentId === attachment.id}
+                                >
+                                    {kindLabels[attachment.kind] ?? attachment.kind} • {attachment.fileName} ({formatFileSize(attachment.fileSize)})
+                                </Button>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <PdfViewer
                     fileUrl={pdfUrl}
-                    emptyMessage="Không có bài báo để phản biện"
+                    emptyMessage={t('reviewArticle.states.noPdf')}
                     onDocumentLoadSuccess={handleDocumentLoadSuccess}
                     jumpToPage={jumpToPage}
                     onPageChange={setCurrentPdfPage}
@@ -1233,16 +1280,16 @@ function ReviewArticle() {
                 <Dialog open={isStructuredDialogOpen} onOpenChange={(_, data) => setIsStructuredDialogOpen(data.open)}>
                     <DialogSurface>
                         <DialogBody>
-                            <DialogTitle>Phản biện cấu trúc</DialogTitle>
+                            <DialogTitle>{t('reviewArticle.structured.title')}</DialogTitle>
                             <DialogContent>
                                 <div className={classes.structuredForm}>
-                                    <Text size={200}>Điểm từ 1 đến 10 cho từng tiêu chí.</Text>
+                                    <Text size={200}>{t('reviewArticle.structured.scoreHint')}</Text>
                                     {[
-                                        { key: 'originality', label: 'Tính mới' },
-                                        { key: 'technical_quality', label: 'Chất lượng kỹ thuật' },
-                                        { key: 'clarity', label: 'Độ rõ ràng' },
-                                        { key: 'relevance', label: 'Mức độ liên quan' },
-                                        { key: 'overall', label: 'Tổng thể' },
+                                        { key: 'originality', label: t('reviewArticle.structured.criteria.originality') },
+                                        { key: 'technical_quality', label: t('reviewArticle.structured.criteria.technicalQuality') },
+                                        { key: 'clarity', label: t('reviewArticle.structured.criteria.clarity') },
+                                        { key: 'relevance', label: t('reviewArticle.structured.criteria.relevance') },
+                                        { key: 'overall', label: t('reviewArticle.structured.criteria.overall') },
                                     ].map((criterion) => (
                                         <div key={criterion.key} className={classes.scoreRow}>
                                             <Text>{criterion.label}</Text>
@@ -1259,7 +1306,7 @@ function ReviewArticle() {
                                         </div>
                                     ))}
 
-                                    <Text>Khuyến nghị</Text>
+                                    <Text>{t('reviewArticle.structured.recommendationLabel')}</Text>
                                     <Dropdown
                                         value={structuredRecommendation}
                                         selectedOptions={[structuredRecommendation]}
@@ -1277,21 +1324,21 @@ function ReviewArticle() {
                                         ))}
                                     </Dropdown>
 
-                                    <Text>Tóm tắt phản biện</Text>
+                                    <Text>{t('reviewArticle.structured.summaryLabel')}</Text>
                                     <Textarea
                                         value={structuredSummary}
                                         onChange={(_, data) => setStructuredSummary(data.value)}
-                                        placeholder="Nêu nhận định tổng quan về bài báo"
+                                        placeholder={t('reviewArticle.structured.summaryPlaceholder')}
                                         resize="vertical"
                                         rows={4}
                                         disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
                                     />
 
-                                    <Text>Ghi chú bảo mật (chỉ chair thấy)</Text>
+                                    <Text>{t('reviewArticle.structured.confidentialLabel')}</Text>
                                     <Textarea
                                         value={structuredConfidentialRemarks}
                                         onChange={(_, data) => setStructuredConfidentialRemarks(data.value)}
-                                        placeholder="Nhận xét nội bộ cho chair (tùy chọn)"
+                                        placeholder={t('reviewArticle.structured.confidentialPlaceholder')}
                                         resize="vertical"
                                         rows={3}
                                         disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
@@ -1299,14 +1346,14 @@ function ReviewArticle() {
 
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                                         <Button appearance="subtle" onClick={() => setIsStructuredDialogOpen(false)}>
-                                            Đóng
+                                            {t('reviewArticle.common.close')}
                                         </Button>
                                         <Button
                                             appearance="secondary"
                                             onClick={() => submitStructuredForm(false)}
                                             disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
                                         >
-                                            Lưu nháp
+                                            {t('reviewArticle.structured.saveDraft')}
                                         </Button>
                                         <Button
                                             appearance="primary"
@@ -1314,7 +1361,7 @@ function ReviewArticle() {
                                             onClick={() => submitStructuredForm(true)}
                                             disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
                                         >
-                                            {isSubmittingStructuredReview ? 'Đang gửi...' : 'Nộp phản biện'}
+                                            {isSubmittingStructuredReview ? t('reviewArticle.comments.sending') : t('reviewArticle.structured.submitReview')}
                                         </Button>
                                     </div>
                                 </div>
@@ -1342,7 +1389,7 @@ function ReviewArticle() {
                             <DialogTitle>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Text weight="semibold" size={500}>
-                                        Nhận xét
+                                        {t('reviewArticle.comments.modalTitle')}
                                     </Text>
                                     <Button
                                         appearance="subtle"
@@ -1366,25 +1413,29 @@ function ReviewArticle() {
             )}
 
             {/* Floating Buttons for Mobile */}
-            <Button
-                className={classes.tocToggleButton}
-                appearance="primary"
-                shape="circular"
-                size="large"
-                icon={<NavigationRegular />}
-                onClick={() => setIsTocVisible(!isTocVisible)}
-                title={isTocVisible ? 'Ẩn mục lục' : 'Hiện mục lục'}
-            />
+            {isMobile && (
+                <>
+                    <Button
+                        className={classes.tocToggleButton}
+                        appearance="primary"
+                        shape="circular"
+                        size="large"
+                        icon={<NavigationRegular />}
+                        onClick={() => setIsTocVisible(!isTocVisible)}
+                        title={isTocVisible ? t('reviewArticle.actions.hideToc') : t('reviewArticle.actions.showToc')}
+                    />
 
-            <Button
-                className={classes.floatingButton}
-                appearance="primary"
-                shape="circular"
-                size="large"
-                icon={<CommentRegular />}
-                onClick={() => setIsCommentsVisible(!isCommentsVisible)}
-                title={isCommentsVisible ? 'Ẩn nhận xét' : 'Hiện nhận xét'}
-            />
+                    <Button
+                        className={classes.floatingButton}
+                        appearance="primary"
+                        shape="circular"
+                        size="large"
+                        icon={<CommentRegular />}
+                        onClick={() => setIsCommentsVisible(!isCommentsVisible)}
+                        title={isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
+                    />
+                </>
+            )}
         </div>
     )
 }

@@ -6,6 +6,7 @@ import { useInstitutions } from '../../hooks/useInstitutionTrack'
 import { useBasicToast, getApiErrorMessage } from '../../hooks/useBasicToast'
 import { articleService } from '../../services/article.service'
 import type { ReviewerDto, UserDto } from '../../models'
+import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 
@@ -44,6 +45,7 @@ export function InviteReviewersDialog({
     articleId,
     invitedReviewers,
 }: InviteReviewersDialogProps) {
+    const { t } = useTranslation('common')
     const queryClient = useQueryClient()
     const { success, error } = useBasicToast()
 
@@ -90,7 +92,7 @@ export function InviteReviewersDialog({
             if (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId) return
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
             if (!emailRegex.test(manualReviewerEmail.trim())) {
-                error('Email không hợp lệ. Vui lòng kiểm tra lại.')
+                error(t('inviteReviewersDialog.errors.invalidEmail'))
                 return
             }
         }
@@ -120,11 +122,11 @@ export function InviteReviewersDialog({
                 })
             }
 
-            success('Đã mời phản biện viên thành công.')
+            success(t('inviteReviewersDialog.messages.inviteSuccess'))
             queryClient.invalidateQueries({ queryKey: ['article', articleId] })
             handleClose()
         } catch (e) {
-            error(`Không thể mời phản biện viên. ${getApiErrorMessage(e, 'Vui lòng thử lại.')}`)
+            error(`${t('inviteReviewersDialog.messages.inviteFailedPrefix')}${getApiErrorMessage(e, t('inviteReviewersDialog.messages.tryAgain'))}`)
         } finally {
             setIsSubmitting(false)
         }
@@ -132,12 +134,12 @@ export function InviteReviewersDialog({
 
     return (
         <Modal
-            title="Quản lý reviewer"
+            title={t('inviteReviewersDialog.title')}
             open={open}
             onCancel={handleClose}
             footer={[
                 <Button key="cancel" onClick={handleClose} disabled={isSubmitting}>
-                    Hủy
+                    {t('inviteReviewersDialog.actions.cancel')}
                 </Button>,
                 <Button
                     key="submit"
@@ -149,17 +151,17 @@ export function InviteReviewersDialog({
                         entryMode === 'manual' && (!manualReviewerName.trim() || !manualReviewerEmail.trim() || !manualReviewerInstitutionId)
                     }
                 >
-                    Xác nhận
+                    {t('inviteReviewersDialog.actions.confirm')}
                 </Button>,
             ]}
         >
             <div style={{ marginBottom: '16px' }}>
-                <Text style={{ display: 'block', marginBottom: '8px', color: '#8c8c8c' }}>
-                    Phản biện đã được mời:
+                <Text type='secondary' style={{ display: 'block', marginBottom: '8px' }}>
+                    {t('inviteReviewersDialog.invitedReviewersLabel')}
                 </Text>
                 {invitedReviewers.length === 0 ? (
-                    <Text style={{ color: '#8c8c8c' }}>
-                        Chưa có phản biện nào
+                    <Text type='secondary'>
+                        {t('inviteReviewersDialog.noInvitedReviewers')}
                     </Text>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -173,21 +175,21 @@ export function InviteReviewersDialog({
                 )}
             </div>
 
-            <Form.Item label="Phương thức mời reviewer" style={{ marginBottom: '16px' }}>
+            <Form.Item label={t('inviteReviewersDialog.inviteMethodLabel')} style={{ marginBottom: '16px' }}>
                 <Radio.Group value={entryMode} onChange={(e) => setEntryMode(e.target.value as 'existing' | 'manual')}>
-                    <Radio value="existing">Chọn từ danh sách người dùng hiện có</Radio>
-                    <Radio value="manual">Nhập thông tin reviewer mới</Radio>
+                    <Radio value="existing">{t('inviteReviewersDialog.methods.existing')}</Radio>
+                    <Radio value="manual">{t('inviteReviewersDialog.methods.manual')}</Radio>
                 </Radio.Group>
             </Form.Item>
 
             {entryMode === 'existing' ? (
-                <Form.Item label="Chọn reviewer" required>
+                <Form.Item label={t('inviteReviewersDialog.selectReviewerLabel')} required>
                     {isLoadingUsers ? (
                         <Spin />
                     ) : (
                         <Select
                             mode="multiple"
-                            placeholder="Chọn reviewer"
+                            placeholder={t('inviteReviewersDialog.selectReviewerPlaceholder')}
                             value={selectedReviewerIds}
                             onChange={setSelectedReviewerIds}
                             options={reviewerUsers.map((user) => ({
@@ -199,27 +201,27 @@ export function InviteReviewersDialog({
                 </Form.Item>
             ) : (
                 <>
-                    <Form.Item label="Họ và tên" required style={{ marginBottom: '16px' }}>
+                    <Form.Item label={t('inviteReviewersDialog.manual.nameLabel')} required style={{ marginBottom: '16px' }}>
                         <Input
-                            placeholder="Nhập họ và tên reviewer"
+                            placeholder={t('inviteReviewersDialog.manual.namePlaceholder')}
                             value={manualReviewerName}
                             onChange={(e) => setManualReviewerName(e.target.value)}
                         />
                     </Form.Item>
-                    <Form.Item label="Email" required style={{ marginBottom: '16px' }}>
+                    <Form.Item label={t('inviteReviewersDialog.manual.emailLabel')} required style={{ marginBottom: '16px' }}>
                         <Input
                             type="email"
-                            placeholder="Nhập email reviewer"
+                            placeholder={t('inviteReviewersDialog.manual.emailPlaceholder')}
                             value={manualReviewerEmail}
                             onChange={(e) => setManualReviewerEmail(e.target.value)}
                         />
                     </Form.Item>
-                    <Form.Item label="Cơ quan" required>
+                    <Form.Item label={t('inviteReviewersDialog.manual.institutionLabel')} required>
                         {isLoadingInstitutions ? (
                             <Spin />
                         ) : (
                             <Select
-                                placeholder="Chọn cơ quan"
+                                placeholder={t('inviteReviewersDialog.manual.institutionPlaceholder')}
                                 value={manualReviewerInstitutionId || undefined}
                                 onChange={(value) => setManualReviewerInstitutionId(value)}
                                 options={institutions.map((institution) => ({

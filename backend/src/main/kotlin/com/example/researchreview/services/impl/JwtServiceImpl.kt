@@ -78,12 +78,12 @@ class JwtServiceImpl(
     @Throws(RuntimeException::class)
     override fun refreshTokens(userId: String, providedRefreshToken: String, authorities: List<String>, deviceFingerprintHash: String?): Tokens {
         val key = refreshRedisKey(userId)
-        val storedHash = redisTemplate.opsForValue().get(key) ?: throw RuntimeException("Refresh token not found")
+        val storedHash = redisTemplate.opsForValue().get(key) ?: throw RuntimeException("jwt.refreshTokenNotFound")
         val providedHash = JwtUtil.hashToken(providedRefreshToken)
         if (!JwtUtil.constantTimeEquals(storedHash, providedHash)) {
             // possible token reuse attack — revoke stored token
             redisTemplate.delete(key)
-            throw RuntimeException("Invalid refresh token")
+            throw RuntimeException("jwt.invalidRefreshToken")
         }
 
         // rotate: issue new tokens and replace stored refresh hash

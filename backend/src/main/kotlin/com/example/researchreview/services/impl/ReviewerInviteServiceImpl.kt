@@ -52,7 +52,7 @@ class ReviewerInviteServiceImpl(
 
     private fun toResolveDto(invite: ReviewerInvite): ReviewerInviteResolveDto {
         val article = articleRepository.findByIdAndDeletedFalse(invite.articleId)
-            .orElseThrow { IllegalArgumentException("Article not found") }
+            .orElseThrow { IllegalArgumentException("reviewerInvite.articleNotFound") }
 
         val authors = articleAuthorRepository.findAllByArticleIdAndDeletedFalse(invite.articleId)
             .sortedBy { it.authorOrder }
@@ -74,14 +74,14 @@ class ReviewerInviteServiceImpl(
         } else {
             reviewerInviteRepository.findByTokenHash(tokenHash)
         }
-            ?: throw IllegalArgumentException("Invalid invitation token")
+            ?: throw IllegalArgumentException("reviewerInvite.invalidToken")
 
         if (invite.usedAt != null) {
-            throw IllegalArgumentException("Invitation token has already been used")
+            throw IllegalArgumentException("reviewerInvite.tokenUsed")
         }
 
         if (invite.expiresAt.isBefore(LocalDateTime.now())) {
-            throw IllegalArgumentException("Invitation token has expired")
+            throw IllegalArgumentException("reviewerInvite.tokenExpired")
         }
 
         return invite

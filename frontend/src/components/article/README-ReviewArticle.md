@@ -206,7 +206,7 @@ The component assumes an auth context provides:
 
 ## Styling Customization
 
-The component uses Fluent UI tokens for theming. Key style classes:
+The component uses Ant Design + CSS classes for theming and layout. Key style classes:
 - `tocSection` - Left TOC panel
 - `viewerSection` - Center PDF viewer
 - `commentsSection` - Right comments panel
@@ -237,8 +237,8 @@ Sample data is provided in `sampleData.ts`:
 
 ## Dependencies
 
-- `@fluentui/react-components` - UI components
-- `@fluentui/react-icons` - Icons
+- `antd` - UI components
+- `@ant-design/icons` - Icons
 - `react-pdf` - PDF rendering
 - `pdfjs-dist` - PDF.js library (via unpkg CDN)
 

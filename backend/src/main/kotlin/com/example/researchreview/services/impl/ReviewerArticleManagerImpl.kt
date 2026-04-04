@@ -3,12 +3,15 @@ package com.example.researchreview.services.impl
 import com.example.researchreview.entities.ReviewerArticle
 import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.services.ReviewerArticleManager
+import org.springframework.context.MessageSource
 import org.springframework.stereotype.Service
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class ReviewerArticleManagerImpl(
-    private val reviewerArticleRepository: ReviewerArticleRepository
+    private val reviewerArticleRepository: ReviewerArticleRepository,
+    private val messageSource: MessageSource,
 ) : ReviewerArticleManager {
 
     @Transactional(readOnly = true)
@@ -16,14 +19,18 @@ class ReviewerArticleManagerImpl(
         return reviewerArticleRepository.findAllByArticleIdAndDeletedFalse(articleId)
             .filter { it.displayIndex > 0 }
             .associate { relation ->
-                relation.reviewer.id to "Reviewer ${relation.displayIndex}"
+                relation.reviewer.id to messageSource.getMessage(
+                    "reviewer.label",
+                    arrayOf(relation.displayIndex),
+                    LocaleContextHolder.getLocale(),
+                )
             }
     }
 
     @Transactional(readOnly = true)
     override fun ensureDisplayIndexFor(relation: ReviewerArticle) {
         val articleId = relation.article.id
-        require(articleId.isNotBlank()) { "Article id must be set before assigning reviewer" }
+        require(articleId.isNotBlank()) { "reviewer.articleIdRequiredForAssignment" }
         val resolved = determineDisplayIndex(articleId, relation.id.takeIf { it.isNotBlank() }, relation.displayIndex)
         relation.displayIndex = resolved
     }

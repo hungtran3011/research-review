@@ -1,5 +1,6 @@
-import { Typography, Button } from 'antd'
+import { Typography, Button, theme as antdTheme } from 'antd'
 import { FileOutlined, CloseOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 
@@ -16,7 +17,10 @@ interface TableOfContentsProps {
     emptyMessage?: string
 }
 
-export function TableOfContents({ items, onItemClick, onClose, emptyMessage = 'Không có mục lục' }: TableOfContentsProps) {
+export function TableOfContents({ items, onItemClick, onClose, emptyMessage }: TableOfContentsProps) {
+    const { t } = useTranslation('common')
+    const { token } = antdTheme.useToken()
+    const resolvedEmptyMessage = emptyMessage ?? t('toc.empty')
     // Render TOC items recursively
     const renderTocItems = (tocItems: TocItem[], level: number = 0): React.ReactElement[] => {
         return tocItems.map((item, index) => (
@@ -35,13 +39,13 @@ export function TableOfContents({ items, onItemClick, onClose, emptyMessage = 'K
                         gap: '8px',
                         paddingLeft: `${12 + level * 12}px`,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorFillSecondary)}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                     <Text ellipsis style={{ flex: 1, fontSize: level === 0 ? '14px' : '13px' }}>
                         {item.title}
                     </Text>
-                    <Text style={{ flexShrink: 0, fontSize: '13px', color: '#666' }}>
+                    <Text style={{ flexShrink: 0, fontSize: '13px', color: token.colorTextSecondary }}>
                         {item.pageNumber}
                     </Text>
                 </div>
@@ -55,16 +59,16 @@ export function TableOfContents({ items, onItemClick, onClose, emptyMessage = 'K
             width: '280px',
             height: '100%',
             flexShrink: 0,
-            borderRight: '1px solid #e0e0e0',
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#fafafa',
+            backgroundColor: token.colorBgContainer,
             overflow: 'hidden',
         }}>
             <div style={{
                 padding: '16px',
-                borderBottom: '1px solid #e0e0e0',
-                backgroundColor: '#f5f5f5',
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                backgroundColor: token.colorBgLayout,
                 flexShrink: 0,
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -73,7 +77,7 @@ export function TableOfContents({ items, onItemClick, onClose, emptyMessage = 'K
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <FileOutlined style={{ marginRight: '8px' }} />
                     <Text strong style={{ fontSize: '14px' }}>
-                        Mục lục
+                        {t('toc.title')}
                     </Text>
                 </div>
                 {onClose && (
@@ -82,7 +86,7 @@ export function TableOfContents({ items, onItemClick, onClose, emptyMessage = 'K
                         size="small"
                         icon={<CloseOutlined />}
                         onClick={onClose}
-                        title="Đóng mục lục"
+                        title={t('toc.close')}
                     />
                 )}
             </div>
@@ -97,11 +101,11 @@ export function TableOfContents({ items, onItemClick, onClose, emptyMessage = 'K
                 ) : (
                     <Text style={{
                         padding: '16px',
-                        color: '#999',
+                        color: token.colorTextSecondary,
                         textAlign: 'center',
                         display: 'block',
                     }}>
-                        {emptyMessage}
+                        {resolvedEmptyMessage}
                     </Text>
                 )}
             </div>

@@ -1,13 +1,16 @@
 import React from 'react';
 import { useSearchParams, Navigate } from 'react-router';
-import { Spin, Typography } from 'antd';
+import { Spin, Typography, theme as antdTheme } from 'antd';
 import { useVerifyToken } from '../../hooks/useAuth';
 import { useAuthStore } from '../../stores/authStore';
 import { useDeviceFingerprint } from '../../hooks/useDeviceFingerprint';
+import { useTranslation } from 'react-i18next';
 
 const { Title } = Typography;
 
 function VerifyToken() {
+  const { t } = useTranslation('common')
+  const { token } = antdTheme.useToken()
   const [searchParams] = useSearchParams();
   const email = useAuthStore((state) => state.email);
   const isSignUp = useAuthStore((state) => state.isSignUp);
@@ -15,7 +18,7 @@ function VerifyToken() {
   const [hasVerified, setHasVerified] = React.useState(false);
   const { fingerprint, isLoading: isFingerprintLoading, error: fingerprintError } = useDeviceFingerprint();
 
-  document.title = "Đang xác thực - Research Review";
+  document.title = `${t('verifyToken.pageTitle')} - Research Review`;
 
   React.useEffect(() => {
     const token = searchParams.get('token');
@@ -59,19 +62,26 @@ function VerifyToken() {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: '16px',
-      height: '100%',
-      flexGrow: 1,
+      minHeight: 'calc(100vh - 64px)',
+      padding: '24px 16px',
+      background: token.colorBgLayout,
     }}>
       <div style={{
+        width: '100%',
+        maxWidth: '520px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        gap: '4px',
+        gap: '12px',
+        padding: '28px 24px',
+        borderRadius: '12px',
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        boxShadow: token.boxShadowTertiary,
       }}>
         <Spin size="large" />
-        <Title level={2}>Đang xác thực email của bạn...</Title>
+        <Title level={2} style={{ margin: 0, color: token.colorText }}>{t('verifyToken.title')}</Title>
       </div>
     </div>
   );

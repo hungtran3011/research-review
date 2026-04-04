@@ -25,7 +25,7 @@ class TrackServiceImpl(
     @Cacheable(cacheNames = [CacheNames.TRACK_BY_ID], key = "#id")
     override fun getById(id: String): String {
         val track = trackRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("Track not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("track.notFound") }
         return track.name
     }
 

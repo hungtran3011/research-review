@@ -1,8 +1,9 @@
-import { Button, Typography, InputNumber } from 'antd'
+import { Button, Typography, InputNumber, theme as antdTheme } from 'antd'
 import { useCallback, useState, useRef, useEffect } from 'react'
 import { ZoomInOutlined, ZoomOutOutlined, FileOutlined } from '@ant-design/icons'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -20,12 +21,15 @@ interface PdfViewerProps {
 
 export function PdfViewer({ 
     fileUrl, 
-    emptyMessage = 'Chưa có tệp nào được tải lên', 
+    emptyMessage,
     onDocumentLoadSuccess,
     jumpToPage,
     onPageChange 
 }: PdfViewerProps) {
+    const { t } = useTranslation('common')
+    const { token } = antdTheme.useToken()
     const accessToken = useAuthStore((s) => s.accessToken)
+    const resolvedEmptyMessage = emptyMessage ?? t('pdfViewer.emptyMessage')
 
     const isBlobLikeUrl = !!fileUrl && (fileUrl.startsWith('blob:') || fileUrl.startsWith('data:'))
     const isProxyUrl = (() => {
@@ -68,7 +72,7 @@ export function PdfViewer({
                 if (!response.ok) {
                     console.error('PDF fetch failed:', response.status, response.statusText)
                     setIsBlobLoading(false)
-                    setLoadError(`PDF fetch failed: ${response.status}`)
+                    setLoadError(`${t('pdfViewer.errors.fetchFailedPrefix')}${response.status}`)
                     return
                 }
 
@@ -76,7 +80,7 @@ export function PdfViewer({
                 if (!contentType.toLowerCase().includes('pdf')) {
                     console.warn('Unexpected content type for PDF fetch:', contentType)
                     setIsBlobLoading(false)
-                    setLoadError('Máy chủ trả về nội dung không phải PDF')
+                    setLoadError(t('pdfViewer.errors.invalidContentType'))
                     return
                 }
 
@@ -90,7 +94,7 @@ export function PdfViewer({
                 setBlobUrl(url)
             } catch (err) {
                 console.error('Failed to fetch PDF blob:', err)
-                setLoadError('Không thể tải PDF')
+                setLoadError(t('pdfViewer.errors.cannotLoadPdf'))
             } finally {
                 setIsBlobLoading(false)
             }
@@ -107,7 +111,7 @@ export function PdfViewer({
                 return null
             })
         }
-    }, [fileUrl, isProxyUrl, accessToken])
+    }, [fileUrl, isProxyUrl, accessToken, t])
     
     // PDF viewer state
     const [numPages, setNumPages] = useState<number>(0)
@@ -115,6 +119,7 @@ export function PdfViewer({
     const [scale, setScale] = useState<number>(1.0)
     const [currentPage, setCurrentPage] = useState<number>(1)
     const [loadError, setLoadError] = useState<string | null>(null)
+    const [isDownloading, setIsDownloading] = useState<boolean>(false)
     const pdfContainerRef = useRef<HTMLDivElement>(null)
     const pdfViewerRef = useRef<HTMLDivElement>(null)
     const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({})
@@ -245,14 +250,58 @@ export function PdfViewer({
         setScale(1.0)
     }, [])
 
+    const handleDownload = useCallback(async () => {
+        if (!fileUrl) return
+
+        const triggerDownload = (href: string, fileName: string) => {
+            const anchor = document.createElement('a')
+            anchor.href = href
+            anchor.download = fileName
+            document.body.appendChild(anchor)
+            anchor.click()
+            anchor.remove()
+        }
+
+        const fallbackName = 'document.pdf'
+
+        try {
+            setIsDownloading(true)
+
+            if (fileUrl.startsWith('blob:') || fileUrl.startsWith('data:')) {
+                triggerDownload(fileUrl, fallbackName)
+                return
+            }
+
+            const response = await fetch(fileUrl, {
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+                credentials: 'include',
+            })
+
+            if (!response.ok) {
+                throw new Error(`${t('pdfViewer.errors.fetchFailedPrefix')}${response.status}`)
+            }
+
+            const blob = await response.blob()
+            const objectUrl = URL.createObjectURL(blob)
+            const urlObj = new URL(fileUrl, window.location.origin)
+            const candidateName = decodeURIComponent(urlObj.pathname.split('/').pop() || '').trim()
+            const finalName = candidateName && candidateName.includes('.') ? candidateName : fallbackName
+            triggerDownload(objectUrl, finalName)
+            URL.revokeObjectURL(objectUrl)
+        } catch (error) {
+            console.error('Failed to download PDF:', error)
+        } finally {
+            setIsDownloading(false)
+        }
+    }, [fileUrl, accessToken, t])
+
     return (
         <div ref={pdfContainerRef} style={{
             display: 'flex',
             flexDirection: 'column',
-            border: '1px solid #e0e0e0',
+            border: `1px solid ${token.colorBorderSecondary}`,
             borderRadius: '8px',
             overflow: 'hidden',
-            backgroundColor: '#fafafa',
             height: '100%',
             width: '100%',
         }}>
@@ -263,8 +312,7 @@ export function PdfViewer({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '12px 16px',
-                        borderBottom: '1px solid #e0e0e0',
-                        backgroundColor: '#f5f5f5',
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
                     }}>
                         <div style={{
                             display: 'flex',
@@ -276,7 +324,7 @@ export function PdfViewer({
                                 alignItems: 'center',
                                 gap: '8px',
                             }}>
-                                <Text>Trang</Text>
+                                <Text>{t('pdfViewer.page')}</Text>
                                 <InputNumber
                                     value={currentPage}
                                     min={1}
@@ -327,9 +375,12 @@ export function PdfViewer({
                             <Button
                                 type="text"
                                 size="small"
-                                onClick={() => window.open(fileUrl, '_blank', 'noopener,noreferrer')}
+                                onClick={() => {
+                                    void handleDownload()
+                                }}
+                                disabled={isDownloading}
                             >
-                                Mở tab mới
+                                {t('pdfViewer.download')}
                             </Button>
                             <Button
                                 type="text"
@@ -338,7 +389,7 @@ export function PdfViewer({
                                 onClick={handleZoomOut}
                                 disabled={!!loadError || scale <= 0.5}
                             />
-                            <Text style={{ fontSize: '12px' }}>{Math.round(scale * 100)}%</Text>
+                            <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>{Math.round(scale * 100)}%</Text>
                             <Button
                                 type="text"
                                 size="small"
@@ -352,7 +403,7 @@ export function PdfViewer({
                                 onClick={handleResetZoom}
                                 disabled={!!loadError}
                             >
-                                Reset
+                                {t('pdfViewer.reset')}
                             </Button>
                         </div>
                     </div>
@@ -367,8 +418,8 @@ export function PdfViewer({
                     }}>
                         {loadError ? (
                             <>
-                                <Text style={{ fontSize: '12px', color: '#999' }}>
-                                    Không thể tải PDF trong trang (thường do CORS với link presigned). Bạn vẫn có thể xem bằng chế độ nhúng hoặc mở tab mới.
+                                <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>
+                                    {t('pdfViewer.errors.inlinePreviewFallback')}
                                 </Text>
                                 <div style={{ width: '100%', flex: 1, minHeight: '600px' }}>
                                     <iframe
@@ -379,8 +430,8 @@ export function PdfViewer({
                                 </div>
                             </>
                         ) : isProxyUrl && !blobUrl ? (
-                            <Text style={{ fontSize: '12px', color: '#999' }}>
-                                {isBlobLoading ? 'Đang tải PDF...' : 'Không thể tải PDF từ máy chủ' }
+                            <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>
+                                {isBlobLoading ? t('pdfViewer.loadingPdf') : t('pdfViewer.errors.cannotLoadFromServer') }
                             </Text>
                         ) : (
                             <Document
@@ -406,15 +457,15 @@ export function PdfViewer({
                                     const message = err instanceof Error ? err.message : String(err)
                                     setLoadError(message)
                                 }}
-                                loading={<Text>Đang tải PDF...</Text>}
-                                error={<Text>Lỗi khi tải PDF</Text>}
+                                loading={<Text>{t('pdfViewer.loadingPdf')}</Text>}
+                                error={<Text>{t('pdfViewer.errors.loadError')}</Text>}
                             >
                                 {Array.from(new Array(numPages), (_, index) => (
                                     <div
                                         key={`page_${index + 1}`}
                                         ref={(el) => { pageRefs.current[index + 1] = el }}
                                         style={{
-                                            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+                                            boxShadow: token.boxShadowSecondary,
                                             marginBottom: '8px',
                                         }}
                                     >
@@ -437,15 +488,14 @@ export function PdfViewer({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '12px 16px',
-                        borderBottom: '1px solid #e0e0e0',
-                        backgroundColor: '#f5f5f5',
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
                     }}>
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '12px',
                         }}>
-                            <Text>Không có tài liệu</Text>
+                            <Text>{t('pdfViewer.noDocument')}</Text>
                         </div>
                         <div style={{
                             display: 'flex',
@@ -458,7 +508,7 @@ export function PdfViewer({
                                 icon={<ZoomOutOutlined />}
                                 disabled
                             />
-                            <Text style={{ fontSize: '12px' }}>100%</Text>
+                            <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>100%</Text>
                             <Button
                                 type="text"
                                 size="small"
@@ -470,7 +520,7 @@ export function PdfViewer({
                                 size="small"
                                 disabled
                             >
-                                Reset
+                                {t('pdfViewer.reset')}
                             </Button>
                         </div>
                     </div>
@@ -490,10 +540,10 @@ export function PdfViewer({
                             justifyContent: 'center',
                             height: '100%',
                             gap: '16px',
-                            color: '#999',
+                            color: token.colorTextSecondary,
                         }}>
                             <FileOutlined style={{ fontSize: '48px' }} />
-                            <Text style={{ fontSize: '16px' }}>{emptyMessage}</Text>
+                            <Text style={{ fontSize: '16px' }}>{resolvedEmptyMessage}</Text>
                         </div>
                     </div>
                 </>

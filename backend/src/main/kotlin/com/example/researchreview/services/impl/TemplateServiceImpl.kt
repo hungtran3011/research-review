@@ -36,13 +36,13 @@ class TemplateServiceImpl @Autowired constructor(
         // Read from classpath instead of filesystem
         return this::class.java.classLoader.getResourceAsStream("templates/base-mail.html")?.use {
             it.bufferedReader().readText()
-        } ?: throw IllegalStateException("base-mail.html template not found in classpath")
+        } ?: throw IllegalStateException("template.baseTemplateNotFound")
     }
 
     @Cacheable(cacheNames = [CacheNames.TEMPLATE_BY_ID], key = "#id")
     override fun get(id: String): TemplateDto = toDto(templateRepository.findById(id).orElseThrow(
         {
-            Exception("Template not found")
+            Exception("template.notFound")
         }
     ))
 
@@ -81,7 +81,7 @@ class TemplateServiceImpl @Autowired constructor(
     )
     override fun update(id: String, tmpl: TemplateRequestDto): TemplateDto {
         val template = templateRepository.findById(id).orElseThrow(
-            { Exception("Template not found") }
+            { Exception("template.notFound") }
         )
 
         val boilerplate = getBoilerplateHtml()
@@ -124,7 +124,7 @@ class TemplateServiceImpl @Autowired constructor(
 
     override fun renderTemplate(id: String, variables: Map<String, Any>): String {
         val htmlContent = getTemplateContent(id)
-            ?: throw Exception("Template not found or content unavailable")
+            ?: throw Exception("template.notFoundOrContentUnavailable")
 
         // Create Thymeleaf context with variables
         val context = Context()

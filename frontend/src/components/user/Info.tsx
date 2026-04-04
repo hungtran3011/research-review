@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Input, Select, Button, Form, Row, Col, Typography } from 'antd'
+import { Input, Select, Button, Form, Row, Col, Typography, DatePicker, theme as antdTheme } from 'antd'
 import { MailOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 import { getWorldData } from '../../services/country.service'
@@ -8,8 +8,12 @@ import type { UserRequestDto } from '../../models'
 import { useCompleteUserInfo } from '../../hooks/useUser'
 import { Gender, AcademicStatus, Role } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
+import { useTranslation } from 'react-i18next'
+import dayjs from 'dayjs'
 
 function Info() {
+    const { t } = useTranslation('common')
+    const { token } = antdTheme.useToken()
     const { email, inviteToken } = useAuthStore()
     const { data: worldData } = useQuery({
         queryKey: ['worldData'],
@@ -26,7 +30,7 @@ function Info() {
     const [formData, setFormData] = useState<UserRequestDto>({
         email: email || '',
         name: '',
-        role: inviteToken ? 'REVIEWER' : 'USER',
+        role: inviteToken ? Role.REVIEWER : Role.USER,
         avatarId: '',
         institutionId: '',
         institutionName: '',
@@ -61,14 +65,14 @@ function Info() {
     }
 
     const academicStatusOptions = [
-        { value: AcademicStatus.GSTS, label: 'Giáo sư - Tiến sĩ' },
-        { value: AcademicStatus.PGSTS, label: 'Phó giáo sư - Tiến sĩ' },
-        { value: AcademicStatus.TS, label: 'Tiến sĩ' },
-        { value: AcademicStatus.THS, label: 'Thạc sĩ' },
-        { value: AcademicStatus.CN, label: 'Cử nhân' },
+        { value: AcademicStatus.GSTS, label: t('info.academicStatusOptions.gsts') },
+        { value: AcademicStatus.PGSTS, label: t('info.academicStatusOptions.pgsts') },
+        { value: AcademicStatus.TS, label: t('info.academicStatusOptions.ts') },
+        { value: AcademicStatus.THS, label: t('info.academicStatusOptions.ths') },
+        { value: AcademicStatus.CN, label: t('info.academicStatusOptions.cn') },
     ]
 
-    document.title = "Thông tin tài khoản - Research Review"
+    document.title = `${t('info.pageTitle')} - Research Review`
 
     return (
         <div style={{
@@ -82,36 +86,38 @@ function Info() {
             padding: '32px 16px',
             maxWidth: '800px',
             margin: '0 auto',
+            backgroundColor: token.colorBgLayout,
+            color: token.colorText,
         }}>
-            <Typography.Title level={1}>Nhập thông tin của bạn</Typography.Title>
+            <Typography.Title level={1}>{t('info.title')}</Typography.Title>
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
                 style={{ width: '100%' }}
             >
-                <Form.Item label="Email" required>
+                <Form.Item label={t('info.fields.email.label')} required>
                     <Input 
                         prefix={<MailOutlined />}
-                        placeholder='email@example.com' 
+                        placeholder={t('info.fields.email.placeholder')} 
                         disabled 
                         value={email || formData.email} 
                     />
                 </Form.Item>
                 <Row gutter={16}>
                     <Col span={12}>
-                        <Form.Item label="Họ" required>
+                        <Form.Item label={t('info.fields.lastName.label')} required>
                             <Input 
-                                placeholder='Họ và tên đệm, ví dụ Nguyễn Văn' 
+                                placeholder={t('info.fields.lastName.placeholder')} 
                                 value={additionalFields.lastName}
                                 onChange={(e) => handleLastNameChange(e.target.value)}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Tên" required>
+                        <Form.Item label={t('info.fields.firstName.label')} required>
                             <Input 
-                                placeholder='Tên của bạn, ví dụ A' 
+                                placeholder={t('info.fields.firstName.placeholder')} 
                                 value={additionalFields.firstName}
                                 onChange={(e) => handleFirstNameChange(e.target.value)}
                             />
@@ -120,9 +126,9 @@ function Info() {
                 </Row>
                 <Row gutter={16}>
                     <Col span={12}>
-                        <Form.Item label="Số điện thoại" required>
+                        <Form.Item label={t('info.fields.phone.label')} required>
                             <Input 
-                                placeholder='Số điện thoại 10 số' 
+                                placeholder={t('info.fields.phone.placeholder')} 
                                 value={additionalFields.phoneNumber}
                                 onChange={(e) => setAdditionalFields({ ...additionalFields, phoneNumber: e.target.value })}
                                 type='tel'
@@ -130,50 +136,56 @@ function Info() {
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Ngày tháng năm sinh" required>
-                            <Input 
-                                placeholder='Ngày tháng năm sinh' 
-                                value={additionalFields.dateOfBirth}
-                                onChange={(e) => setAdditionalFields({ ...additionalFields, dateOfBirth: e.target.value })}
-                                type='date'
+                        <Form.Item label={t('info.fields.dateOfBirth.label')} required>
+                            <DatePicker
+                                placeholder={t('info.fields.dateOfBirth.placeholder')} 
+                                value={additionalFields.dateOfBirth ? dayjs(additionalFields.dateOfBirth) : null}
+                                onChange={(value) =>
+                                    setAdditionalFields({
+                                        ...additionalFields,
+                                        dateOfBirth: value ? value.format('YYYY-MM-DD') : ''
+                                    })
+                                }
+                                format="YYYY-MM-DD"
+                                style={{ width: '100%' }}
                             />
                         </Form.Item>
                     </Col>
                 </Row>
                 <Row gutter={16}>
                     <Col span={12}>
-                        <Form.Item label="Loại tài khoản" required>
+                        <Form.Item label={t('info.fields.role.label')} required>
                             <Select
-                                placeholder='Chọn loại tài khoản'
+                                placeholder={t('info.fields.role.placeholder')}
                                 value={formData.role || undefined}
                                 onChange={(val) => setFormData({ ...formData, role: val })}
                                 disabled={!!inviteToken}
                                 options={[
-                                    { label: 'Người dùng', value: Role.USER },
-                                    { label: 'Nhà nghiên cứu', value: 'RESEARCHER' },
-                                    { label: 'Người đánh giá', value: Role.REVIEWER },
+                                    { label: t('info.roleOptions.user'), value: Role.USER },
+                                    { label: t('info.roleOptions.researcher'), value: Role.RESEARCHER },
+                                    { label: t('info.roleOptions.reviewer'), value: Role.REVIEWER },
                                 ]}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Giới tính" required>
+                        <Form.Item label={t('info.fields.gender.label')} required>
                             <Select
-                                placeholder='Chọn giới tính'
+                                placeholder={t('info.fields.gender.placeholder')}
                                 value={formData.gender || undefined}
                                 onChange={(val) => setFormData({ ...formData, gender: val })}
                                 options={[
-                                    { label: 'Nam', value: Gender.MALE },
-                                    { label: 'Nữ', value: Gender.FEMALE },
-                                    { label: 'Khác', value: Gender.OTHER },
+                                    { label: t('info.genderOptions.male'), value: Gender.MALE },
+                                    { label: t('info.genderOptions.female'), value: Gender.FEMALE },
+                                    { label: t('info.genderOptions.other'), value: Gender.OTHER },
                                 ]}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Quốc tịch" required>
+                        <Form.Item label={t('info.fields.nationality.label')} required>
                             <Select
-                                placeholder='Chọn quốc tịch'
+                                placeholder={t('info.fields.nationality.placeholder')}
                                 value={formData.nationality || undefined}
                                 onChange={(val) => setFormData({ ...formData, nationality: val })}
                                 options={worldData?.map((c) => ({ label: c.name, value: c.alpha2 })) || []}
@@ -186,9 +198,9 @@ function Info() {
                 </Row>
                 <Row gutter={16}>
                     <Col span={12}>
-                        <Form.Item label="Nơi công tác" required>
+                        <Form.Item label={t('info.fields.institution.label')} required>
                             <Select 
-                                placeholder={institutionsLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
+                                placeholder={institutionsLoading ? t('info.common.loading') : t('info.fields.institution.placeholder')}
                                 value={formData.institutionId || undefined}
                                 onChange={(val) => {
                                     const sel = institutions.find(i => i.id === val)
@@ -204,9 +216,9 @@ function Info() {
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Lĩnh vực nghiên cứu (Track)" required>
+                        <Form.Item label={t('info.fields.track.label')} required>
                             <Select 
-                                placeholder={tracksLoading ? 'Đang tải...' : 'Chọn lĩnh vực'}
+                                placeholder={tracksLoading ? t('info.common.loading') : t('info.fields.track.placeholder')}
                                 value={formData.trackId || undefined}
                                 onChange={(val) => setFormData({ ...formData, trackId: val })}
                                 disabled={tracksLoading}
@@ -215,9 +227,9 @@ function Info() {
                         </Form.Item>
                     </Col>
                 </Row>
-                <Form.Item label="Học hàm, học vị" required>
+                <Form.Item label={t('info.fields.academicStatus.label')} required>
                     <Select 
-                        placeholder='Chọn học hàm, học vị'
+                        placeholder={t('info.fields.academicStatus.placeholder')}
                         value={formData.academicStatus || undefined}
                         onChange={(val) => setFormData({ ...formData, academicStatus: val })}
                         options={academicStatusOptions}
@@ -230,7 +242,7 @@ function Info() {
                         htmlType="submit"
                         loading={completeUserInfo.isPending}
                     >
-                        {completeUserInfo.isPending ? 'Đang xử lý...' : 'Hoàn tất đăng ký'}
+                        {completeUserInfo.isPending ? t('info.actions.submitting') : t('info.actions.submit')}
                     </Button>
                 </Form.Item>
             </Form>

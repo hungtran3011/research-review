@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface AttachmentRepository : JpaRepository<Attachment, String> {
     fun findAllByArticleIdAndDeletedFalse(articleId: String): List<Attachment>
     fun findAllByArticleIdAndVersionAndDeletedFalse(articleId: String, version: Int): List<Attachment>
+    fun findAllByArticleVersionIdAndDeletedFalseOrderByCreatedAtDesc(articleVersionId: String): List<Attachment>
 
     fun findTopByArticleIdAndKindAndStatusAndDeletedFalseOrderByCreatedAtDesc(
         articleId: String,

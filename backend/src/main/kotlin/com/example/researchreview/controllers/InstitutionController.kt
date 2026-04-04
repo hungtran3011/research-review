@@ -33,7 +33,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error: ${e.message}",
+                    message = "error.internal.server",
                     data = null
                 )
             )
@@ -55,7 +55,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = e.message ?: "Institution not found",
+                    message = e.message ?: "institution.notFound",
                     data = null
                 )
             )
@@ -63,7 +63,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error: ${e.message}",
+                    message = "error.internal.server",
                     data = null
                 )
             )
@@ -86,7 +86,7 @@ class InstitutionController(
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = e.message ?: "Invalid request",
+                    message = e.message ?: "error.invalid.request",
                     data = null
                 )
             )
@@ -94,7 +94,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error: ${e.message}",
+                    message = "error.internal.server",
                     data = null
                 )
             )
@@ -120,7 +120,7 @@ class InstitutionController(
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = e.message ?: "Invalid request",
+                    message = e.message ?: "error.invalid.request",
                     data = null
                 )
             )
@@ -128,7 +128,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error: ${e.message}",
+                    message = "error.internal.server",
                     data = null
                 )
             )
@@ -151,7 +151,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = e.message ?: "Institution not found",
+                    message = e.message ?: "institution.notFound",
                     data = null
                 )
             )
@@ -159,7 +159,7 @@ class InstitutionController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error: ${e.message}",
+                    message = "error.internal.server",
                     data = null
                 )
             )

@@ -5,17 +5,21 @@ import { useSignUp } from '../../hooks/useAuth';
 import { getApiErrorMessage, useBasicToast } from '../../hooks/useBasicToast';
 import { useAuthStore } from '../../stores/authStore';
 import { useDeviceFingerprint } from '../../hooks/useDeviceFingerprint';
+import { useTranslation } from 'react-i18next';
+import { theme as antdTheme } from 'antd';
 
 const { Title, Text, Link } = Typography;
 
 function SignUpMail() {
+  const { t } = useTranslation('common');
+  const { token } = antdTheme.useToken();
   const [email, setEmail] = React.useState('');
   const storedEmail = useAuthStore((state) => state.email);
   const { mutate: signUp, isPending, error } = useSignUp();
   const { error: showErrorToast } = useBasicToast();
   const { fingerprint, isLoading: isFingerprintLoading, error: fingerprintError } = useDeviceFingerprint();
 
-  document.title = "Đăng ký tài khoản - Research Review";
+  document.title = `${t('signUp.title')} - Research Review`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +34,9 @@ function SignUpMail() {
 
   React.useEffect(() => {
     if (error) {
-      showErrorToast(getApiErrorMessage(error, 'Có lỗi xảy ra. Vui lòng thử lại.'));
+      showErrorToast(getApiErrorMessage(error, t('signUp.genericError')));
     }
-  }, [error, showErrorToast]);
+  }, [error, showErrorToast, t]);
 
   React.useEffect(() => {
     if (storedEmail) {
@@ -46,60 +50,77 @@ function SignUpMail() {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: '16px',
-      height: '100%',
-      flexGrow: 1,
-      padding: '0 16px',
+      minHeight: 'calc(100vh - 64px)',
+      padding: '24px 16px',
+      background: token.colorBgLayout,
     }}>
       <div style={{
+        width: '100%',
+        maxWidth: '520px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        textAlign: 'center',
-        gap: '8px',
+        gap: '16px',
+        padding: '28px 24px',
+        borderRadius: '12px',
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        boxShadow: token.boxShadowTertiary,
       }}>
-        <MailOutlined style={{ fontSize: '48px' }} />
-        <Title level={1}>Đăng ký với email</Title>
-        <Text>Nhập email để bắt đầu đăng ký thông tin nộp bài báo</Text>
-        {isFingerprintLoading && (
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            <Spin size="small" style={{ marginRight: '8px' }} />
-            Đang kiểm tra thiết bị...
-          </Text>
-        )}
-      </div>
-      <form style={{
-        display: 'flex',
-        flexDirection: 'row',
-        gap: '4px',
-        width: '100%',
-        maxWidth: '400px',
-      }} onSubmit={handleSubmit}>
-        <Input
-          placeholder="Email của bạn"
-          prefix={<MailOutlined />}
-          type='email'
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={isPending}
-          required
-          style={{ flex: 1 }}
-        />
-        <Button
-          type='primary'
-          icon={<ArrowRightOutlined />}
-          htmlType="submit"
-          loading={isPending}
-          disabled={isPending || isFingerprintLoading}
-        />
-      </form>
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        alignItems: 'center',
-      }}>
-        <Text>Đã có tài khoản?</Text>
-        <Link href="/signin">Đăng nhập ngay</Link>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: '8px',
+        }}>
+          <MailOutlined style={{ fontSize: '48px', color: token.colorPrimary }} />
+          <Title level={1} style={{ margin: 0, color: token.colorText }}>
+            {t('signUp.title')}
+          </Title>
+          <Text style={{ color: token.colorTextSecondary }}>{t('signUp.subtitle')}</Text>
+          {isFingerprintLoading && (
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              <Spin size="small" style={{ marginRight: '8px' }} />
+              {t('signUp.checkingDevice')}
+            </Text>
+          )}
+        </div>
+        <form style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '4px',
+          width: '100%',
+          maxWidth: '400px',
+        }} onSubmit={handleSubmit}>
+          <Input
+            placeholder={t('signUp.emailPlaceholder')}
+            prefix={<MailOutlined />}
+            type='email'
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isPending}
+            required
+            style={{ flex: 1 }}
+          />
+          <Button
+            type='primary'
+            icon={<ArrowRightOutlined />}
+            htmlType="submit"
+            loading={isPending}
+            disabled={isPending || isFingerprintLoading}
+          />
+        </form>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}>
+          <Text style={{ color: token.colorTextSecondary }}>{t('signUp.haveAccount')}</Text>
+          <Link href="/signin">{t('signUp.signInNow')}</Link>
+        </div>
       </div>
     </div>
   );

@@ -50,7 +50,7 @@ class AttachmentController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to create upload slot"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -76,7 +76,7 @@ class AttachmentController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to upload attachment"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -100,7 +100,7 @@ class AttachmentController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to finalize attachment"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -135,7 +135,7 @@ class AttachmentController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to delete attachment"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }

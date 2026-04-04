@@ -4,15 +4,18 @@ import com.example.researchreview.entities.Article
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.util.Optional
 
-interface ArticleRepository: JpaRepository<Article, String> {
+interface ArticleRepository: JpaRepository<Article, String>, JpaSpecificationExecutor<Article> {
 	fun findAllByDeletedFalse(pageable: Pageable): Page<Article>
 	fun findByIdAndDeletedFalse(id: String): Optional<Article>
 	fun findAllByDeletedFalseAndTrackId(trackId: String, pageable: Pageable): Page<Article>
+	fun findAllByDeletedFalseAndTrackIdIn(trackIds: Collection<String>, pageable: Pageable): Page<Article>
 	fun findByIdAndDeletedFalseAndTrackId(id: String, trackId: String): Optional<Article>
+	fun findByIdAndDeletedFalseAndTrackIdIn(id: String, trackIds: Collection<String>): Optional<Article>
 
 	@Query(
 		"SELECT DISTINCT a FROM Article a " +

@@ -1,4 +1,4 @@
-import { Avatar, Button, Dropdown, Layout, Space, Switch, Typography, Drawer, Grid } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Space, Switch, Typography, Drawer, Grid, theme as antdTheme } from 'antd'
 import {
   BulbFilled,
   BulbOutlined,
@@ -17,13 +17,17 @@ import { useAuthStore } from '../../stores/authStore'
 import { useSignOut } from '../../hooks/useAuth'
 import { useCurrentUser } from '../../hooks/useUser'
 import { NotificationCenter } from './NotificationCenter'
+import { useTranslation } from 'react-i18next'
+import { setAppLocale } from '../../i18n'
 
 const { Header } = Layout
 const { Text } = Typography
 
 function Nav() {
-    const screens = Grid.useBreakpoint()
-    const [drawerVisible, setDrawerVisible] = useState(false)
+  const screens = Grid.useBreakpoint()
+  const [drawerVisible, setDrawerVisible] = useState(false)
+  const { t, i18n } = useTranslation('common')
+  const { token } = antdTheme.useToken()
   const theme = useThemeStore((state) => state.theme)
   const toggleTheme = useThemeStore((state) => state.toggleTheme)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -40,15 +44,16 @@ function Nav() {
 
   const isAdmin = roles.includes('ADMIN')
   const isResearcher = roles.includes('RESEARCHER')
+  const currentLocale = i18n.language.toLowerCase().startsWith('vi') ? 'vi' : 'en'
 
   const links = [
-    { to: '/', label: 'Trang chủ', icon: <HomeOutlined /> },
-    { to: '/help', label: 'Trợ giúp', icon: <FileTextOutlined /> },
+    { to: '/', label: t('nav.home'), icon: <HomeOutlined /> },
+    { to: '/help', label: t('nav.help'), icon: <FileTextOutlined /> },
     ...(isAuthenticated && isResearcher
-      ? [{ to: '/articles/submit', label: 'Nộp bài báo', icon: <PlusOutlined /> }]
+      ? [{ to: '/articles/submit', label: t('nav.submitArticle'), icon: <PlusOutlined /> }]
       : []),
-    ...(isAuthenticated ? [{ to: '/profile', label: 'Hồ sơ của tôi', icon: <UserOutlined /> }] : []),
-    ...(isAdmin ? [{ to: '/admin', label: 'Quản trị', icon: <SettingOutlined /> }] : []),
+    ...(isAuthenticated ? [{ to: '/profile', label: t('nav.myProfile'), icon: <UserOutlined /> }] : []),
+    ...(isAdmin ? [{ to: '/admin', label: t('nav.admin'), icon: <SettingOutlined /> }] : []),
   ]
 
   const profileMenuItems = useMemo(
@@ -56,24 +61,24 @@ function Nav() {
       {
         key: 'profile',
         icon: <UserOutlined />,
-        label: 'Thông tin cá nhân',
+        label: t('nav.profile'),
         onClick: () => navigate('/profile'),
       },
       {
         key: 'signout',
         icon: <LogoutOutlined />,
-        label: 'Đăng xuất',
+        label: t('nav.signOut'),
         onClick: () => signOut(),
       },
     ],
-    [navigate, signOut],
+    [navigate, signOut, t],
   )
 
   return (
     <Header
       style={{
-        background: theme === 'dark' ? '#141414' : '#ffffff',
-        borderBottom: '1px solid #f0f0f0',
+        background: token.colorBgElevated,
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
         padding: '0 16px',
         height: 64,
         lineHeight: '64px',
@@ -87,9 +92,11 @@ function Nav() {
         {!screens.lg && (
           <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerVisible(true)} />
         )}
-        <Text strong style={{ margin: 0 }}>
-          Research Review
-        </Text>
+        <NavLink to="/">
+          <Text strong style={{ margin: 0 }}>
+            Research Review
+          </Text>
+        </NavLink>
       </Space>
 
       {screens.lg ? (
@@ -100,10 +107,10 @@ function Nav() {
               to={link.to}
               style={({ isActive }) => ({
                 textDecoration: 'none',
-                color: isActive ? '#1677ff' : 'inherit',
+                color: isActive ? token.colorPrimary : 'inherit',
                 padding: '4px 10px',
                 borderRadius: 8,
-                border: isActive ? '1px solid #91caff' : '1px solid transparent',
+                border: isActive ? `1px solid ${token.colorPrimaryBorder}` : '1px solid transparent',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -128,9 +135,26 @@ function Nav() {
           </Dropdown>
         ) : (
           <Button type='primary' href='/signin'>
-            Đăng nhập / Đăng ký
+            {t('nav.signInSignUp')}
           </Button>
         )}
+
+        <Space size={4}>
+          <Button
+            size="small"
+            type={currentLocale === 'vi' ? 'primary' : 'default'}
+            onClick={() => void setAppLocale('vi')}
+          >
+            {t('lang.vi')}
+          </Button>
+          <Button
+            size="small"
+            type={currentLocale === 'en' ? 'primary' : 'default'}
+            onClick={() => void setAppLocale('en')}
+          >
+            {t('lang.en')}
+          </Button>
+        </Space>
 
         <Space size={4}>
           {theme === 'dark' ? <BulbFilled /> : <BulbOutlined />}
@@ -139,7 +163,7 @@ function Nav() {
       </Space>
 
       <Drawer
-        title="Menu"
+        title={t('nav.menu')}
         placement="left"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
@@ -153,7 +177,7 @@ function Nav() {
               onClick={() => setDrawerVisible(false)}
               style={({ isActive }) => ({
                 textDecoration: 'none',
-                color: isActive ? '#1677ff' : 'inherit',
+                color: isActive ? token.colorPrimary : 'inherit',
                 padding: '8px 4px',
                 borderRadius: 4,
                 display: 'flex',

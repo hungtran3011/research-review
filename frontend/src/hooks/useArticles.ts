@@ -5,16 +5,31 @@ import { articleService } from '../services/article.service';
 import { submissionMetadataService } from '../services/submission-metadata.service';
 import { useBasicToast, getApiSuccessMessage, getApiErrorMessage } from './useBasicToast';
 import type {
+  ArticleListFilterDto,
   ArticleRequestDto,
   BaseResponseDto,
   InitialReviewRequestDto,
   ArticleDto,
 } from '../models';
 
-export const useArticles = (page: number = 0, size: number = 10) => {
+export const useArticles = (
+  page: number = 0,
+  size: number = 10,
+  enabled: boolean = true,
+  filters?: ArticleListFilterDto,
+) => {
   return useQuery({
-    queryKey: ['articles', page, size],
-    queryFn: () => articleService.list(page, size),
+    queryKey: ['articles', page, size, filters?.title ?? '', filters?.author ?? '', filters?.status ?? ''],
+    queryFn: () => articleService.list(page, size, filters),
+    enabled,
+  });
+};
+
+export const useArticleDashboardStats = (enabled: boolean = true, filters?: ArticleListFilterDto) => {
+  return useQuery({
+    queryKey: ['article-dashboard-stats', filters?.title ?? '', filters?.author ?? '', filters?.status ?? ''],
+    queryFn: () => articleService.dashboardStats(filters),
+    enabled,
   });
 };
 

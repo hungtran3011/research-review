@@ -35,28 +35,28 @@ class ReviewerInviteDecisionServiceImpl(
 
         val userId = SecurityUtils.currentUserId()
         val user = userRepository.findById(userId)
-            .orElseThrow { AccessDeniedException("Authentication required") }
+            .orElseThrow { AccessDeniedException("auth.authenticationRequired") }
 
         val userEmail = user.email.trim().lowercase()
         if (userEmail != invite.email.trim().lowercase()) {
-            throw AccessDeniedException("This invitation does not belong to the current user")
+            throw AccessDeniedException("reviewerInvite.notOwned")
         }
 
         val reviewer = reviewerRepository.findByEmail(invite.email)
-            ?: throw EntityNotFoundException("Reviewer not found for email ${invite.email}")
+            ?: throw EntityNotFoundException("reviewerInvite.reviewerNotFound")
 
         val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(invite.articleId, reviewer.id)
-            ?: throw EntityNotFoundException("Reviewer is not assigned to this article")
+            ?: throw EntityNotFoundException("reviewerInvite.reviewerNotAssigned")
 
         if (relation.deleted || relation.status == ReviewerInvitationStatus.REVOKED) {
-            throw IllegalStateException("Invitation has been revoked")
+            throw IllegalStateException("reviewerInvite.revoked")
         }
 
         relation.status = if (accept) ReviewerInvitationStatus.ACCEPTED else ReviewerInvitationStatus.DECLINED
         reviewerArticleRepository.save(relation)
 
         val article = articleRepository.findById(invite.articleId)
-            .orElseThrow { EntityNotFoundException("Article not found with id ${invite.articleId}") }
+            .orElseThrow { EntityNotFoundException("reviewerInvite.articleNotFound") }
 
         if (accept && article.status == ArticleStatus.PENDING_REVIEW) {
             article.status = ArticleStatus.IN_REVIEW

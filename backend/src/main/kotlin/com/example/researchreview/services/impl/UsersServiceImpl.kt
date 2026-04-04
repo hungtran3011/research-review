@@ -42,23 +42,23 @@ class UsersServiceImpl(
     override fun createByAdmin(dto: AdminCreateUserRequestDto): UserDto {
         val email = dto.email.trim().lowercase()
         if (email.isBlank()) {
-            throw IllegalArgumentException("Email is required")
+            throw IllegalArgumentException("users.emailRequired")
         }
 
         val existingUser = userRepository.findByEmail(email)
         if (existingUser != null) {
-            throw IllegalArgumentException("User with email $email already exists")
+            throw IllegalArgumentException("users.emailAlreadyExists")
         }
 
         val role = try {
             Role.valueOf(dto.role.trim())
         } catch (_: Exception) {
-            throw IllegalArgumentException("Invalid role: ${dto.role}. Valid roles are: ${Role.values().joinToString()}")
+            throw IllegalArgumentException("users.invalidRole")
         }
 
         val trackId = dto.trackId?.trim().orEmpty()
         if (role == Role.EDITOR && trackId.isBlank()) {
-            throw IllegalArgumentException("trackId is required when role is EDITOR")
+            throw IllegalArgumentException("users.trackRequiredForEditor")
         }
 
         val user = com.example.researchreview.entities.User().apply {
@@ -73,7 +73,7 @@ class UsersServiceImpl(
         val institutionId = dto.institutionId?.trim().orEmpty()
         if (institutionId.isNotBlank()) {
             val institution = institutionRepository.findById(institutionId)
-                .orElseThrow { IllegalArgumentException("Institution not found with id: $institutionId") }
+                .orElseThrow { IllegalArgumentException("institution.notFound") }
             user.institution = institution
         } else {
             user.institution = null
@@ -81,7 +81,7 @@ class UsersServiceImpl(
 
         val track = if (trackId.isNotBlank()) {
             trackRepository.findById(trackId)
-                .orElseThrow { IllegalArgumentException("Track not found with id: $trackId") }
+                .orElseThrow { IllegalArgumentException("users.trackNotFound") }
         } else {
             null
         }
@@ -91,15 +91,11 @@ class UsersServiceImpl(
 
         if (role == Role.EDITOR) {
             val ensuredTrack = track
-                ?: throw IllegalStateException("track must be resolved for EDITOR role")
+                ?: throw IllegalStateException("users.trackRequiredForEditor")
 
-            val existingEditor = editorRepository.findByUserIdAndDeletedFalse(savedUser.id)
-            if (existingEditor.isPresent) {
-                val editor = existingEditor.get()
-                editor.user = savedUser
-                editor.track = ensuredTrack
-                editorRepository.save(editor)
-            } else {
+            val existingAssignment = editorRepository
+                .findByUserIdAndTrackIdAndDeletedFalse(savedUser.id, ensuredTrack.id)
+            if (existingAssignment.isEmpty) {
                 val editor = Editor().apply {
                     this.user = savedUser
                     this.track = ensuredTrack
@@ -120,7 +116,7 @@ class UsersServiceImpl(
     @Transactional
     override fun getById(id: String): UserDto {
         val user = userRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("user.notFound") }
         return toDto(user)
     }
 
@@ -187,13 +183,13 @@ class UsersServiceImpl(
 
         // Validate role - don't allow creating ADMIN or EDITOR via this endpoint
         if (userDto.role.equals(Role.ADMIN.name) || userDto.role.equals(Role.EDITOR.name)) {
-            throw IllegalArgumentException("Admin and Editor roles are not allowed for self-registration")
+            throw IllegalArgumentException("users.selfRegistrationRoleForbidden")
         }
 
         // Check if user already exists
         val existingUser = userRepository.findByEmail(userDto.email)
         if (existingUser != null) {
-            throw IllegalArgumentException("User with email ${userDto.email} already exists")
+            throw IllegalArgumentException("users.emailAlreadyExists")
         }
 
         // Create user entity from DTO
@@ -208,14 +204,14 @@ class UsersServiceImpl(
 
         // Set institution
         val institution = institutionRepository.findById(userDto.institutionId)
-            .orElseThrow { IllegalArgumentException("Institution not found with id: ${userDto.institutionId}") }
+            .orElseThrow { IllegalArgumentException("institution.notFound") }
         user.institution = institution
 
         // Set track if provided
         val trackId = userDto.trackId
         if (trackId.isNotBlank()) {
             val track = trackRepository.findById(trackId)
-                .orElseThrow { IllegalArgumentException("Track not found with id: $trackId") }
+                .orElseThrow { IllegalArgumentException("users.trackNotFound") }
             user.track = track
         } else {
             user.track = null
@@ -250,13 +246,13 @@ class UsersServiceImpl(
     ): UserDto {
         // Find existing user
         val user = userRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("user.notFound") }
         
         // Validate email hasn't changed or if changed, it's not taken
         if (userDto.email != user.email) {
             val existingUser = userRepository.findByEmail(userDto.email)
             if (existingUser != null && existingUser.id != id) {
-                throw IllegalArgumentException("Email ${userDto.email} is already taken")
+                throw IllegalArgumentException("users.emailAlreadyTaken")
             }
             user.email = userDto.email
         }
@@ -267,14 +263,14 @@ class UsersServiceImpl(
         
         // Update institution
         val institution = institutionRepository.findById(userDto.institutionId)
-            .orElseThrow { IllegalArgumentException("Institution not found with id: ${userDto.institutionId}") }
+            .orElseThrow { IllegalArgumentException("institution.notFound") }
         user.institution = institution
         
         // Update track if provided
         val trackId = userDto.trackId
         if (trackId.isNotBlank()) {
             val track = trackRepository.findById(trackId)
-                .orElseThrow { IllegalArgumentException("Track not found with id: $trackId") }
+                .orElseThrow { IllegalArgumentException("users.trackNotFound") }
             user.track = track
         } else {
             user.track = null
@@ -293,17 +289,17 @@ class UsersServiceImpl(
     @Transactional
     override fun updateRole(id: String, role: String, performedBy: Role): UserDto {
         val user = userRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("user.notFound") }
         
         val newRole = try {
             Role.valueOf(role)
         } catch (_: Exception) {
-            throw IllegalArgumentException("Invalid role: $role. Valid roles are: ${Role.values().joinToString()}")
+            throw IllegalArgumentException("users.invalidRole")
         }
         
         // Security check: Only allow ADMIN to assign ADMIN or EDITOR roles
         if ((newRole == Role.ADMIN || newRole == Role.EDITOR) && performedBy != Role.ADMIN) {
-            throw IllegalArgumentException("Only ADMIN can assign ADMIN or EDITOR roles")
+            throw IllegalArgumentException("users.onlyAdminCanAssignAdminEditor")
         }
         
         user.role = newRole
@@ -316,12 +312,12 @@ class UsersServiceImpl(
     @Transactional
     override fun updateStatus(id: String, status: String): UserDto {
         val user = userRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("user.notFound") }
         
         val newStatus = try {
             AccountStatus.valueOf(status)
         } catch (_: Exception) {
-            throw IllegalArgumentException("Invalid status: $status. Valid statuses are: ${AccountStatus.values().joinToString()}")
+            throw IllegalArgumentException("users.invalidStatus")
         }
         
         user.status = newStatus
@@ -421,10 +417,10 @@ class UsersServiceImpl(
     @Transactional
     override fun delete(id: String) {
         val user = userRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow { IllegalArgumentException("User not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("user.notFound") }
         // Soft delete via repository override
         userRepository.deleteById(user.id)
-        editorRepository.findEditorByUserIdAndDeleted(user.id, false).forEach {
+        editorRepository.findAllByUserIdAndDeletedFalse(user.id).forEach {
             editorRepository.deleteById(it.id)
         }
     }

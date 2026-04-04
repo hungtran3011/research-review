@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal, Button, Typography, Input, Alert } from 'antd'
 import { FileOutlined } from '@ant-design/icons'
 import { api } from '../../services/api'
+import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 
@@ -24,11 +25,9 @@ const styles = {
     textAlign: 'center' as const,
     cursor: 'pointer',
     transition: 'all 0.15s',
-    backgroundColor: '#fafafa',
     border: '2px dashed #d9d9d9',
   },
   dropZoneActive: {
-    backgroundColor: '#f0f0f0',
     border: '2px dashed #1890ff',
   },
   fileInput: {
@@ -42,7 +41,6 @@ const styles = {
     gap: '8px',
   },
   helperText: {
-    color: '#8c8c8c',
   },
 } as const
 
@@ -54,6 +52,7 @@ interface SubmitRevisionProps {
 }
 
 export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: SubmitRevisionProps) => {
+  const { t } = useTranslation('common')
   const fileInputId = 'submit-revision-file'
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState('')
@@ -66,7 +65,7 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
     if (files && files.length > 0) {
       const file = files[0]
       if (!file.name.toLowerCase().endsWith('.pdf')) {
-        setError('Vui lòng chọn tệp PDF')
+        setError(t('submitRevision.errors.selectPdf'))
         setSelectedFile(null)
       } else {
         setError(null)
@@ -77,7 +76,7 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
 
   const handleSubmit = async () => {
     if (!selectedFile) {
-      setError('Vui lòng chọn tệp PDF')
+      setError(t('submitRevision.errors.selectPdf'))
       return
     }
 
@@ -100,7 +99,7 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
       onSuccess?.()
       onClose()
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Không thể nộp bài sửa chữa'
+      const errorMsg = err instanceof Error ? err.message : t('submitRevision.errors.submitFailed')
       setError(errorMsg)
     } finally {
       setIsLoading(false)
@@ -109,12 +108,12 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
 
   return (
     <Modal
-      title="Nộp Bài Sửa Chữa"
+      title={t('submitRevision.title')}
       open={isOpen}
       onCancel={onClose}
       footer={[
         <Button key="cancel" onClick={onClose} disabled={isLoading}>
-          Hủy
+          {t('submitRevision.actions.cancel')}
         </Button>,
         <Button
           key="submit"
@@ -123,14 +122,14 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
           disabled={!selectedFile}
           loading={isLoading}
         >
-          Nộp Bài Sửa Chữa
+          {t('submitRevision.actions.submit')}
         </Button>,
       ]}
       width={600}
     >
       <div style={styles.content}>
         <div style={styles.section}>
-          <Text strong>Tệp PDF sửa chữa</Text>
+          <Text strong>{t('submitRevision.revisionPdfLabel')}</Text>
           <div
             style={isDragActive ? { ...styles.dropZone, ...styles.dropZoneActive } : styles.dropZone}
             onDragOver={(e) => {
@@ -151,7 +150,7 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
                   setSelectedFile(file)
                   setError(null)
                 } else {
-                  setError('Vui lòng chọn tệp PDF')
+                  setError(t('submitRevision.errors.selectPdf'))
                 }
               }
             }}
@@ -174,8 +173,8 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
                 </>
               ) : (
                 <>
-                  <Text strong>Kéo thả tệp PDF hoặc bấm để chọn</Text>
-                  <Text style={styles.helperText}>Chỉ hỗ trợ tệp PDF</Text>
+                  <Text strong>{t('submitRevision.dropzone.primary')}</Text>
+                  <Text style={styles.helperText}>{t('submitRevision.dropzone.secondary')}</Text>
                 </>
               )}
             </label>
@@ -183,11 +182,11 @@ export const SubmitRevision = ({ articleId, onSuccess, isOpen, onClose }: Submit
         </div>
 
         <div style={styles.section}>
-          <Text strong>Ghi chú sửa chữa (tùy chọn)</Text>
+          <Text strong>{t('submitRevision.notes.label')}</Text>
           <Input.TextArea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Mô tả những thay đổi bạn đã thực hiện..."
+            placeholder={t('submitRevision.notes.placeholder')}
             rows={6}
           />
         </div>

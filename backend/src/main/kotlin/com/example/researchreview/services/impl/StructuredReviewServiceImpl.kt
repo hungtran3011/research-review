@@ -38,36 +38,36 @@ class StructuredReviewServiceImpl(
     override fun saveOrSubmit(articleId: String, request: StructuredReviewSubmitRequestDto): StructuredReviewDto {
         val currentUser = currentUserService.requireUser()
         val article = articleRepository.findByIdAndDeletedFalse(articleId)
-            .orElseThrow { EntityNotFoundException("Article not found with id $articleId") }
+            .orElseThrow { EntityNotFoundException("structuredReview.articleNotFound") }
 
         if (article.status != ArticleStatus.IN_REVIEW && article.status != ArticleStatus.REVIEWS_COMPLETED) {
-            throw IllegalStateException("Structured review is only allowed when article is IN_REVIEW or REVIEWS_COMPLETED")
+            throw IllegalStateException("structuredReview.invalidArticleStatus")
         }
 
         val reviewerArticle = reviewerArticleRepository
             .findByArticleIdAndReviewerUserIdOrEmail(articleId, currentUser.id, currentUser.email)
-            .orElseThrow { EntityNotFoundException("Reviewer assignment not found for current user") }
+            .orElseThrow { EntityNotFoundException("structuredReview.reviewerAssignmentNotFound") }
 
         if (reviewerArticle.status != ReviewerInvitationStatus.ACCEPTED) {
-            throw IllegalStateException("Structured review requires an ACCEPTED reviewer invitation")
+            throw IllegalStateException("structuredReview.reviewerInvitationNotAccepted")
         }
 
         val normalizedScores = request.scores
             .map { it.copy(criterion = it.criterion.trim()) }
             .filter { it.criterion.isNotBlank() }
         if (normalizedScores.isEmpty()) {
-            throw IllegalArgumentException("At least one valid criterion score is required")
+            throw IllegalArgumentException("structuredReview.atLeastOneCriterionRequired")
         }
         val duplicateCriterion = normalizedScores
             .groupBy { it.criterion.lowercase() }
             .any { it.value.size > 1 }
         if (duplicateCriterion) {
-            throw IllegalArgumentException("Duplicate criteria are not allowed")
+            throw IllegalArgumentException("structuredReview.duplicateCriteriaNotAllowed")
         }
 
         val existing = structuredReviewRepository.findByReviewerArticleIdAndDeletedFalse(reviewerArticle.id)
         if (existing?.submittedAt != null) {
-            throw IllegalStateException("Structured review has already been submitted for this review round")
+            throw IllegalStateException("structuredReview.alreadySubmitted")
         }
 
         val review = (existing ?: StructuredReview().apply { this.reviewerArticle = reviewerArticle }).apply {
@@ -162,7 +162,7 @@ class StructuredReviewServiceImpl(
 
     private fun maybeMoveToReviewsCompleted(articleId: String) {
         val article = articleRepository.findByIdAndDeletedFalse(articleId)
-            .orElseThrow { EntityNotFoundException("Article not found with id $articleId") }
+            .orElseThrow { EntityNotFoundException("structuredReview.articleNotFound") }
         if (article.status != ArticleStatus.IN_REVIEW) {
             return
         }

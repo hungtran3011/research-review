@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useParams } from 'react-router'
 import { Typography } from 'antd'
 import ArticleDetails from './ArticleDetails'
@@ -8,11 +8,13 @@ import { useCurrentUser } from '../../hooks/useUser'
 import { useArticle } from '../../hooks/useArticles'
 import { useAuthStore } from '../../stores/authStore'
 import { ArticleStatus } from '../../constants'
+import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 
 function ArticleWorkspace() {
     const params = useParams<{ articleId: string }>()
+    const { t } = useTranslation()
     const articleId = params.articleId
 
     const { data: currentUserData, isLoading: isUserLoading } = useCurrentUser()
@@ -45,15 +47,24 @@ function ArticleWorkspace() {
     const canShowInitialReviewPanel = isEditor && article?.status === ArticleStatus.SUBMITTED
     const canShowReviewerPanel = isReviewer && isAssignedReviewer
 
+    useEffect(() => {
+        const title = canShowInitialReviewPanel
+            ? t('articleDetails.initialReview')
+            : canShowReviewerPanel
+                ? t('reviewArticle.title')
+                : t('articleWorkspace.pageTitle')
+        document.title = `${title} - Research Review`
+    }, [canShowInitialReviewPanel, canShowReviewerPanel, t])
+
     if (!articleId) {
-        return <div style={{ padding: 24 }}><Text>Không tìm thấy bài báo.</Text></div>
+        return <div style={{ padding: 24 }}><Text>{t('articleWorkspace.notFound')}</Text></div>
     }
 
     return (
         <div style={{ minHeight: 'calc(100vh - 64px)' }}>
             {isUserLoading || isArticleLoading ? (
                 <div style={{ padding: 24 }}>
-                    <Text>Đang tải...</Text>
+                    <Text>{t('articleWorkspace.loading')}</Text>
                 </div>
             ) : canShowInitialReviewPanel ? (
                 <EditorInitialReview />

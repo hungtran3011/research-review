@@ -33,7 +33,7 @@ class EditorController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Errors when creating editor: ${e.message}",
+                    message = "error.internal.server",
                     data = EditorDto()
                 )
             )
@@ -72,7 +72,7 @@ class EditorController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Errors when updating editor: ${e.message}",
+                    message = "error.internal.server",
                     data = EditorDto()
                 )
             )

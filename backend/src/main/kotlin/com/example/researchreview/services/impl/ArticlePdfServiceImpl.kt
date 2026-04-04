@@ -34,14 +34,14 @@ class ArticlePdfServiceImpl(
             .toList()
 
         if (candidates.isEmpty()) {
-            throw EntityNotFoundException("No PDF attachment found")
+            throw EntityNotFoundException("articlePdf.noAttachmentFound")
         }
 
         val attachment = if (version != null) {
             candidates
                 .filter { it.version == version }
                 .maxWithOrNull(compareBy({ it.createdAt }, { it.id }))
-                ?: throw EntityNotFoundException("No PDF found for version $version")
+                ?: throw EntityNotFoundException("articlePdf.noAttachmentForVersion")
         } else {
             // Default: prefer latest REVISION if any exist; otherwise latest SUBMISSION.
             val latestRevision = candidates
@@ -50,18 +50,18 @@ class ArticlePdfServiceImpl(
             latestRevision ?: candidates
                 .filter { it.kind == AttachmentKind.SUBMISSION }
                 .maxWithOrNull(compareBy<com.example.researchreview.entities.Attachment>({ it.version }, { it.createdAt }))
-                ?: throw EntityNotFoundException("No submission file found")
+                ?: throw EntityNotFoundException("articlePdf.noSubmissionFound")
         }
 
         // Viewer expects a PDF
         val mimeType = attachment.mimeType.takeIf { !it.isNullOrBlank() } ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
         if (!mimeType.lowercase().contains("pdf") && !attachment.fileName.lowercase().endsWith(".pdf")) {
-            throw EntityNotFoundException("Submission file is not a PDF")
+            throw EntityNotFoundException("articlePdf.invalidPdf")
         }
 
         // Load complete file from S3 into memory
         val fileBytes = s3Service.download(bucketName, attachment.s3Key)
-            ?: throw EntityNotFoundException("File not found in S3")
+            ?: throw EntityNotFoundException("articlePdf.fileNotFoundInStorage")
         
         val headers = HttpHeaders().apply {
             contentType = MediaType.parseMediaType(mimeType)

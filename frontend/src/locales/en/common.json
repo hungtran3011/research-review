@@ -1,0 +1,930 @@
+{
+  "nav": {
+    "home": "Home",
+    "help": "Help",
+    "submitArticle": "Submit Article",
+    "myProfile": "My Profile",
+    "admin": "Admin",
+    "profile": "Profile",
+    "signOut": "Sign Out",
+    "signInSignUp": "Sign In / Sign Up",
+    "menu": "Menu"
+  },
+  "lang": {
+    "vi": "VI",
+    "en": "EN"
+  },
+  "signIn": {
+    "title": "Sign in with email",
+    "subtitle": "Enter your email to receive a sign-in link",
+    "checkingDevice": "Checking device...",
+    "emailPlaceholder": "Your email",
+    "genericError": "Something went wrong. Please try again.",
+    "noAccount": "Don’t have an account?",
+    "signUpNow": "Sign up now"
+  },
+  "signUp": {
+    "title": "Sign up with email",
+    "subtitle": "Enter your email to begin registration for paper submission",
+    "checkingDevice": "Checking device...",
+    "emailPlaceholder": "Your email",
+    "genericError": "Something went wrong. Please try again.",
+    "haveAccount": "Already have an account?",
+    "signInNow": "Sign in now"
+  },
+  "verifyFailed": {
+    "pageTitle": "Email verification failed",
+    "title": "Email verification failed",
+    "messagePrefix": "The verification token has expired. Please restart the sign-up process",
+    "linkText": "here"
+  },
+  "verifySuccess": {
+    "signUpTitle": "Email verification successful",
+    "signInTitle": "Sign-in successful",
+    "signUpRedirect": "You will continue to complete your profile in 5 seconds...",
+    "signInRedirect": "You will be redirected to the home page in 5 seconds..."
+  },
+  "verifyToken": {
+    "pageTitle": "Verifying",
+    "title": "Verifying your email..."
+  },
+  "needsVerify": {
+    "pageTitle": "Email verification",
+    "title": "Check your email",
+    "sentTo": "We have sent a verification link to",
+    "instruction": "Click the link in the email to complete {{action}}",
+    "signUpAction": "sign-up",
+    "signInAction": "sign-in",
+    "resendSuccess": "✓ A new verification email has been sent successfully!",
+    "resendFailed": "✗ Unable to send email. Please try again later.",
+    "notReceived": "Didn’t receive the email?",
+    "resendAfter": "Resend after {{time}}",
+    "resend": "Resend",
+    "back": "Back"
+  },
+  "reviewerInvite": {
+    "pageTitle": "Reviewer invitation",
+    "title": "Reviewer invitation",
+    "description": "You are invited to review the following paper:",
+    "articleId": "ID: {{id}}",
+    "authors": "Authors: {{names}}",
+    "track": "Track: {{track}}",
+    "resolving": "Resolving reviewer invitation...",
+    "authRequired": "Please sign in or sign up to confirm.",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "accept": "Accept review",
+    "decline": "Decline",
+    "invalidToken": "Invalid invitation token",
+    "genericError": "Something went wrong"
+  },
+  "route": {
+    "checkingAccess": "Checking access...",
+    "restoringSession": "Restoring sign-in session..."
+  },
+  "toc": {
+    "title": "Table of contents",
+    "empty": "No table of contents",
+    "close": "Close table of contents"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "markAllRead": "Mark all as read",
+    "ariaLabel": "Notifications",
+    "commentUpdated": "Comment updated",
+    "pageNumber": "Page {{page}}",
+    "revisionSubmitted": "Revision submitted",
+    "revisionSubmittedVersion": "Revision v{{version}} submitted",
+    "invitedEmail": "Invited: {{email}}",
+    "types": {
+      "articleSubmitted": "Article submitted",
+      "articleStatusChanged": "Article status changed",
+      "articleRevisionSubmitted": "Revision submitted by author",
+      "reviewerInvited": "Reviewer invited",
+      "reviewerRevoked": "Reviewer revoked",
+      "commentActivity": "Comment activity",
+      "fileUploaded": "File uploaded"
+    },
+    "articleStatus": {
+      "submitted": "Submitted",
+      "pendingReview": "Pending review",
+      "inReview": "In review",
+      "reviewsCompleted": "Reviews completed",
+      "revisionsRequested": "Revisions requested",
+      "revisions": "Revising",
+      "rejectRequested": "Reject requested",
+      "acceptRequested": "Accept requested",
+      "rejected": "Rejected",
+      "accepted": "Accepted"
+    }
+  },
+  "articleDetails": {
+    "you": "You",
+    "user": "User",
+    "reviewer": "Reviewer",
+    "submittedDate": "Submission date",
+    "track": "Track",
+    "abstract": "Abstract",
+    "conclusion": "Conclusion",
+    "authors": "Authors",
+    "reviewers": "Reviewers",
+    "loading": "Loading article details...",
+    "loadFailed": "Unable to load article details",
+    "backHome": "Back to home",
+    "unassigned": "Unassigned",
+    "notUpdated": "Not updated",
+    "noComments": "No comments yet",
+    "replyPlaceholder": "Enter your reply...",
+    "cancel": "Cancel",
+    "send": "Send",
+    "reply": "Reply",
+    "download": "Download",
+    "confirmApprove": "Approve this article?",
+    "confirmReject": "Reject this article?",
+    "processing": "Processing...",
+    "approve": "Approve",
+    "reject": "Reject",
+    "initialReview": "Initial review",
+    "manageReviewers": "Manage reviewers",
+    "reviewArticle": "Review article",
+    "submitRevision": "Submit revision",
+    "noPdf": "No article PDF available",
+    "hideInfo": "Hide info",
+    "showInfo": "Show info",
+    "comments": "Comments",
+    "commentsCount": "Comments ({{count}})",
+    "hideComments": "Hide comments",
+    "showComments": "Show comments",
+    "structuredReviewChair": "Structured review (Chair)",
+    "reviewProgress": "Review completion: {{submitted}}/{{total}}",
+    "avgOverallScore": "Average overall score: {{score}}",
+    "notAvailable": "N/A",
+    "noRecommendation": "No recommendations yet",
+    "reviewerStatus": "Reviewer {{index}}: {{status}}",
+    "reviewerLabel": "Reviewer {{index}}",
+    "submitted": "Submitted",
+    "notSubmitted": "Not submitted",
+    "structuredReviewAnonymous": "Structured review (Anonymized)",
+    "noAnonymousReviews": "No anonymized reviews yet.",
+    "submittedAt": "Submitted at",
+    "initialReviewNote": "Initial review note",
+    "nextSteps": "Next steps",
+    "materialsByVersion": "Materials by version",
+    "versionLabel": "Version {{version}}",
+    "mainManuscript": "Main manuscript",
+    "supplements": "Supplemental files",
+    "noSupplements": "No supplemental files",
+    "loadMaterialsFailed": "Unable to load version materials"
+  },
+  "articleWorkspace": {
+    "pageTitle": "Article",
+    "notFound": "Article not found.",
+    "loading": "Loading..."
+  },
+  "appHome": {
+    "fallbackResearcher": "Researcher",
+    "welcomeTitle": "Welcome to Research Review",
+    "welcomeAuthed": "Hello, {{name}}! Manage your submissions and reviews.",
+    "welcomeGuest": "Sign up to submit and review research articles.",
+    "landingTitle": "Landing Page",
+    "landingDescription": "Discover conferences, track submissions, and collaborate with editors and reviewers.",
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "learnMore": "Learn More",
+    "recentArticlesTitle": "Recent Articles",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "filterByTitle": "Filter by article title",
+    "filterByAuthor": "Filter by author",
+    "allStatuses": "All statuses",
+    "loadingArticles": "Loading article list...",
+    "loadArticlesFailed": "Unable to load article list.",
+    "noArticles": "No articles found in the system.",
+    "viewDetails": "View details",
+    "trackLabel": "Track: {{track}}",
+    "expandMore": "read more",
+    "submittedAt": "Submitted at:",
+    "pageLabel": "Page {{page}}",
+    "quickActionsTitle": "Quick Actions",
+    "submitNewArticle": "Submit New Article",
+    "viewMyReviews": "View My Reviews",
+    "statsTitle": "Stats",
+    "loadingStats": "Loading stats...",
+    "stats": {
+      "total": "Total articles",
+      "pending": "Pending review",
+      "accepted": "Accepted",
+      "rejected": "Rejected"
+    },
+    "notificationsTitle": "Notifications",
+    "notificationsPlaceholder": "New review request received.",
+    "footerCopyright": "© 2026 Research Review. All rights reserved."
+  },
+  "submitArticle": {
+    "title": "Submit article",
+    "articleTitleLabel": "Article title",
+    "articleTitlePlaceholder": "Enter article title",
+    "abstractLabel": "Abstract",
+    "abstractPlaceholder": "Enter article abstract",
+    "conclusionLabel": "Conclusion",
+    "conclusionPlaceholder": "Enter article conclusion",
+    "mainFileLabel": "Main file",
+    "mainFileTooltip": "Main PDF file of the article",
+    "mainFileDropActive": "Drop the PDF file here...",
+    "mainFileDropIdle": "Drag and drop a PDF file here, or click to select",
+    "mainFileHint": "PDF only, up to 10MB",
+    "supplementalLabel": "Supplemental files",
+    "supplementalTooltip": "Supplemental files (optional)",
+    "supplementalDropActive": "Drop files here...",
+    "supplementalDropIdle": "Drag and drop files here, or click to select",
+    "supplementalHint": "Up to 100MB per file",
+    "conferenceLabel": "Conference",
+    "conferencePlaceholder": "Select conference",
+    "deadlinePassed": "Submission deadline for this conference has passed",
+    "deadline": "Submission deadline",
+    "trackLabel": "Track",
+    "trackPlaceholder": "Select track",
+    "topicsLabel": "Topics",
+    "topicsPlaceholder": "Select topics",
+    "authorsList": "Authors",
+    "addAuthor": "Add author",
+    "authorNumber": "Author {{index}}",
+    "authorNameLabel": "Author name",
+    "authorNamePlaceholder": "Enter author name",
+    "authorEmailLabel": "Author email",
+    "authorEmailPlaceholder": "Enter author email",
+    "authorInstitutionLabel": "Institution",
+    "authorInstitutionPlaceholder": "Select institution",
+    "noInstitutionSelected": "No institution selected",
+    "removeAuthor": "Remove author",
+    "submitting": "Submitting...",
+    "submit": "Submit article",
+    "previewEmpty": "No PDF file to preview",
+    "fileSize": {
+      "zero": "0 Bytes",
+      "units": ["Bytes", "KB", "MB", "GB"]
+    },
+    "errors": {
+      "selectConference": "Please select a conference",
+      "deadlinePassed": "Submission deadline has passed",
+      "selectTrack": "Please select a track",
+      "selectTopic": "Please select at least one topic",
+      "uploadMainPdf": "Please upload the main PDF file",
+      "completeAuthorInfo": "Please complete all author information",
+      "articleCreateFailed": "Failed to create article",
+      "mainUploadFailed": "Failed to upload main file",
+      "versionCreateFailed": "Failed to create version package",
+      "supplementalUploadFailed": "Failed to upload supplemental file: {{file}}",
+      "submitFailed": "Article submission failed"
+    }
+  },
+  "profile": {
+    "pageTitle": "Profile",
+    "title": "Profile",
+    "updateSuccess": "Profile updated successfully!",
+    "updateError": "An error occurred while updating profile",
+    "common": {
+      "loading": "Loading..."
+    },
+    "roleOptions": {
+      "admin": "Administrator",
+      "user": "User",
+      "editor": "Editor",
+      "researcher": "Researcher",
+      "reviewer": "Reviewer"
+    },
+    "genderOptions": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
+    "academicStatusOptions": {
+      "gsts": "Professor - PhD",
+      "pgsts": "Associate Professor - PhD",
+      "ts": "PhD",
+      "ths": "Master",
+      "cn": "Bachelor"
+    },
+    "fields": {
+      "email": {
+        "label": "Email",
+        "placeholder": "email@example.com"
+      },
+      "lastName": {
+        "label": "Last name",
+        "tooltip": "Middle and last names, e.g., Nguyen Van",
+        "placeholder": "e.g., Nguyen Van"
+      },
+      "firstName": {
+        "label": "First name",
+        "tooltip": "Your first name, e.g., A",
+        "placeholder": "e.g., A"
+      },
+      "phone": {
+        "label": "Phone number",
+        "tooltip": "10-digit phone number",
+        "placeholder": "e.g., 0123456789"
+      },
+      "dateOfBirth": {
+        "label": "Date of birth",
+        "tooltip": "Your date of birth",
+        "placeholder": "e.g., 01/01/2000"
+      },
+      "role": {
+        "label": "Account type",
+        "tooltip": "Select your account type",
+        "placeholder": "Account type"
+      },
+      "gender": {
+        "label": "Gender",
+        "tooltip": "Your gender",
+        "placeholder": "Your gender"
+      },
+      "nationality": {
+        "label": "Nationality",
+        "tooltip": "Your nationality",
+        "placeholder": "Your nationality"
+      },
+      "institution": {
+        "label": "Institution",
+        "tooltip": "Your institution",
+        "placeholder": "Select institution"
+      },
+      "track": {
+        "label": "Research track",
+        "tooltip": "Your research track",
+        "placeholder": "Select research track"
+      },
+      "academicStatus": {
+        "label": "Academic status",
+        "tooltip": "Your academic status",
+        "placeholder": "Your academic status"
+      }
+    },
+    "actions": {
+      "updating": "Updating...",
+      "update": "Update profile"
+    }
+  },
+  "info": {
+    "pageTitle": "Account information",
+    "title": "Enter your information",
+    "common": {
+      "loading": "Loading..."
+    },
+    "roleOptions": {
+      "user": "User",
+      "researcher": "Researcher",
+      "reviewer": "Reviewer"
+    },
+    "genderOptions": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
+    "academicStatusOptions": {
+      "gsts": "Professor - PhD",
+      "pgsts": "Associate Professor - PhD",
+      "ts": "PhD",
+      "ths": "Master",
+      "cn": "Bachelor"
+    },
+    "fields": {
+      "email": {
+        "label": "Email",
+        "placeholder": "email@example.com"
+      },
+      "lastName": {
+        "label": "Last name",
+        "placeholder": "Middle and last names, e.g., Nguyen Van"
+      },
+      "firstName": {
+        "label": "First name",
+        "placeholder": "Your first name, e.g., A"
+      },
+      "phone": {
+        "label": "Phone number",
+        "placeholder": "10-digit phone number"
+      },
+      "dateOfBirth": {
+        "label": "Date of birth",
+        "placeholder": "Date of birth"
+      },
+      "role": {
+        "label": "Account type",
+        "placeholder": "Select account type"
+      },
+      "gender": {
+        "label": "Gender",
+        "placeholder": "Select gender"
+      },
+      "nationality": {
+        "label": "Nationality",
+        "placeholder": "Select nationality"
+      },
+      "institution": {
+        "label": "Institution",
+        "placeholder": "Select institution"
+      },
+      "track": {
+        "label": "Research track",
+        "placeholder": "Select track"
+      },
+      "academicStatus": {
+        "label": "Academic status",
+        "placeholder": "Select academic status"
+      }
+    },
+    "actions": {
+      "submitting": "Processing...",
+      "submit": "Complete registration"
+    }
+  },
+  "reviewArticle": {
+    "title": "Review article",
+    "you": "You",
+    "reviewer": "Reviewer",
+    "system": "System",
+    "submittedAt": "Submitted at {{date}}",
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close"
+    },
+    "alerts": {
+      "summaryRequired": "Please enter a review summary."
+    },
+    "attachmentKinds": {
+      "submission": "Main manuscript",
+      "revision": "Revision",
+      "supplemental": "Supplemental file"
+    },
+    "fileSize": {
+      "zero": "0 B",
+      "units": ["B", "KB", "MB", "GB"]
+    },
+    "commentStatus": {
+      "open": "Open",
+      "resolved": "Resolved",
+      "addressed": "Addressed"
+    },
+    "states": {
+      "invalidPath": "Invalid review URL.",
+      "loadArticleFailed": "Unable to load article details.",
+      "errorTitle": "An error occurred",
+      "loadingArticle": "Loading article...",
+      "notFoundTitle": "Article not found",
+      "notFoundDescription": "The article may have been deleted or you do not have access.",
+      "noPdf": "No article available for review"
+    },
+    "actions": {
+      "addComment": "Add comment",
+      "submittedReview": "Review submitted",
+      "structuredReviewTemplate": "Structured review template",
+      "hideComments": "Hide comments",
+      "showComments": "Show comments",
+      "hideToc": "Hide table of contents",
+      "showToc": "Show table of contents"
+    },
+    "attachments": {
+      "title": "Review attachments",
+      "empty": "No attachments yet."
+    },
+    "comments": {
+      "title": "Comments ({{count}})",
+      "modalTitle": "Comments",
+      "versionPlaceholder": "Select version",
+      "versionValue": "Version {{version}}",
+      "noVersion": "No versions yet",
+      "versionText": "Version {{version}}",
+      "versionWithDate": "Version {{version}} - {{date}}",
+      "loading": "Loading comments...",
+      "loadFailed": "Unable to load comments.",
+      "emptyForVersion": "No comments for this version",
+      "currentVersionBadge": "current - v{{version}}",
+      "versionBadge": "v{{version}}",
+      "page": "Page {{page}}",
+      "hideReplies": "Hide replies",
+      "viewReplies": "View replies",
+      "viewRepliesCount": "View replies ({{count}})",
+      "reply": "Reply",
+      "noReplies": "No replies yet",
+      "replyFormTitle": "Reply",
+      "replyPlaceholder": "Write your reply...",
+      "sending": "Sending...",
+      "send": "Send",
+      "resolve": "Resolve",
+      "markAddressed": "Mark addressed",
+      "newCommentTitle": "New comment",
+      "selectedTextLabel": "Selected text:",
+      "section": "Section",
+      "pageLabel": "Page",
+      "newCommentPlaceholder": "Write your comment...",
+      "posting": "Posting...",
+      "post": "Post comment"
+    },
+    "structured": {
+      "title": "Structured review",
+      "scoreHint": "Score each criterion from 1 to 10.",
+      "recommendationLabel": "Recommendation",
+      "summaryLabel": "Review summary",
+      "summaryPlaceholder": "Provide an overall assessment of the article",
+      "confidentialLabel": "Confidential remarks (chair only)",
+      "confidentialPlaceholder": "Internal notes for the chair (optional)",
+      "saveDraft": "Save draft",
+      "submitReview": "Submit review",
+      "criteria": {
+        "originality": "Originality",
+        "technicalQuality": "Technical quality",
+        "clarity": "Clarity",
+        "relevance": "Relevance",
+        "overall": "Overall"
+      }
+    }
+  },
+  "editorInitialReview": {
+    "notUpdated": "Not updated",
+    "notFoundTitle": "Article not found",
+    "invalidPath": "Invalid path.",
+    "loadFailed": "Cannot load article details.",
+    "errorTitle": "An error occurred",
+    "loadingArticle": "Loading article...",
+    "notFoundDescription": "The article may have been deleted or you do not have access.",
+    "unassigned": "Unassigned",
+    "noPdf": "No article available to view",
+    "common": {
+      "backStep": "No, go back to previous step",
+      "confirm": "Confirm"
+    },
+    "actions": {
+      "hideInfo": "Hide info",
+      "showInfo": "Show info",
+      "reject": "Reject",
+      "acceptAndInvite": "Accept and invite reviewer"
+    },
+    "info": {
+      "articleTitle": "Article title",
+      "authors": "Authors:",
+      "submittedDate": "Submission date",
+      "track": "Track",
+      "currentStatus": "Current status"
+    },
+    "errors": {
+      "selectAtLeastOneReviewer": "Please select at least one reviewer",
+      "completeReviewerInfo": "Please fill in all reviewer information",
+      "invalidEmail": "Invalid email"
+    },
+    "reject": {
+      "title": "Reject article",
+      "confirm": "Reject article",
+      "reasonLabel": "Rejection reason",
+      "reasonHint": "The rejection reason will be included in the feedback email to the author",
+      "reasonPlaceholder": "Enter rejection reason here"
+    },
+    "accept": {
+      "defaultNote": "Accept and send to reviewer",
+      "success": "Approved and invited reviewers successfully",
+      "inviteFailedPrefix": "Failed to invite reviewers: ",
+      "title": "Accept and find reviewers",
+      "confirmMessage": "Do you agree to accept this article and assign reviewers?",
+      "inviteMethodLabel": "Reviewer invitation method",
+      "existingMethod": "Select from existing users",
+      "manualMethod": "Enter new reviewer information",
+      "selectReviewerLabel": "Select reviewers",
+      "selectReviewerPlaceholder": "Select reviewers",
+      "manualNameLabel": "Full name",
+      "manualNamePlaceholder": "Enter reviewer full name",
+      "manualEmailLabel": "Email",
+      "manualEmailPlaceholder": "Enter reviewer email",
+      "manualInstitutionLabel": "Institution",
+      "manualInstitutionPlaceholder": "Select institution",
+      "noteHint": "Note (optional):",
+      "notePlaceholder": "Enter note if needed"
+    }
+  },
+  "pdfViewer": {
+    "emptyMessage": "No file uploaded yet",
+    "page": "Page",
+    "download": "Download",
+    "reset": "Reset",
+    "loadingPdf": "Loading PDF...",
+    "noDocument": "No document",
+    "errors": {
+      "fetchFailedPrefix": "PDF fetch failed: ",
+      "invalidContentType": "Server returned non-PDF content",
+      "cannotLoadPdf": "Unable to load PDF",
+      "inlinePreviewFallback": "Unable to preview PDF inline (usually CORS with presigned links). You can still use the Download button.",
+      "cannotLoadFromServer": "Unable to load PDF from server",
+      "loadError": "Error loading PDF"
+    }
+  },
+  "submitRevision": {
+    "title": "Submit Revision",
+    "revisionPdfLabel": "Revised PDF file",
+    "actions": {
+      "cancel": "Cancel",
+      "submit": "Submit Revision"
+    },
+    "dropzone": {
+      "primary": "Drag and drop a PDF file or click to select",
+      "secondary": "Only PDF files are supported"
+    },
+    "notes": {
+      "label": "Revision notes (optional)",
+      "placeholder": "Describe the changes you made..."
+    },
+    "errors": {
+      "selectPdf": "Please select a PDF file",
+      "submitFailed": "Unable to submit revision"
+    }
+  },
+  "inviteReviewersDialog": {
+    "title": "Manage reviewers",
+    "actions": {
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
+    "invitedReviewersLabel": "Invited reviewers:",
+    "noInvitedReviewers": "No reviewers invited yet",
+    "inviteMethodLabel": "Reviewer invitation method",
+    "methods": {
+      "existing": "Select from existing users",
+      "manual": "Enter new reviewer information"
+    },
+    "selectReviewerLabel": "Select reviewers",
+    "selectReviewerPlaceholder": "Select reviewers",
+    "manual": {
+      "nameLabel": "Full name",
+      "namePlaceholder": "Enter reviewer full name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter reviewer email",
+      "institutionLabel": "Institution",
+      "institutionPlaceholder": "Select institution"
+    },
+    "messages": {
+      "inviteSuccess": "Reviewer invited successfully.",
+      "inviteFailedPrefix": "Unable to invite reviewer. ",
+      "tryAgain": "Please try again."
+    },
+    "errors": {
+      "invalidEmail": "Invalid email. Please check again."
+    }
+  },
+  "userManagement": {
+    "title": "User Management",
+    "empty": "No users match the current filters.",
+    "columns": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "detail": "Detail",
+      "delete": "Delete",
+      "create": "Create user"
+    },
+    "create": {
+      "title": "Create new user",
+      "nameLabel": "Name",
+      "namePlaceholder": "Enter full name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter email",
+      "roleLabel": "Role",
+      "institutionLabel": "Institution (optional)",
+      "institutionPlaceholder": "Select institution",
+      "trackRequiredLabel": "Track (required for Editor)",
+      "trackOptionalLabel": "Track (optional)",
+      "trackPlaceholder": "Select track",
+      "noneOption": "(None)",
+      "loading": "Loading..."
+    },
+    "filters": {
+      "nameLabel": "Name",
+      "namePlaceholder": "Filter by name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Filter by email",
+      "roleLabel": "Role",
+      "statusLabel": "Status",
+      "all": "All"
+    },
+    "detail": {
+      "title": "User details",
+      "close": "Close",
+      "id": "ID",
+      "name": "Name",
+      "email": "Email",
+      "primaryRole": "Primary role",
+      "allRoles": "All roles",
+      "status": "Status",
+      "institution": "Institution",
+      "track": "Track",
+      "gender": "Gender",
+      "nationality": "Nationality",
+      "academicStatus": "Academic status",
+      "createdAt": "Created at",
+      "updatedAt": "Last updated"
+    }
+  },
+  "trackManagement": {
+    "title": "Track Management",
+    "selectConferenceLabel": "Select conference *",
+    "selectConferencePlaceholder": "Select a conference to manage tracks",
+    "selectConferenceHint": "Please select a conference to view and manage tracks",
+    "createTitle": "Create new track",
+    "createTrackNamePlaceholder": "Track name",
+    "createDescriptionPlaceholder": "Description",
+    "createMinRevPlaceholder": "Min Rev",
+    "loading": "Loading track list...",
+    "empty": "No tracks in this conference",
+    "columns": {
+      "trackName": "Track name",
+      "description": "Description",
+      "minReviews": "Min Reviews",
+      "minReviewsPlaceholder": "Default",
+      "active": "Active",
+      "chiefEditor": "Chief editor",
+      "actions": "Actions"
+    },
+    "editor": {
+      "placeholder": "Select user to assign",
+      "assign": "Assign",
+      "none": "No chief editor"
+    },
+    "actions": {
+      "save": "Save",
+      "delete": "Delete",
+      "create": "Create"
+    },
+    "errors": {
+      "selectConferenceFirst": "Please select a conference first",
+      "trackNameRequired": "Track name is required"
+    },
+    "messages": {
+      "unknownError": "Unknown error",
+      "createSuccess": "Track created successfully",
+      "updateSuccess": "Track updated successfully",
+      "deleteSuccess": "Track deleted successfully",
+      "assignEditorSuccess": "Chief editor assigned successfully",
+      "removeEditorSuccess": "Chief editor assignment removed successfully",
+      "createFailedPrefix": "Failed to create track: ",
+      "updateFailedPrefix": "Failed to update track: ",
+      "deleteFailedPrefix": "Failed to delete track: ",
+      "assignEditorFailedPrefix": "Failed to assign chief editor: ",
+      "removeEditorFailedPrefix": "Failed to remove chief editor assignment: "
+    }
+  },
+  "topicManagement": {
+    "title": "Topic Management",
+    "selectConferenceLabel": "Select conference *",
+    "selectConferencePlaceholder": "Select a conference to manage topics",
+    "selectConferenceHint": "Please select a conference to view and manage topics",
+    "filterByTrackLabel": "Filter by track (optional)",
+    "filterByTrackPlaceholder": "All topics",
+    "empty": "No topics",
+    "columns": {
+      "name": "Topic name",
+      "track": "Track",
+      "description": "Description",
+      "orderIndex": "Order",
+      "active": "Active",
+      "actions": "Actions"
+    },
+    "common": {
+      "conferenceWide": "- (Conference-wide) -",
+      "dash": "-"
+    },
+    "actions": {
+      "createNew": "Create new topic",
+      "create": "Create",
+      "update": "Update",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel"
+    },
+    "modal": {
+      "createTitle": "Create new topic",
+      "editTitle": "Edit topic"
+    },
+    "form": {
+      "nameLabel": "Topic name *",
+      "namePlaceholder": "e.g. Machine Learning, Natural Language Processing",
+      "trackLabel": "Track (optional)",
+      "trackPlaceholder": "Conference-wide",
+      "orderIndexLabel": "Display order",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Detailed topic description",
+      "activeLabel": "Active"
+    },
+    "confirmDelete": {
+      "title": "Confirm deletion",
+      "content": "Are you sure you want to delete this topic?"
+    },
+    "errors": {
+      "selectConferenceFirst": "Please select a conference first",
+      "topicNameRequired": "Topic name is required"
+    },
+    "messages": {
+      "unknownError": "Unknown error",
+      "createSuccess": "Topic created successfully",
+      "updateSuccess": "Topic updated successfully",
+      "deleteSuccess": "Topic deleted successfully",
+      "createFailedPrefix": "Failed to create topic: ",
+      "updateFailedPrefix": "Failed to update topic: ",
+      "deleteFailedPrefix": "Failed to delete topic: "
+    }
+  },
+  "conferenceManagement": {
+    "title": "Conference Management",
+    "empty": "No conferences",
+    "common": {
+      "dash": "-"
+    },
+    "columns": {
+      "name": "Conference name",
+      "shortName": "Short code",
+      "seasonYear": "Season/Year",
+      "status": "Status",
+      "deadline": "Deadline",
+      "minReviewsShort": "Min Reviews",
+      "actions": "Actions"
+    },
+    "actions": {
+      "createNew": "Create new conference",
+      "create": "Create",
+      "update": "Update",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel"
+    },
+    "modal": {
+      "createTitle": "Create new conference",
+      "editTitle": "Edit conference"
+    },
+    "form": {
+      "nameLabel": "Conference name *",
+      "namePlaceholder": "e.g. AI Summit 2026",
+      "shortNameLabel": "Short code *",
+      "shortNamePlaceholder": "e.g. AI2026",
+      "seasonLabel": "Season",
+      "seasonPlaceholder": "e.g. Spring, Fall",
+      "yearLabel": "Year",
+      "yearPlaceholder": "e.g. 2026",
+      "statusLabel": "Status *",
+      "deadlineLabel": "Submission deadline",
+      "deadlinePlaceholder": "Select deadline",
+      "minReviewsLabel": "Minimum completed reviews",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Detailed conference description"
+    },
+    "confirmDelete": {
+      "title": "Confirm deletion",
+      "content": "Are you sure you want to delete this conference?"
+    },
+    "errors": {
+      "nameAndShortNameRequired": "Name and short code are required"
+    },
+    "messages": {
+      "unknownError": "Unknown error",
+      "createSuccess": "Conference created successfully",
+      "updateSuccess": "Conference updated successfully",
+      "deleteSuccess": "Conference deleted successfully",
+      "createFailedPrefix": "Failed to create conference: ",
+      "updateFailedPrefix": "Failed to update conference: ",
+      "deleteFailedPrefix": "Failed to delete conference: "
+    }
+  },
+  "unauthorized": {
+    "title": "You do not have access",
+    "subtitle": "Please contact the administrator if you think this is a mistake.",
+    "backHome": "Back to home"
+  },
+  "institutionManagement": {
+    "title": "Institution Management",
+    "loading": "Loading institutions...",
+    "empty": "No institutions available.",
+    "columns": {
+      "name": "Name",
+      "country": "Country",
+      "website": "Website",
+      "logo": "Logo",
+      "actions": "Actions"
+    },
+    "actions": {
+      "save": "Save",
+      "delete": "Delete",
+      "create": "Create"
+    },
+    "form": {
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. ABC University",
+      "countryLabel": "Country",
+      "countryPlaceholder": "e.g. Vietnam",
+      "websiteLabel": "Website",
+      "websitePlaceholder": "https://example.edu",
+      "logoLabel": "Logo",
+      "logoPlaceholder": "https://.../logo.png"
+    }
+  }
+}

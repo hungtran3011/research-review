@@ -1,4 +1,4 @@
-import { Input, Button, Typography, Select, Form, Alert } from 'antd'
+import { Input, Button, Typography, Select, Form, Alert, theme as antdTheme } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { FileOutlined, CloseOutlined } from '@ant-design/icons'
@@ -6,6 +6,7 @@ import { PdfViewer } from '../common/PdfViewer'
 import { useNavigate } from 'react-router'
 import { articleService } from '../../services/article.service'
 import { attachmentService } from '../../services/attachment.service'
+import { articleVersionService } from '../../services/article-version.service'
 import { AttachmentKind } from '../../constants/attachment-kind'
 import { useInstitutions } from '../../hooks/useInstitutionTrack'
 import { useSubmissionMetadata } from '../../hooks/useArticles'
@@ -13,23 +14,9 @@ import { useBasicToast } from '../../hooks/useBasicToast'
 import { useCurrentUser } from '../../hooks/useUser'
 import { useAuthStore } from '../../stores/authStore'
 import type { InstitutionDto, SubmissionConferenceOptionDto, SubmissionTrackOptionDto } from '../../models'
+import { useTranslation } from 'react-i18next'
 
 const { Title, Text } = Typography
-
-const dropzoneBaseStyle = {
-    border: '2px dashed #d9d9d9',
-    borderRadius: '8px',
-    padding: '32px',
-    textAlign: 'center' as const,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-}
-
-const dropzoneActiveStyle = {
-    ...dropzoneBaseStyle,
-    border: '2px dashed #1890ff',
-    backgroundColor: '#fafafa',
-}
 
 const styles = {
     root: {
@@ -71,7 +58,6 @@ const styles = {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '12px',
-        backgroundColor: '#fafafa',
         borderRadius: '4px',
         border: '1px solid #d9d9d9',
     },
@@ -82,7 +68,6 @@ const styles = {
     },
     removeButton: {
         cursor: 'pointer',
-        color: '#8c8c8c',
     },
     authorCard: {
         border: '1px solid #d9d9d9',
@@ -115,13 +100,34 @@ const createAuthorForm = (): AuthorForm => ({
 })
 
 function SubmitArticle() {
+    const { t, i18n } = useTranslation('common')
+    const { token } = antdTheme.useToken()
+
+    useEffect(() => {
+        document.title = `${t('submitArticle.title')} - Research Review`
+    }, [t])
+
+    const dropzoneBaseStyle = useMemo(() => ({
+        border: `2px dashed ${token.colorBorder}`,
+        borderRadius: '8px',
+        padding: '32px',
+        textAlign: 'center' as const,
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+    }), [token.colorBorder])
+
+    const dropzoneActiveStyle = useMemo(() => ({
+        ...dropzoneBaseStyle,
+        border: `2px dashed ${token.colorPrimary}`,
+    }), [dropzoneBaseStyle, token.colorPrimary])
+
     const [form] = Form.useForm()
-    const [files, setFiles] = useState<File[]>([])
+    const [mainFile, setMainFile] = useState<File | null>(null)
+    const [supplementalFiles, setSupplementalFiles] = useState<File[]>([])
     const [formData, setFormData] = useState({
         title: '',
         abstract: '',
         conclusion: '',
-        link: '',
         conferenceId: '',
         trackId: '',
         topicIds: [] as string[],
@@ -186,6 +192,7 @@ function SubmitArticle() {
         return new Date(submissionDeadline).getTime() < Date.now()
     }, [submissionDeadline])
     const institutions = useMemo(() => institutionsData?.data?.content ?? [], [institutionsData])
+    const dateTimeLocale = i18n.language.toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US'
     const institutionsMap = useMemo<Record<string, InstitutionDto>>(() => {
         const mapper: Record<string, InstitutionDto> = {}
         institutions.forEach((inst) => {
@@ -194,70 +201,112 @@ function SubmitArticle() {
         return mapper
     }, [institutions])
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
-        setFiles(acceptedFiles)
-        
-        // Create object URL for PDF preview
-        if (acceptedFiles.length > 0 && acceptedFiles[0].type === 'application/pdf') {
-            const url = URL.createObjectURL(acceptedFiles[0])
-            setPdfUrl(url)
-        } else {
-            setPdfUrl(null)
+    const onDropMain = useCallback((acceptedFiles: File[]) => {
+        const nextMainFile = acceptedFiles[0] ?? null
+        setMainFile(nextMainFile)
+
+        if (pdfUrl) {
+            URL.revokeObjectURL(pdfUrl)
         }
+
+        if (nextMainFile) {
+            const nextUrl = URL.createObjectURL(nextMainFile)
+            setPdfUrl(nextUrl)
+            return
+        }
+
+        setPdfUrl(null)
+    }, [pdfUrl])
+
+    const onDropSupplemental = useCallback((acceptedFiles: File[]) => {
+        if (acceptedFiles.length === 0) return
+        setSupplementalFiles((prev) => {
+            const existing = new Set(prev.map((f) => `${f.name}-${f.size}-${f.lastModified}`))
+            const next = [...prev]
+            acceptedFiles.forEach((file) => {
+                const key = `${file.name}-${file.size}-${file.lastModified}`
+                if (!existing.has(key)) {
+                    next.push(file)
+                    existing.add(key)
+                }
+            })
+            return next
+        })
     }, [])
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
+    const {
+        getRootProps: getMainRootProps,
+        getInputProps: getMainInputProps,
+        isDragActive: isMainDragActive,
+    } = useDropzone({
+        onDrop: onDropMain,
         accept: {
             'application/pdf': ['.pdf'],
-            'application/msword': ['.doc'],
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
         },
         maxSize: 10485760, // 10MB
         multiple: false,
     })
-    
-    const inputProps = getInputProps()
 
-    const removeFile = (index: number) => {
-        setFiles(prev => prev.filter((_, i) => i !== index))
-        // Clean up object URL and reset PDF state
+    const {
+        getRootProps: getSupplementalRootProps,
+        getInputProps: getSupplementalInputProps,
+        isDragActive: isSupplementalDragActive,
+    } = useDropzone({
+        onDrop: onDropSupplemental,
+        maxSize: 104857600, // 100MB
+        multiple: true,
+    })
+
+    const removeMainFile = () => {
+        setMainFile(null)
         if (pdfUrl) {
             URL.revokeObjectURL(pdfUrl)
             setPdfUrl(null)
         }
     }
 
+    const removeSupplementalFile = (index: number) => {
+        setSupplementalFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    useEffect(() => {
+        return () => {
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl)
+            }
+        }
+    }, [pdfUrl])
+
     const handleSubmit = () => {
 
         if (!formData.conferenceId) {
-            error('Vui lòng chọn hội nghị')
+            error(t('submitArticle.errors.selectConference'))
             return
         }
 
         if (isDeadlinePassed) {
-            error('Đã quá hạn nộp bài cho hội nghị đã chọn')
+            error(t('submitArticle.errors.deadlinePassed'))
             return
         }
 
         if (!formData.trackId) {
-            error('Vui lòng chọn chủ đề (track) cho bài báo')
+            error(t('submitArticle.errors.selectTrack'))
             return
         }
 
         if (formData.topicIds.length === 0) {
-            error('Vui lòng chọn ít nhất một topic')
+            error(t('submitArticle.errors.selectTopic'))
             return
         }
 
-        if (!formData.link && files.length === 0) {
-            error('Vui lòng chọn tệp hoặc nhập liên kết tới tài liệu')
+        if (!mainFile) {
+            error(t('submitArticle.errors.uploadMainPdf'))
             return
         }
 
         const invalidAuthor = authors.some(author => !author.name || !author.email || !author.institutionId)
         if (invalidAuthor) {
-            error('Vui lòng điền đầy đủ thông tin cho từng tác giả')
+            error(t('submitArticle.errors.completeAuthorInfo'))
             return
         }
 
@@ -286,7 +335,7 @@ function SubmitArticle() {
                     title: formData.title,
                     abstract: formData.abstract,
                     conclusion: formData.conclusion,
-                    link: files.length > 0 ? '' : formData.link,
+                    link: '',
                     conferenceId: formData.conferenceId,
                     trackId: formData.trackId,
                     topicIds: formData.topicIds,
@@ -294,29 +343,48 @@ function SubmitArticle() {
                 })
                 const articleId = createResp.data?.id
                 if (!articleId) {
-                    throw new Error('Article creation failed')
+                    throw new Error(t('submitArticle.errors.articleCreateFailed'))
                 }
 
-                if (files.length > 0) {
-                    const file = files[0]
-                    const uploadResp = await attachmentService.uploadFile(articleId, file, {
+                const mainUploadResp = await attachmentService.uploadFile(articleId, mainFile, {
+                    version: 1,
+                    kind: AttachmentKind.SUBMISSION,
+                })
+                const mainAttachment = mainUploadResp.data
+                if (!mainAttachment?.id) {
+                    throw new Error(t('submitArticle.errors.mainUploadFailed'))
+                }
+
+                const versionResp = await articleVersionService.createVersion(articleId, {
+                    versionNumber: 1,
+                    mainAttachmentId: mainAttachment.id,
+                })
+                if (!versionResp.data?.id) {
+                    throw new Error(t('submitArticle.errors.versionCreateFailed'))
+                }
+
+                for (const supplementalFile of supplementalFiles) {
+                    const supplementalResp = await attachmentService.uploadFile(articleId, supplementalFile, {
                         version: 1,
-                        kind: AttachmentKind.SUBMISSION,
+                        kind: AttachmentKind.SUPPLEMENTAL,
                     })
-                    const attachment = uploadResp.data
-                    if (!attachment?.id) {
-                        throw new Error('Attachment upload failed')
+                    const supplementalAttachmentId = supplementalResp.data?.id
+                    if (!supplementalAttachmentId) {
+                        throw new Error(t('submitArticle.errors.supplementalUploadFailed', { file: supplementalFile.name }))
                     }
-
-                    // Persist a stable same-origin proxy URL (not a presigned S3 URL, which expires).
-                    await articleService.updateLink(articleId, `${apiBaseUrl}/articles/${articleId}/pdf`)
+                    await articleVersionService.attachSupplement(articleId, 1, {
+                        attachmentId: supplementalAttachmentId,
+                    })
                 }
+
+                // Persist a stable same-origin proxy URL (not a presigned S3 URL, which expires).
+                await articleService.updateLink(articleId, `${apiBaseUrl}/articles/${articleId}/pdf`)
 
                 // navigate to created article
                 navigate(`/articles/${articleId}`)
             } catch (err) {
                 console.error(err)
-                const message = err instanceof Error ? err.message : 'Unable to submit article'
+                const message = err instanceof Error ? err.message : t('submitArticle.errors.submitFailed')
                 error(message)
             } finally {
                 setUploading(false)
@@ -325,9 +393,9 @@ function SubmitArticle() {
     }
 
     const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return '0 Bytes'
+        if (bytes === 0) return t('submitArticle.fileSize.zero')
         const k = 1024
-        const sizes = ['Bytes', 'KB', 'MB', 'GB']
+        const sizes = t('submitArticle.fileSize.units', { returnObjects: true }) as string[]
         const i = Math.floor(Math.log(bytes) / Math.log(k))
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
     }
@@ -354,60 +422,101 @@ function SubmitArticle() {
     }
 
     return (
-        <div style={styles.root}>
+        <div style={{ ...styles.root, backgroundColor: token.colorBgLayout }}>
             <div style={styles.leftColumn}>
                 <div>
-                    <Title level={1}>Nộp bài báo</Title>
+                    <Title level={1}>{t('submitArticle.title')}</Title>
                 </div>
                 <Form form={form} layout="vertical" style={styles.form} onFinish={handleSubmit}>
-                    <Form.Item label="Tên bài báo" required>
+                    <Form.Item label={t('submitArticle.articleTitleLabel')} required>
                         <Input
-                            placeholder="Nhập tên bài báo"
+                            placeholder={t('submitArticle.articleTitlePlaceholder')}
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             required
                         />
                     </Form.Item>
-                    <Form.Item label="Tóm tắt" required>
+                    <Form.Item label={t('submitArticle.abstractLabel')} required>
                         <Input.TextArea
-                            placeholder="Nhập tóm tắt bài báo"
+                            placeholder={t('submitArticle.abstractPlaceholder')}
                             value={formData.abstract}
                             onChange={(e) => setFormData({ ...formData, abstract: e.target.value })}
                             required
                             rows={4}
                         />
                     </Form.Item>
-                    <Form.Item label="Kết luận" required>
+                    <Form.Item label={t('submitArticle.conclusionLabel')} required>
                         <Input.TextArea
-                            placeholder="Nhập phần kết luận"
+                            placeholder={t('submitArticle.conclusionPlaceholder')}
                             value={formData.conclusion}
                             onChange={(e) => setFormData({ ...formData, conclusion: e.target.value })}
                             required
                             rows={4}
                         />
                     </Form.Item>
-                    <Form.Item label="Tệp tài liệu" required tooltip="Kéo thả file để tải lên; hệ thống sẽ tự sinh liên kết">
+                    <Form.Item label={t('submitArticle.mainFileLabel')} required tooltip={t('submitArticle.mainFileTooltip')}>
                         <div
-                            {...getRootProps()}
-                            style={isDragActive ? dropzoneActiveStyle : dropzoneBaseStyle}
+                            {...getMainRootProps()}
+                            style={isMainDragActive ? dropzoneActiveStyle : dropzoneBaseStyle}
                         >
-                            <input type="file" {...inputProps} />
+                            <input type="file" {...getMainInputProps()} />
                             <FileOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
-                            {isDragActive ? (
-                                <Text>Thả file vào đây...</Text>
+                            {isMainDragActive ? (
+                                <Text>{t('submitArticle.mainFileDropActive')}</Text>
                             ) : (
                                 <>
-                                    <Text>Kéo thả file vào đây hoặc click để chọn file</Text>
+                                    <Text>{t('submitArticle.mainFileDropIdle')}</Text>
                                     <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
-                                        PDF, DOC, DOCX (tối đa 10MB)
+                                        {t('submitArticle.mainFileHint')}
                                     </Text>
                                 </>
                             )}
                         </div>
-                        {files.length > 0 && (
+                        {mainFile && (
                             <div style={styles.fileList}>
-                                {files.map((file, index) => (
-                                    <div key={index} style={styles.fileItem}>
+                                <div style={{ ...styles.fileItem, border: `1px solid ${token.colorBorder}` }}>
+                                    <div style={styles.fileInfo}>
+                                        <FileOutlined style={{ fontSize: '24px' }} />
+                                        <div>
+                                            <Text strong>{mainFile.name}</Text>
+                                            <Text type="secondary" style={{ display: 'block' }}>
+                                                {formatFileSize(mainFile.size)}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                    <CloseOutlined
+                                        style={{ ...styles.removeButton, color: token.colorTextSecondary }}
+                                        onClick={removeMainFile}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </Form.Item>
+                    <Form.Item label={t('submitArticle.supplementalLabel')} tooltip={t('submitArticle.supplementalTooltip')}>
+                        <div
+                            {...getSupplementalRootProps()}
+                            style={isSupplementalDragActive ? dropzoneActiveStyle : dropzoneBaseStyle}
+                        >
+                            <input type="file" {...getSupplementalInputProps()} />
+                            <FileOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
+                            {isSupplementalDragActive ? (
+                                <Text>{t('submitArticle.supplementalDropActive')}</Text>
+                            ) : (
+                                <>
+                                    <Text>{t('submitArticle.supplementalDropIdle')}</Text>
+                                    <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
+                                        {t('submitArticle.supplementalHint')}
+                                    </Text>
+                                </>
+                            )}
+                        </div>
+                        {supplementalFiles.length > 0 && (
+                            <div style={styles.fileList}>
+                                {supplementalFiles.map((file, index) => (
+                                    <div
+                                        key={`${file.name}-${file.size}-${file.lastModified}`}
+                                        style={{ ...styles.fileItem, border: `1px solid ${token.colorBorder}` }}
+                                    >
                                         <div style={styles.fileInfo}>
                                             <FileOutlined style={{ fontSize: '24px' }} />
                                             <div>
@@ -418,17 +527,17 @@ function SubmitArticle() {
                                             </div>
                                         </div>
                                         <CloseOutlined
-                                            style={styles.removeButton}
-                                            onClick={() => removeFile(index)}
+                                            style={{ ...styles.removeButton, color: token.colorTextSecondary }}
+                                            onClick={() => removeSupplementalFile(index)}
                                         />
                                     </div>
                                 ))}
                             </div>
                         )}
                     </Form.Item>
-                    <Form.Item label="Hội nghị" required>
+                    <Form.Item label={t('submitArticle.conferenceLabel')} required>
                         <Select
-                            placeholder="Chọn hội nghị"
+                            placeholder={t('submitArticle.conferencePlaceholder')}
                             value={formData.conferenceId || undefined}
                             onChange={(value) => setFormData({ ...formData, conferenceId: value, trackId: '', topicIds: [] })}
                             options={conferences.map((conference) => ({
@@ -441,13 +550,13 @@ function SubmitArticle() {
                         <Alert
                             type={isDeadlinePassed ? 'error' : 'info'}
                             showIcon
-                            message={isDeadlinePassed ? 'Đã quá hạn nộp bài' : 'Hạn nộp bài'}
-                            description={new Date(submissionDeadline).toLocaleString('vi-VN')}
+                            message={isDeadlinePassed ? t('submitArticle.deadlinePassed') : t('submitArticle.deadline')}
+                            description={new Date(submissionDeadline).toLocaleString(dateTimeLocale)}
                         />
                     )}
-                    <Form.Item label="Chủ đề (Track)" required>
+                    <Form.Item label={t('submitArticle.trackLabel')} required>
                         <Select
-                            placeholder="Chọn track"
+                            placeholder={t('submitArticle.trackPlaceholder')}
                             value={formData.trackId || undefined}
                             disabled={!formData.conferenceId}
                             onChange={(value) => setFormData({ ...formData, trackId: value, topicIds: [] })}
@@ -457,10 +566,10 @@ function SubmitArticle() {
                             }))}
                         />
                     </Form.Item>
-                    <Form.Item label="Topics" required>
+                    <Form.Item label={t('submitArticle.topicsLabel')} required>
                         <Select
                             mode="multiple"
-                            placeholder="Chọn topic"
+                            placeholder={t('submitArticle.topicsPlaceholder')}
                             value={formData.topicIds}
                             disabled={!formData.trackId}
                             onChange={(value) => setFormData({ ...formData, topicIds: value })}
@@ -472,33 +581,33 @@ function SubmitArticle() {
                     </Form.Item>
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <Text strong>Danh sách tác giả</Text>
+                            <Text strong>{t('submitArticle.authorsList')}</Text>
                             <Button type="text" onClick={addAuthor}>
-                                Thêm tác giả
+                                {t('submitArticle.addAuthor')}
                             </Button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {authors.map((author, index) => (
-                                <div key={author.id} style={styles.authorCard}>
-                                    <Text strong>Tác giả #{index + 1}</Text>
-                                    <Form.Item label="Tên tác giả" required>
+                                <div key={author.id} style={{ ...styles.authorCard, border: `1px solid ${token.colorBorder}` }}>
+                                    <Text strong>{t('submitArticle.authorNumber', { index: index + 1 })}</Text>
+                                    <Form.Item label={t('submitArticle.authorNameLabel')} required>
                                         <Input
-                                            placeholder="Họ và tên"
+                                            placeholder={t('submitArticle.authorNamePlaceholder')}
                                             value={author.name}
                                             onChange={(e) => handleAuthorChange(index, 'name', e.target.value)}
                                         />
                                     </Form.Item>
-                                    <Form.Item label="Email" required>
+                                    <Form.Item label={t('submitArticle.authorEmailLabel')} required>
                                         <Input
                                             type="email"
-                                            placeholder="email@example.com"
+                                            placeholder={t('submitArticle.authorEmailPlaceholder')}
                                             value={author.email}
                                             onChange={(e) => handleAuthorChange(index, 'email', e.target.value)}
                                         />
                                     </Form.Item>
-                                    <Form.Item label="Đơn vị" required>
+                                    <Form.Item label={t('submitArticle.authorInstitutionLabel')} required>
                                         <Select
-                                            placeholder="Chọn đơn vị"
+                                            placeholder={t('submitArticle.authorInstitutionPlaceholder')}
                                             value={author.institutionId || undefined}
                                             onChange={(value) => handleAuthorChange(index, 'institutionId', value)}
                                             options={institutions.map(inst => ({
@@ -509,71 +618,31 @@ function SubmitArticle() {
                                     </Form.Item>
                                     <div style={styles.authorActions}>
                                         <Text type="secondary">
-                                            {institutionsMap[author.institutionId]?.name || 'Chưa chọn đơn vị'}
+                                            {institutionsMap[author.institutionId]?.name || t('submitArticle.noInstitutionSelected')}
                                         </Text>
                                         <Button
                                             type="default"
                                             onClick={() => removeAuthor(index)}
                                             disabled={authors.length === 1}
                                         >
-                                            Xóa tác giả
+                                            {t('submitArticle.removeAuthor')}
                                         </Button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <Form.Item label="File bài báo (tùy chọn)" tooltip="Dùng để xem trước trước khi gửi lên hệ thống">
-                        <div
-                            {...getRootProps()}
-                            style={isDragActive ? dropzoneActiveStyle : dropzoneBaseStyle}
-                        >
-                            <input type="file" {...inputProps} />
-                            <FileOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
-                            {isDragActive ? (
-                                <Text>Thả file vào đây...</Text>
-                            ) : (
-                                <>
-                                    <Text>Kéo thả file vào đây hoặc click để chọn file</Text>
-                                    <Text type="secondary" style={{ marginTop: '8px', display: 'block' }}>
-                                        PDF, DOC, DOCX (tối đa 10MB)
-                                    </Text>
-                                </>
-                            )}
-                        </div>
-                        {files.length > 0 && (
-                            <div style={styles.fileList}>
-                                {files.map((file, index) => (
-                                    <div key={index} style={styles.fileItem}>
-                                        <div style={styles.fileInfo}>
-                                            <FileOutlined style={{ fontSize: '24px' }} />
-                                            <div>
-                                                <Text strong>{file.name}</Text>
-                                                <Text type="secondary" style={{ display: 'block' }}>
-                                                    {formatFileSize(file.size)}
-                                                </Text>
-                                            </div>
-                                        </div>
-                                        <CloseOutlined
-                                            style={styles.removeButton}
-                                            onClick={() => removeFile(index)}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Form.Item>
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
                         <Button type="primary" htmlType="submit" size="large" loading={uploading} disabled={isDeadlinePassed}>
-                            {uploading ? 'Đang nộp bài...' : 'Nộp bài báo'}
+                            {uploading ? t('submitArticle.submitting') : t('submitArticle.submit')}
                         </Button>
                     </div>
                 </Form>
             </div>
             <div style={styles.rightColumn}>
                 <PdfViewer 
-                    fileUrl={pdfUrl ?? (formData.link || null)} 
-                    emptyMessage="Tải lên file hoặc nhập liên kết để xem trước"
+                    fileUrl={pdfUrl}
+                    emptyMessage={t('submitArticle.previewEmpty')}
                 />
             </div>
         </div>

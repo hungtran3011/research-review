@@ -80,11 +80,11 @@ class CommentServiceImpl(
             null
         }
         if (reviewer == null) {
-            throw AccessDeniedException("Only reviewers can create comment threads")
+            throw AccessDeniedException("comments.onlyReviewerCanCreateThread")
         }
         val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(articleId, reviewer.id)
         if (relation == null || relation.deleted || relation.status != ReviewerInvitationStatus.ACCEPTED) {
-            throw AccessDeniedException("Reviewer must accept the invitation before commenting")
+            throw AccessDeniedException("comments.reviewerMustAcceptInvitation")
         }
 
         val thread = CommentThread().apply {
@@ -115,7 +115,7 @@ class CommentServiceImpl(
     @Transactional
     override fun reply(threadId: String, request: CommentReplyRequestDto): CommentThreadDto {
         val thread = commentThreadRepository.findById(threadId)
-            .orElseThrow { EntityNotFoundException("Comment thread not found with id $threadId") }
+            .orElseThrow { EntityNotFoundException("comments.threadNotFound") }
         articleAccessGuard.fetchAccessibleArticle(thread.article.id)
         ensureThreadPermission(thread)
         val comment = Comment().apply {
@@ -136,7 +136,7 @@ class CommentServiceImpl(
     @Transactional
     override fun updateStatus(threadId: String, request: CommentStatusUpdateRequestDto): CommentThreadDto {
         val thread = commentThreadRepository.findById(threadId)
-            .orElseThrow { EntityNotFoundException("Comment thread not found with id $threadId") }
+            .orElseThrow { EntityNotFoundException("comments.threadNotFound") }
         articleAccessGuard.fetchAccessibleArticle(thread.article.id)
         ensureThreadPermission(thread)
         thread.status = request.status
@@ -206,30 +206,35 @@ class CommentServiceImpl(
     }
 
     private fun ensureThreadPermission(thread: CommentThread) {
-        val viewer = currentUserService.currentUser() ?: throw AccessDeniedException("Access denied")
+        val viewer = currentUserService.currentUser() ?: throw AccessDeniedException("comments.accessDenied")
         when {
             viewer.hasRole(Role.ADMIN) -> return
             viewer.hasRole(Role.EDITOR) -> {
-                val trackId = viewer.track?.id ?: throw AccessDeniedException("Editor track missing")
-                if (thread.article.track.id != trackId) {
-                    throw AccessDeniedException("Editor cannot access this thread")
+                val editorTrackIds = editorRepository.findAllByUserIdAndDeletedFalse(viewer.id)
+                    .map { it.track.id }
+                    .toSet()
+                if (editorTrackIds.isEmpty()) {
+                    throw AccessDeniedException("comments.editorTrackMissing")
+                }
+                if (!editorTrackIds.contains(thread.article.track.id)) {
+                    throw AccessDeniedException("comments.editorCannotAccessThread")
                 }
             }
             viewer.hasRole(Role.REVIEWER) -> {
                 if (!threadBelongsToReviewer(thread, viewer.id)) {
-                    throw AccessDeniedException("Reviewer cannot access this thread")
+                    throw AccessDeniedException("comments.reviewerCannotAccessThread")
                 }
 
-                val reviewerId = thread.reviewer?.id ?: throw AccessDeniedException("Reviewer cannot access this thread")
+                val reviewerId = thread.reviewer?.id ?: throw AccessDeniedException("comments.reviewerCannotAccessThread")
                 val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(thread.article.id, reviewerId)
                 if (relation == null || relation.deleted || relation.status != ReviewerInvitationStatus.ACCEPTED) {
-                    throw AccessDeniedException("Reviewer must accept the invitation before commenting")
+                    throw AccessDeniedException("comments.reviewerMustAcceptInvitation")
                 }
             }
             viewer.hasRole(Role.RESEARCHER) -> {
                 // articleAccessGuard.fetchAccessibleArticle already ensures ownership; nothing extra
             }
-            else -> throw AccessDeniedException("Access denied")
+            else -> throw AccessDeniedException("comments.accessDenied")
         }
     }
 

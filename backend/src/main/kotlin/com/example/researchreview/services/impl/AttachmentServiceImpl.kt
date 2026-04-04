@@ -106,7 +106,7 @@ class AttachmentServiceImpl(
     @Transactional
     override fun finalizeUpload(attachmentId: String, request: AttachmentFinalizeRequestDto): AttachmentDto {
         val attachment = attachmentRepository.findById(attachmentId)
-            .orElseThrow { EntityNotFoundException("Attachment not found") }
+            .orElseThrow { EntityNotFoundException("attachment.notFound") }
         val user = currentUserService.requireUser()
         ensureAttachmentPermission(user.id, attachment)
         attachment.checksum = request.checksum
@@ -130,7 +130,7 @@ class AttachmentServiceImpl(
     @Transactional
     override fun deleteAttachment(attachmentId: String) {
         val attachment = attachmentRepository.findById(attachmentId)
-            .orElseThrow { EntityNotFoundException("Attachment not found") }
+            .orElseThrow { EntityNotFoundException("attachment.notFound") }
         val user = currentUserService.requireUser()
         ensureAttachmentPermission(user.id, attachment)
         attachment.status = com.example.researchreview.constants.AttachmentStatus.DELETED
@@ -140,10 +140,10 @@ class AttachmentServiceImpl(
     @Transactional(readOnly = true)
     override fun downloadAttachment(attachmentId: String): AttachmentDownloadDto {
         val attachment = attachmentRepository.findById(attachmentId)
-            .orElseThrow { EntityNotFoundException("Attachment not found") }
+            .orElseThrow { EntityNotFoundException("attachment.notFound") }
         articleAccessGuard.fetchAccessibleArticle(attachment.article.id)
         val bytes = s3Service.download(bucketName, attachment.s3Key)
-            ?: throw IllegalStateException("Attachment content not found in storage")
+            ?: throw IllegalStateException("attachment.contentNotFoundInStorage")
         return AttachmentDownloadDto(
             bytes = bytes,
             fileName = attachment.fileName,
@@ -154,7 +154,7 @@ class AttachmentServiceImpl(
     @Transactional(readOnly = true)
     override fun downloadUrl(attachmentId: String, expirationSeconds: Long): String {
         val attachment = attachmentRepository.findById(attachmentId)
-            .orElseThrow { EntityNotFoundException("Attachment not found") }
+            .orElseThrow { EntityNotFoundException("attachment.notFound") }
         articleAccessGuard.fetchAccessibleArticle(attachment.article.id)
         return s3Service.createDownloadUrl(bucketName, attachment.s3Key, expirationSeconds)
     }
@@ -180,19 +180,24 @@ class AttachmentServiceImpl(
 
     private fun ensureAttachmentPermission(userId: String, attachment: Attachment) {
         val user = currentUserService.currentUser()
-            ?: throw AccessDeniedException("User not found")
+            ?: throw AccessDeniedException("user.notFound")
         when {
             user.hasRole(Role.ADMIN) -> return
             user.hasRole(Role.EDITOR) -> {
-                val trackId = user.track?.id ?: throw AccessDeniedException("Editor track missing")
-                if (attachment.article.track.id != trackId) {
-                    throw AccessDeniedException("Editor cannot modify this attachment")
+                val editorTrackIds = editorRepository.findAllByUserIdAndDeletedFalse(user.id)
+                    .map { it.track.id }
+                    .toSet()
+                if (editorTrackIds.isEmpty()) {
+                    throw AccessDeniedException("attachment.editorTrackMissing")
+                }
+                if (!editorTrackIds.contains(attachment.article.track.id)) {
+                    throw AccessDeniedException("attachment.editorCannotModify")
                 }
             }
             else -> {
                 val ownerId = attachment.uploadedBy?.id
                 if (ownerId != userId) {
-                    throw AccessDeniedException("Cannot modify attachment")
+                    throw AccessDeniedException("attachment.cannotModify")
                 }
             }
         }

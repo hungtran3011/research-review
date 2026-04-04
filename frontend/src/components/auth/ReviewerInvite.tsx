@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Button, Spin, Typography } from 'antd';
+import { Button, Spin, Typography, theme as antdTheme } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 import { reviewerInviteService } from '../../services/reviewerInvite.service';
@@ -10,6 +11,8 @@ import { useBasicToast } from '../../hooks/useBasicToast';
 const { Title } = Typography;
 
 function ReviewerInvite() {
+  const { t } = useTranslation('common');
+  const { token: themeToken } = antdTheme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
   const { error: showErrorToast } = useBasicToast();
@@ -27,7 +30,7 @@ function ReviewerInvite() {
 
   const lastResolvedTokenRef = React.useRef<string | null>(null);
 
-  document.title = 'Reviewer Invitation - Research Review';
+  document.title = `${t('reviewerInvite.pageTitle')} - Research Review`;
 
   React.useEffect(() => {
     if (!token) {
@@ -52,7 +55,7 @@ function ReviewerInvite() {
         const track = resolved.data?.trackName;
         const authorList = resolved.data?.authors;
         if (!email || !aId) {
-          throw new Error(resolved.message || 'Invalid invitation token');
+          throw new Error(resolved.message || t('reviewerInvite.invalidToken'));
         }
         setEmail(email);
         setArticleId(aId);
@@ -63,14 +66,14 @@ function ReviewerInvite() {
         const maybeAxios = e as { response?: { data?: { message?: string } } };
         const maybeError = e as { message?: string };
         showErrorToast(
-          maybeAxios.response?.data?.message || maybeError.message || 'Invalid invitation token'
+          maybeAxios.response?.data?.message || maybeError.message || t('reviewerInvite.invalidToken')
         );
         navigate('/signin', { replace: true });
       } finally {
         setIsResolving(false);
       }
     })();
-  }, [navigate, token, setEmail, setInviteToken, showErrorToast]);
+  }, [navigate, token, setEmail, setInviteToken, showErrorToast, t]);
 
   const handleGoSignIn = () => {
     navigate('/signin');
@@ -95,7 +98,7 @@ function ReviewerInvite() {
       const maybeAxios = e as { response?: { data?: { message?: string } } };
       const maybeError = e as { message?: string };
       showErrorToast(
-        maybeAxios.response?.data?.message || maybeError.message || 'Có lỗi xảy ra'
+        maybeAxios.response?.data?.message || maybeError.message || t('reviewerInvite.genericError')
       );
     } finally {
       setIsSubmitting(false);
@@ -112,7 +115,7 @@ function ReviewerInvite() {
       const maybeAxios = e as { response?: { data?: { message?: string } } };
       const maybeError = e as { message?: string };
       showErrorToast(
-        maybeAxios.response?.data?.message || maybeError.message || 'Có lỗi xảy ra'
+        maybeAxios.response?.data?.message || maybeError.message || t('reviewerInvite.genericError')
       );
     } finally {
       setIsSubmitting(false);
@@ -125,56 +128,70 @@ function ReviewerInvite() {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: '16px',
-      height: '100%',
-      flexGrow: 1,
-      padding: '0 16px',
+      minHeight: 'calc(100vh - 64px)',
+      padding: '24px 16px',
+      background: themeToken.colorBgLayout,
     }}>
-      {(isResolving || !articleId) ? (
-        <>
-          <Spin size="large" />
-          <Text>Đang xử lý lời mời phản biện...</Text>
-        </>
-      ) : (
-        <>
-          <Title level={1}>Lời mời phản biện</Title>
-          <Text>Bạn được mời phản biện bài báo sau:</Text>
-          <Text strong>
-            {articleTitle || `ID: ${articleId}`}
-          </Text>
-          {authors.length > 0 && (
-            <Text>Tác giả: {authors.join(', ')}</Text>
-          )}
-          {trackName && (
-            <Text>Track: {trackName}</Text>
-          )}
+      <div style={{
+        width: '100%',
+        maxWidth: '560px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '12px',
+        padding: '28px 24px',
+        borderRadius: '12px',
+        background: themeToken.colorBgContainer,
+        border: `1px solid ${themeToken.colorBorderSecondary}`,
+        boxShadow: themeToken.boxShadowTertiary,
+      }}>
+        {(isResolving || !articleId) ? (
+          <>
+            <Spin size="large" />
+            <Text style={{ color: themeToken.colorTextSecondary }}>{t('reviewerInvite.resolving')}</Text>
+          </>
+        ) : (
+          <>
+            <Title level={1} style={{ margin: 0, color: themeToken.colorText }}>{t('reviewerInvite.title')}</Title>
+            <Text style={{ color: themeToken.colorTextSecondary }}>{t('reviewerInvite.description')}</Text>
+            <Text strong style={{ color: themeToken.colorText }}>
+              {articleTitle || t('reviewerInvite.articleId', { id: articleId })}
+            </Text>
+            {authors.length > 0 && (
+              <Text style={{ color: themeToken.colorTextSecondary }}>{t('reviewerInvite.authors', { names: authors.join(', ') })}</Text>
+            )}
+            {trackName && (
+              <Text style={{ color: themeToken.colorTextSecondary }}>{t('reviewerInvite.track', { track: trackName })}</Text>
+            )}
 
-          {!isAuthenticated ? (
-            <>
-              <Text>Vui lòng đăng nhập hoặc đăng ký để xác nhận.</Text>
+            {!isAuthenticated ? (
+              <>
+                <Text style={{ color: themeToken.colorTextSecondary }}>{t('reviewerInvite.authRequired')}</Text>
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                }}>
+                  <Button type="primary" onClick={handleGoSignIn}>{t('reviewerInvite.signIn')}</Button>
+                  <Button onClick={handleGoSignUp}>{t('reviewerInvite.signUp')}</Button>
+                </div>
+              </>
+            ) : (
               <div style={{
                 display: 'flex',
                 gap: '8px',
                 flexWrap: 'wrap',
                 justifyContent: 'center',
               }}>
-                <Button type="primary" onClick={handleGoSignIn}>Đăng nhập</Button>
-                <Button onClick={handleGoSignUp}>Đăng ký</Button>
+                <Button type="primary" onClick={handleAccept} loading={isSubmitting}>{t('reviewerInvite.accept')}</Button>
+                <Button onClick={handleDecline} loading={isSubmitting}>{t('reviewerInvite.decline')}</Button>
               </div>
-            </>
-          ) : (
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-            }}>
-              <Button type="primary" onClick={handleAccept} loading={isSubmitting}>Nhận lời phản biện</Button>
-              <Button onClick={handleDecline} loading={isSubmitting}>Từ chối</Button>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

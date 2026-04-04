@@ -24,6 +24,11 @@ class Attachment : BaseEntity() {
     @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     var uploadedBy: User? = null
 
+    @ManyToOne
+    @JoinColumn(name = "article_version_id")
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
+    var articleVersion: ArticleVersion? = null
+
     var version: Int = 1
     var fileName: String = ""
     var fileSize: Long = 0

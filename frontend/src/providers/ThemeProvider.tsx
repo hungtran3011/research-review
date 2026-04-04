@@ -1,7 +1,5 @@
-import { FluentProvider, Toaster, webDarkTheme, webLightTheme } from '@fluentui/react-components'
 import { App as AntApp, ConfigProvider, theme as antTheme } from 'antd'
 import { useThemeStore } from '../stores/themeStore.ts'
-import { APP_TOASTER_ID } from '../constants/toaster'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const theme = useThemeStore((state) => state.theme)
@@ -15,10 +13,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             }}
         >
             <AntApp>
-                <FluentProvider theme={theme === "light" ? webLightTheme : webDarkTheme}>
-                    <Toaster toasterId={APP_TOASTER_ID} />
-                    {children}
-                </FluentProvider>
+                {children}
             </AntApp>
         </ConfigProvider>
     )

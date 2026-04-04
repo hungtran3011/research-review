@@ -5,14 +5,14 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 
 data class VerifyTokenRequestDto(
-    @field:Email(message = "Invalid email format")
-    @field:NotBlank(message = "Email is required")
+    @field:Email(message = "{validation.email.invalid}")
+    @field:NotBlank(message = "{validation.email.required}")
     val email: String,
 
-    @field:NotBlank(message = "Token is required")
+    @field:NotBlank(message = "{validation.token.required}")
     val token: String,
 
     val isSignUp: Boolean = true,
-    @field:Size(max = 512, message = "Device fingerprint is too long")
+    @field:Size(max = 512, message = "{validation.deviceFingerprint.tooLong}")
     val deviceFingerprint: String? = null
 )

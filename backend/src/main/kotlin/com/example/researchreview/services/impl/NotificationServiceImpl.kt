@@ -33,9 +33,9 @@ class NotificationServiceImpl(
     override fun markAsRead(notificationId: String) {
         val user = currentUserService.requireUser()
         val notification = notificationRepository.findById(notificationId)
-            .orElseThrow { EntityNotFoundException("Notification not found") }
+            .orElseThrow { EntityNotFoundException("notification.notFound") }
         if (notification.user.id != user.id) {
-            throw AccessDeniedException("Cannot modify notification")
+            throw AccessDeniedException("notification.cannotModify")
         }
         notification.readAt = notification.readAt ?: LocalDateTime.now()
         notificationRepository.save(notification)
@@ -49,7 +49,7 @@ class NotificationServiceImpl(
         contextType: String?
     ) {
         val user = userRepository.findByIdAndDeletedFalse(userId)
-            .orElseThrow { EntityNotFoundException("User not found: $userId") }
+            .orElseThrow { EntityNotFoundException("user.notFound") }
         val notification = Notification().apply {
             this.user = user
             this.type = type

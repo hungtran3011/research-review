@@ -1,5 +1,7 @@
 package com.example.researchreview.services
 
+import com.example.researchreview.constants.ArticleStatus
+import com.example.researchreview.dtos.ArticleDashboardStatsDto
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.InitialReviewRequestDto
@@ -11,6 +13,19 @@ import org.springframework.web.multipart.MultipartFile
 
 interface ArticlesService {
     fun getAll(pageable: Pageable): Page<ArticleDto>
+    fun getAll(
+        pageable: Pageable,
+        title: String?,
+        author: String?,
+        status: ArticleStatus?
+    ): Page<ArticleDto>
+
+    fun getDashboardStats(
+        title: String?,
+        author: String?,
+        status: ArticleStatus?
+    ): ArticleDashboardStatsDto
+
     fun getById(id: String): ArticleDto
     fun create(articleDto: ArticleRequestDto): ArticleDto
     fun update(articleDto: ArticleRequestDto): ArticleDto

@@ -1,6 +1,8 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ArticleStatus
 import com.example.researchreview.dtos.ArticleDto
+import com.example.researchreview.dtos.ArticleDashboardStatsDto
 import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.InitialReviewRequestDto
@@ -51,20 +53,41 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to submit article"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
     }
 
     @GetMapping
-    fun list(pageable: Pageable): ResponseEntity<BaseResponseDto<PageResponseDto<ArticleDto>>> {
-        val articles = articlesService.getAll(pageable)
+    fun list(
+        pageable: Pageable,
+        @RequestParam(required = false) title: String?,
+        @RequestParam(required = false) author: String?,
+        @RequestParam(required = false) status: ArticleStatus?,
+    ): ResponseEntity<BaseResponseDto<PageResponseDto<ArticleDto>>> {
+        val articles = articlesService.getAll(pageable, title, author, status)
         return ResponseEntity.ok(
             BaseResponseDto(
                 code = 200,
                 message = "Articles retrieved successfully",
                 data = PageResponseDto.from(articles)
+            )
+        )
+    }
+
+    @GetMapping("/dashboard/stats")
+    fun dashboardStats(
+        @RequestParam(required = false) title: String?,
+        @RequestParam(required = false) author: String?,
+        @RequestParam(required = false) status: ArticleStatus?,
+    ): ResponseEntity<BaseResponseDto<ArticleDashboardStatsDto>> {
+        val stats = articlesService.getDashboardStats(title, author, status)
+        return ResponseEntity.ok(
+            BaseResponseDto(
+                code = 200,
+                message = "article.dashboard.stats.retrieved",
+                data = stats,
             )
         )
     }
@@ -81,10 +104,10 @@ class ArticleController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
-            ResponseEntity.ok(
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "Article not found"
+                    message = ex.message ?: "article.notFound"
                 )
             )
         }
@@ -107,7 +130,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Unable to update article"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -128,7 +151,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "Article not found"
+                    message = ex.message ?: "article.notFound"
                 )
             )
         }
@@ -153,7 +176,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "Article not found"
+                    message = ex.message ?: "article.notFound"
                 )
             )
         }
@@ -194,14 +217,14 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "Article or institution not found"
+                    message = ex.message ?: "error.not.found"
                 )
             )
         } catch (ex: Exception) {
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = ex.message ?: "Failed to assign reviewer"
+                    message = ex.message ?: "error.invalid.request"
                 )
             )
         }
@@ -225,7 +248,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Failed to mark reviews completed"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -249,7 +272,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Failed to request revisions"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -272,7 +295,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Failed to approve article"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -295,7 +318,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Failed to reject article"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -320,7 +343,7 @@ class ArticleController(
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = ex.message ?: "Failed to contact reviewers"
+                    message = ex.message ?: "error.invalid.request"
                 )
             )
         }
@@ -358,7 +381,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Failed to submit revision"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }
@@ -382,7 +405,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "Failed to start revisions"
+                    message = ex.message ?: "error.internal.server"
                 )
             )
         }

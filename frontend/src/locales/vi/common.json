@@ -1,0 +1,930 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "help": "Trợ giúp",
+    "submitArticle": "Nộp bài báo",
+    "myProfile": "Hồ sơ của tôi",
+    "admin": "Quản trị",
+    "profile": "Thông tin cá nhân",
+    "signOut": "Đăng xuất",
+    "signInSignUp": "Đăng nhập / Đăng ký",
+    "menu": "Menu"
+  },
+  "lang": {
+    "vi": "VI",
+    "en": "EN"
+  },
+  "signIn": {
+    "title": "Đăng nhập với email",
+    "subtitle": "Nhập email để nhận liên kết đăng nhập",
+    "checkingDevice": "Đang kiểm tra thiết bị...",
+    "emailPlaceholder": "Email của bạn",
+    "genericError": "Có lỗi xảy ra. Vui lòng thử lại.",
+    "noAccount": "Chưa có tài khoản?",
+    "signUpNow": "Đăng ký ngay"
+  },
+  "signUp": {
+    "title": "Đăng ký với email",
+    "subtitle": "Nhập email để bắt đầu đăng ký thông tin nộp bài báo",
+    "checkingDevice": "Đang kiểm tra thiết bị...",
+    "emailPlaceholder": "Email của bạn",
+    "genericError": "Có lỗi xảy ra. Vui lòng thử lại.",
+    "haveAccount": "Đã có tài khoản?",
+    "signInNow": "Đăng nhập ngay"
+  },
+  "verifyFailed": {
+    "pageTitle": "Xác thực email không thành công",
+    "title": "Xác thực email không thành công",
+    "messagePrefix": "Token xác thực đã hết hạn. Hãy thực hiện lại bước đăng ký tài khoản",
+    "linkText": "tại đây"
+  },
+  "verifySuccess": {
+    "signUpTitle": "Xác thực email thành công",
+    "signInTitle": "Đăng nhập thành công",
+    "signUpRedirect": "Bạn sẽ tiếp tục đến với bước điền thông tin cá nhân sau 5 giây...",
+    "signInRedirect": "Bạn sẽ được chuyển đến trang chủ sau 5 giây..."
+  },
+  "verifyToken": {
+    "pageTitle": "Đang xác thực",
+    "title": "Đang xác thực email của bạn..."
+  },
+  "needsVerify": {
+    "pageTitle": "Xác thực email",
+    "title": "Kiểm tra email của bạn",
+    "sentTo": "Chúng tôi đã gửi một liên kết xác thực đến",
+    "instruction": "Nhấp vào liên kết trong email để hoàn tất {{action}}",
+    "signUpAction": "đăng ký",
+    "signInAction": "đăng nhập",
+    "resendSuccess": "✓ Email xác thực mới đã được gửi thành công!",
+    "resendFailed": "✗ Không thể gửi email. Vui lòng thử lại sau.",
+    "notReceived": "Không nhận được email?",
+    "resendAfter": "Gửi lại sau {{time}}",
+    "resend": "Gửi lại",
+    "back": "Quay lại"
+  },
+  "reviewerInvite": {
+    "pageTitle": "Lời mời phản biện",
+    "title": "Lời mời phản biện",
+    "description": "Bạn được mời phản biện bài báo sau:",
+    "articleId": "ID: {{id}}",
+    "authors": "Tác giả: {{names}}",
+    "track": "Track: {{track}}",
+    "resolving": "Đang xử lý lời mời phản biện...",
+    "authRequired": "Vui lòng đăng nhập hoặc đăng ký để xác nhận.",
+    "signIn": "Đăng nhập",
+    "signUp": "Đăng ký",
+    "accept": "Nhận lời phản biện",
+    "decline": "Từ chối",
+    "invalidToken": "Token lời mời không hợp lệ",
+    "genericError": "Có lỗi xảy ra"
+  },
+  "route": {
+    "checkingAccess": "Đang kiểm tra quyền truy cập...",
+    "restoringSession": "Đang khôi phục phiên đăng nhập..."
+  },
+  "toc": {
+    "title": "Mục lục",
+    "empty": "Không có mục lục",
+    "close": "Đóng mục lục"
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "empty": "Không có thông báo",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "ariaLabel": "Thông báo",
+    "commentUpdated": "Có cập nhật nhận xét",
+    "pageNumber": "Trang {{page}}",
+    "revisionSubmitted": "Đã nộp bản sửa",
+    "revisionSubmittedVersion": "Đã nộp bản sửa v{{version}}",
+    "invitedEmail": "Mời: {{email}}",
+    "types": {
+      "articleSubmitted": "Bài báo đã nộp",
+      "articleStatusChanged": "Trạng thái bài báo thay đổi",
+      "articleRevisionSubmitted": "Tác giả đã nộp bản sửa",
+      "reviewerInvited": "Mời phản biện",
+      "reviewerRevoked": "Thu hồi phản biện",
+      "commentActivity": "Hoạt động nhận xét",
+      "fileUploaded": "Tệp đã tải lên"
+    },
+    "articleStatus": {
+      "submitted": "Đã nộp",
+      "pendingReview": "Chờ phản biện",
+      "inReview": "Đang phản biện",
+      "reviewsCompleted": "Đã hoàn tất phản biện",
+      "revisionsRequested": "Yêu cầu sửa",
+      "revisions": "Đang sửa",
+      "rejectRequested": "Đề nghị loại bỏ",
+      "acceptRequested": "Đề nghị chấp thuận",
+      "rejected": "Đã từ chối",
+      "accepted": "Đã chấp nhận"
+    }
+  },
+  "articleDetails": {
+    "you": "Bạn",
+    "user": "Người dùng",
+    "reviewer": "Người phản biện",
+    "submittedDate": "Ngày nộp",
+    "track": "Lĩnh vực",
+    "abstract": "Tóm tắt",
+    "conclusion": "Kết luận",
+    "authors": "Tác giả",
+    "reviewers": "Người phản biện",
+    "loading": "Đang tải thông tin bài báo...",
+    "loadFailed": "Không thể tải thông tin bài báo",
+    "backHome": "Quay lại trang chủ",
+    "unassigned": "Chưa gán",
+    "notUpdated": "Chưa cập nhật",
+    "noComments": "Chưa có nhận xét nào",
+    "replyPlaceholder": "Nhập câu trả lời...",
+    "cancel": "Hủy",
+    "send": "Gửi",
+    "reply": "Trả lời",
+    "download": "Tải xuống",
+    "confirmApprove": "Chấp thuận bài báo này?",
+    "confirmReject": "Từ chối bài báo này?",
+    "processing": "Đang xử lý...",
+    "approve": "Chấp thuận",
+    "reject": "Từ chối",
+    "initialReview": "Đánh giá ban đầu",
+    "manageReviewers": "Quản lý reviewer",
+    "reviewArticle": "Phản biện bài báo",
+    "submitRevision": "Nộp Bài Sửa Chữa",
+    "noPdf": "Không có bài báo để xem",
+    "hideInfo": "Ẩn thông tin",
+    "showInfo": "Hiện thông tin",
+    "comments": "Nhận xét",
+    "commentsCount": "Nhận xét ({{count}})",
+    "hideComments": "Ẩn nhận xét",
+    "showComments": "Hiện nhận xét",
+    "structuredReviewChair": "Structured review (Chair)",
+    "reviewProgress": "Hoàn tất phản biện: {{submitted}}/{{total}}",
+    "avgOverallScore": "Điểm overall trung bình: {{score}}",
+    "notAvailable": "Chưa có",
+    "noRecommendation": "Chưa có khuyến nghị",
+    "reviewerStatus": "Reviewer {{index}}: {{status}}",
+    "reviewerLabel": "Người phản biện {{index}}",
+    "submitted": "Đã nộp",
+    "notSubmitted": "Chưa nộp",
+    "structuredReviewAnonymous": "Structured review (Ẩn danh)",
+    "noAnonymousReviews": "Chưa có phản biện ẩn danh.",
+    "submittedAt": "Nộp lúc",
+    "initialReviewNote": "Ghi chú ban đầu",
+    "nextSteps": "Các bước tiếp theo",
+    "materialsByVersion": "Tài liệu theo phiên bản",
+    "versionLabel": "Phiên bản {{version}}",
+    "mainManuscript": "Bản thảo chính",
+    "supplements": "Tệp bổ sung",
+    "noSupplements": "Không có tệp bổ sung",
+    "loadMaterialsFailed": "Không thể tải tài liệu theo phiên bản"
+  },
+  "articleWorkspace": {
+    "pageTitle": "Bài báo",
+    "notFound": "Không tìm thấy bài báo.",
+    "loading": "Đang tải..."
+  },
+  "appHome": {
+    "fallbackResearcher": "Nhà nghiên cứu",
+    "welcomeTitle": "Chào mừng đến với Research Review",
+    "welcomeAuthed": "Xin chào, {{name}}! Quản lý bài nộp và phản biện của bạn.",
+    "welcomeGuest": "Đăng ký để nộp và phản biện các bài báo nghiên cứu.",
+    "landingTitle": "Trang giới thiệu",
+    "landingDescription": "Khám phá hội nghị, theo dõi bài nộp và cộng tác với biên tập viên và phản biện viên.",
+    "signIn": "Đăng nhập",
+    "createAccount": "Tạo tài khoản",
+    "learnMore": "Tìm hiểu thêm",
+    "recentArticlesTitle": "Bài báo gần đây",
+    "prevPage": "Trang trước",
+    "nextPage": "Trang sau",
+    "filterByTitle": "Lọc theo tiêu đề bài báo",
+    "filterByAuthor": "Lọc theo tác giả",
+    "allStatuses": "Tất cả trạng thái",
+    "loadingArticles": "Đang tải danh sách bài báo...",
+    "loadArticlesFailed": "Không thể tải danh sách bài báo.",
+    "noArticles": "Chưa có bài báo nào trong hệ thống.",
+    "viewDetails": "Xem chi tiết",
+    "trackLabel": "Track: {{track}}",
+    "expandMore": "xem thêm",
+    "submittedAt": "Gửi lúc:",
+    "pageLabel": "Trang {{page}}",
+    "quickActionsTitle": "Thao tác nhanh",
+    "submitNewArticle": "Nộp bài báo mới",
+    "viewMyReviews": "Xem phản biện của tôi",
+    "statsTitle": "Thống kê",
+    "loadingStats": "Đang tải thống kê...",
+    "stats": {
+      "total": "Tổng số bài báo",
+      "pending": "Đang chờ phản biện",
+      "accepted": "Đã chấp nhận",
+      "rejected": "Đã từ chối"
+    },
+    "notificationsTitle": "Thông báo",
+    "notificationsPlaceholder": "Bạn có một yêu cầu phản biện mới.",
+    "footerCopyright": "© 2026 Research Review. Đã đăng ký bản quyền."
+  },
+  "submitArticle": {
+    "title": "Nộp bài báo",
+    "articleTitleLabel": "Tiêu đề bài báo",
+    "articleTitlePlaceholder": "Nhập tiêu đề bài báo",
+    "abstractLabel": "Tóm tắt",
+    "abstractPlaceholder": "Nhập tóm tắt bài báo",
+    "conclusionLabel": "Kết luận",
+    "conclusionPlaceholder": "Nhập kết luận bài báo",
+    "mainFileLabel": "Tệp chính",
+    "mainFileTooltip": "Tệp PDF chính của bài báo",
+    "mainFileDropActive": "Thả tệp PDF vào đây...",
+    "mainFileDropIdle": "Kéo và thả tệp PDF vào đây, hoặc nhấp để chọn tệp",
+    "mainFileHint": "Chỉ nhận tệp PDF, tối đa 10MB",
+    "supplementalLabel": "Tài liệu bổ sung",
+    "supplementalTooltip": "Các tệp bổ sung (không bắt buộc)",
+    "supplementalDropActive": "Thả tệp vào đây...",
+    "supplementalDropIdle": "Kéo và thả tệp vào đây, hoặc nhấp để chọn tệp",
+    "supplementalHint": "Tối đa 100MB mỗi tệp",
+    "conferenceLabel": "Hội nghị",
+    "conferencePlaceholder": "Chọn hội nghị",
+    "deadlinePassed": "Đã quá hạn nộp bài cho hội nghị này",
+    "deadline": "Hạn nộp bài",
+    "trackLabel": "Track",
+    "trackPlaceholder": "Chọn track",
+    "topicsLabel": "Chủ đề",
+    "topicsPlaceholder": "Chọn chủ đề",
+    "authorsList": "Danh sách tác giả",
+    "addAuthor": "Thêm tác giả",
+    "authorNumber": "Tác giả {{index}}",
+    "authorNameLabel": "Tên tác giả",
+    "authorNamePlaceholder": "Nhập tên tác giả",
+    "authorEmailLabel": "Email tác giả",
+    "authorEmailPlaceholder": "Nhập email tác giả",
+    "authorInstitutionLabel": "Tổ chức",
+    "authorInstitutionPlaceholder": "Chọn tổ chức",
+    "noInstitutionSelected": "Chưa chọn tổ chức",
+    "removeAuthor": "Xóa tác giả",
+    "submitting": "Đang nộp...",
+    "submit": "Nộp bài báo",
+    "previewEmpty": "Không có tệp PDF để xem trước",
+    "fileSize": {
+      "zero": "0 Bytes",
+      "units": ["Bytes", "KB", "MB", "GB"]
+    },
+    "errors": {
+      "selectConference": "Vui lòng chọn hội nghị",
+      "deadlinePassed": "Đã quá hạn nộp bài",
+      "selectTrack": "Vui lòng chọn track",
+      "selectTopic": "Vui lòng chọn ít nhất một chủ đề",
+      "uploadMainPdf": "Vui lòng tải lên tệp PDF chính",
+      "completeAuthorInfo": "Vui lòng điền đầy đủ thông tin tác giả",
+      "articleCreateFailed": "Không thể tạo bài báo",
+      "mainUploadFailed": "Không thể tải lên tệp chính",
+      "versionCreateFailed": "Không thể tạo gói phiên bản",
+      "supplementalUploadFailed": "Không thể tải lên tệp bổ sung: {{file}}",
+      "submitFailed": "Nộp bài báo thất bại"
+    }
+  },
+  "profile": {
+    "pageTitle": "Thông tin cá nhân",
+    "title": "Thông tin cá nhân",
+    "updateSuccess": "Cập nhật thông tin thành công!",
+    "updateError": "Có lỗi xảy ra khi cập nhật thông tin",
+    "common": {
+      "loading": "Đang tải..."
+    },
+    "roleOptions": {
+      "admin": "Quản trị viên",
+      "user": "Người dùng",
+      "editor": "Biên tập viên",
+      "researcher": "Nhà nghiên cứu",
+      "reviewer": "Phản biện"
+    },
+    "genderOptions": {
+      "male": "Nam",
+      "female": "Nữ",
+      "other": "Khác"
+    },
+    "academicStatusOptions": {
+      "gsts": "Giáo sư - Tiến sĩ",
+      "pgsts": "Phó giáo sư - Tiến sĩ",
+      "ts": "Tiến sĩ",
+      "ths": "Thạc sĩ",
+      "cn": "Cử nhân"
+    },
+    "fields": {
+      "email": {
+        "label": "Email",
+        "placeholder": "email@example.com"
+      },
+      "lastName": {
+        "label": "Họ",
+        "tooltip": "Họ và tên đệm, ví dụ Nguyễn Văn",
+        "placeholder": "VD: Nguyễn Văn"
+      },
+      "firstName": {
+        "label": "Tên",
+        "tooltip": "Tên của bạn, ví dụ A",
+        "placeholder": "VD: A"
+      },
+      "phone": {
+        "label": "Số điện thoại",
+        "tooltip": "Số điện thoại 10 số",
+        "placeholder": "VD: 0123456789"
+      },
+      "dateOfBirth": {
+        "label": "Ngày tháng năm sinh",
+        "tooltip": "Ngày tháng năm sinh của bạn",
+        "placeholder": "VD: 01/01/2000"
+      },
+      "role": {
+        "label": "Loại tài khoản",
+        "tooltip": "Chọn loại tài khoản của bạn",
+        "placeholder": "Loại tài khoản"
+      },
+      "gender": {
+        "label": "Giới tính",
+        "tooltip": "Giới tính của bạn",
+        "placeholder": "Giới tính của bạn"
+      },
+      "nationality": {
+        "label": "Quốc tịch",
+        "tooltip": "Quốc tịch của bạn",
+        "placeholder": "Quốc tịch của bạn"
+      },
+      "institution": {
+        "label": "Nơi công tác",
+        "tooltip": "Nơi công tác của bạn",
+        "placeholder": "Chọn nơi công tác"
+      },
+      "track": {
+        "label": "Lĩnh vực nghiên cứu (Track)",
+        "tooltip": "Lĩnh vực nghiên cứu của bạn",
+        "placeholder": "Chọn lĩnh vực nghiên cứu"
+      },
+      "academicStatus": {
+        "label": "Học hàm, học vị",
+        "tooltip": "Học hàm, học vị của bạn",
+        "placeholder": "Học hàm, học vị của bạn"
+      }
+    },
+    "actions": {
+      "updating": "Đang cập nhật...",
+      "update": "Cập nhật thông tin"
+    }
+  },
+  "info": {
+    "pageTitle": "Thông tin tài khoản",
+    "title": "Nhập thông tin của bạn",
+    "common": {
+      "loading": "Đang tải..."
+    },
+    "roleOptions": {
+      "user": "Người dùng",
+      "researcher": "Nhà nghiên cứu",
+      "reviewer": "Người đánh giá"
+    },
+    "genderOptions": {
+      "male": "Nam",
+      "female": "Nữ",
+      "other": "Khác"
+    },
+    "academicStatusOptions": {
+      "gsts": "Giáo sư - Tiến sĩ",
+      "pgsts": "Phó giáo sư - Tiến sĩ",
+      "ts": "Tiến sĩ",
+      "ths": "Thạc sĩ",
+      "cn": "Cử nhân"
+    },
+    "fields": {
+      "email": {
+        "label": "Email",
+        "placeholder": "email@example.com"
+      },
+      "lastName": {
+        "label": "Họ",
+        "placeholder": "Họ và tên đệm, ví dụ Nguyễn Văn"
+      },
+      "firstName": {
+        "label": "Tên",
+        "placeholder": "Tên của bạn, ví dụ A"
+      },
+      "phone": {
+        "label": "Số điện thoại",
+        "placeholder": "Số điện thoại 10 số"
+      },
+      "dateOfBirth": {
+        "label": "Ngày tháng năm sinh",
+        "placeholder": "Ngày tháng năm sinh"
+      },
+      "role": {
+        "label": "Loại tài khoản",
+        "placeholder": "Chọn loại tài khoản"
+      },
+      "gender": {
+        "label": "Giới tính",
+        "placeholder": "Chọn giới tính"
+      },
+      "nationality": {
+        "label": "Quốc tịch",
+        "placeholder": "Chọn quốc tịch"
+      },
+      "institution": {
+        "label": "Nơi công tác",
+        "placeholder": "Chọn nơi công tác"
+      },
+      "track": {
+        "label": "Lĩnh vực nghiên cứu (Track)",
+        "placeholder": "Chọn lĩnh vực"
+      },
+      "academicStatus": {
+        "label": "Học hàm, học vị",
+        "placeholder": "Chọn học hàm, học vị"
+      }
+    },
+    "actions": {
+      "submitting": "Đang xử lý...",
+      "submit": "Hoàn tất đăng ký"
+    }
+  },
+  "reviewArticle": {
+    "title": "Phản biện bài báo",
+    "you": "Bạn",
+    "reviewer": "Reviewer",
+    "system": "Hệ thống",
+    "submittedAt": "Đã nộp lúc {{date}}",
+    "common": {
+      "cancel": "Hủy",
+      "close": "Đóng"
+    },
+    "alerts": {
+      "summaryRequired": "Vui lòng nhập tóm tắt phản biện."
+    },
+    "attachmentKinds": {
+      "submission": "Bài báo chính",
+      "revision": "Bản sửa",
+      "supplemental": "Tệp bổ sung"
+    },
+    "fileSize": {
+      "zero": "0 B",
+      "units": ["B", "KB", "MB", "GB"]
+    },
+    "commentStatus": {
+      "open": "Mở",
+      "resolved": "Đã giải quyết",
+      "addressed": "Đã xử lý"
+    },
+    "states": {
+      "invalidPath": "Đường dẫn phản biện không hợp lệ.",
+      "loadArticleFailed": "Không thể tải thông tin bài báo.",
+      "errorTitle": "Đã xảy ra lỗi",
+      "loadingArticle": "Đang tải bài báo...",
+      "notFoundTitle": "Không tìm thấy bài báo",
+      "notFoundDescription": "Bài báo có thể đã bị xóa hoặc bạn không có quyền truy cập.",
+      "noPdf": "Không có bài báo để phản biện"
+    },
+    "actions": {
+      "addComment": "Thêm nhận xét",
+      "submittedReview": "Đã nộp phản biện",
+      "structuredReviewTemplate": "Phản biện tổng thể",
+      "hideComments": "Ẩn nhận xét",
+      "showComments": "Hiện nhận xét",
+      "hideToc": "Ẩn mục lục",
+      "showToc": "Hiện mục lục"
+    },
+    "attachments": {
+      "title": "Tệp đính kèm cho phản biện",
+      "empty": "Chưa có tệp đính kèm."
+    },
+    "comments": {
+      "title": "Nhận xét ({{count}})",
+      "modalTitle": "Nhận xét",
+      "versionPlaceholder": "Chọn phiên bản",
+      "versionValue": "Phiên bản {{version}}",
+      "noVersion": "Chưa có phiên bản",
+      "versionText": "Phiên bản {{version}}",
+      "versionWithDate": "Phiên bản {{version}} - {{date}}",
+      "loading": "Đang tải nhận xét...",
+      "loadFailed": "Không thể tải nhận xét.",
+      "emptyForVersion": "Không có nhận xét cho phiên bản này",
+      "currentVersionBadge": "hiện tại - v{{version}}",
+      "versionBadge": "v{{version}}",
+      "page": "Trang {{page}}",
+      "hideReplies": "Ẩn phản hồi",
+      "viewReplies": "Xem phản hồi",
+      "viewRepliesCount": "Xem phản hồi ({{count}})",
+      "reply": "Trả lời",
+      "noReplies": "Chưa có phản hồi",
+      "replyFormTitle": "Phản hồi",
+      "replyPlaceholder": "Viết phản hồi của bạn...",
+      "sending": "Đang gửi...",
+      "send": "Gửi",
+      "resolve": "Giải quyết",
+      "markAddressed": "Đánh dấu đã xử lý",
+      "newCommentTitle": "Nhận xét mới",
+      "selectedTextLabel": "Văn bản được chọn:",
+      "section": "Phần",
+      "pageLabel": "Trang",
+      "newCommentPlaceholder": "Viết nhận xét của bạn...",
+      "posting": "Đang đăng...",
+      "post": "Đăng nhận xét"
+    },
+    "structured": {
+      "title": "Phản biện cấu trúc",
+      "scoreHint": "Điểm từ 1 đến 10 cho từng tiêu chí.",
+      "recommendationLabel": "Khuyến nghị",
+      "summaryLabel": "Tóm tắt phản biện",
+      "summaryPlaceholder": "Nêu nhận định tổng quan về bài báo",
+      "confidentialLabel": "Ghi chú bảo mật (chỉ chair thấy)",
+      "confidentialPlaceholder": "Nhận xét nội bộ cho chair (tùy chọn)",
+      "saveDraft": "Lưu nháp",
+      "submitReview": "Nộp phản biện",
+      "criteria": {
+        "originality": "Tính mới",
+        "technicalQuality": "Chất lượng kỹ thuật",
+        "clarity": "Độ rõ ràng",
+        "relevance": "Mức độ liên quan",
+        "overall": "Tổng thể"
+      }
+    }
+  },
+  "editorInitialReview": {
+    "notUpdated": "Chưa cập nhật",
+    "notFoundTitle": "Không tìm thấy bài báo",
+    "invalidPath": "Đường dẫn không hợp lệ.",
+    "loadFailed": "Không thể tải thông tin bài báo.",
+    "errorTitle": "Đã xảy ra lỗi",
+    "loadingArticle": "Đang tải bài báo...",
+    "notFoundDescription": "Bài báo có thể đã bị xóa hoặc bạn không có quyền truy cập.",
+    "unassigned": "Chưa gán",
+    "noPdf": "Không có bài báo để xem",
+    "common": {
+      "backStep": "Không, quay lại bước trước",
+      "confirm": "Xác nhận"
+    },
+    "actions": {
+      "hideInfo": "Ẩn thông tin",
+      "showInfo": "Hiện thông tin",
+      "reject": "Từ chối",
+      "acceptAndInvite": "Chấp nhận và mời reviewer"
+    },
+    "info": {
+      "articleTitle": "Tên bài báo",
+      "authors": "Tác giả:",
+      "submittedDate": "Ngày gửi",
+      "track": "Chuyên đề",
+      "currentStatus": "Trạng thái hiện tại"
+    },
+    "errors": {
+      "selectAtLeastOneReviewer": "Vui lòng chọn ít nhất một phản biện viên",
+      "completeReviewerInfo": "Vui lòng điền đầy đủ thông tin phản biện viên",
+      "invalidEmail": "Email không hợp lệ"
+    },
+    "reject": {
+      "title": "Từ chối bài báo",
+      "confirm": "Từ chối bài báo",
+      "reasonLabel": "Lý do từ chối",
+      "reasonHint": "Lý do từ chối sẽ được gửi kèm vào email phản hồi tác giả bài báo",
+      "reasonPlaceholder": "Nhập lý do từ chối tại đây"
+    },
+    "accept": {
+      "defaultNote": "Chấp nhận và gửi tới reviewer",
+      "success": "Đã phê duyệt và mời phản biện viên thành công",
+      "inviteFailedPrefix": "Lỗi khi mời phản biện viên: ",
+      "title": "Chấp nhận và tìm Reviewer",
+      "confirmMessage": "Bạn đồng ý chấp nhận bài báo này và tìm reviewer phản biện bài báo?",
+      "inviteMethodLabel": "Phương thức mời phản biện viên",
+      "existingMethod": "Chọn từ danh sách người dùng hiện có",
+      "manualMethod": "Nhập thông tin phản biện viên mới",
+      "selectReviewerLabel": "Chọn phản biện viên",
+      "selectReviewerPlaceholder": "Chọn phản biện viên",
+      "manualNameLabel": "Họ và tên",
+      "manualNamePlaceholder": "Nhập họ và tên phản biện viên",
+      "manualEmailLabel": "Email",
+      "manualEmailPlaceholder": "Nhập email phản biện viên",
+      "manualInstitutionLabel": "Cơ quan",
+      "manualInstitutionPlaceholder": "Chọn cơ quan",
+      "noteHint": "Ghi chú (không bắt buộc):",
+      "notePlaceholder": "Nhập ghi chú nếu cần"
+    }
+  },
+  "pdfViewer": {
+    "emptyMessage": "Chưa có tệp nào được tải lên",
+    "page": "Trang",
+    "download": "Tải xuống",
+    "reset": "Reset",
+    "loadingPdf": "Đang tải PDF...",
+    "noDocument": "Không có tài liệu",
+    "errors": {
+      "fetchFailedPrefix": "Tải PDF thất bại: ",
+      "invalidContentType": "Máy chủ trả về nội dung không phải PDF",
+      "cannotLoadPdf": "Không thể tải PDF",
+      "inlinePreviewFallback": "Không thể tải PDF trong trang (thường do CORS với link presigned). Bạn vẫn có thể dùng nút Tải xuống.",
+      "cannotLoadFromServer": "Không thể tải PDF từ máy chủ",
+      "loadError": "Lỗi khi tải PDF"
+    }
+  },
+  "submitRevision": {
+    "title": "Nộp Bài Sửa Chữa",
+    "revisionPdfLabel": "Tệp PDF sửa chữa",
+    "actions": {
+      "cancel": "Hủy",
+      "submit": "Nộp Bài Sửa Chữa"
+    },
+    "dropzone": {
+      "primary": "Kéo thả tệp PDF hoặc bấm để chọn",
+      "secondary": "Chỉ hỗ trợ tệp PDF"
+    },
+    "notes": {
+      "label": "Ghi chú sửa chữa (tùy chọn)",
+      "placeholder": "Mô tả những thay đổi bạn đã thực hiện..."
+    },
+    "errors": {
+      "selectPdf": "Vui lòng chọn tệp PDF",
+      "submitFailed": "Không thể nộp bài sửa chữa"
+    }
+  },
+  "inviteReviewersDialog": {
+    "title": "Quản lý reviewer",
+    "actions": {
+      "cancel": "Hủy",
+      "confirm": "Xác nhận"
+    },
+    "invitedReviewersLabel": "Phản biện đã được mời:",
+    "noInvitedReviewers": "Chưa có phản biện nào",
+    "inviteMethodLabel": "Phương thức mời reviewer",
+    "methods": {
+      "existing": "Chọn từ danh sách người dùng hiện có",
+      "manual": "Nhập thông tin reviewer mới"
+    },
+    "selectReviewerLabel": "Chọn reviewer",
+    "selectReviewerPlaceholder": "Chọn reviewer",
+    "manual": {
+      "nameLabel": "Họ và tên",
+      "namePlaceholder": "Nhập họ và tên reviewer",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Nhập email reviewer",
+      "institutionLabel": "Cơ quan",
+      "institutionPlaceholder": "Chọn cơ quan"
+    },
+    "messages": {
+      "inviteSuccess": "Đã mời phản biện viên thành công.",
+      "inviteFailedPrefix": "Không thể mời phản biện viên. ",
+      "tryAgain": "Vui lòng thử lại."
+    },
+    "errors": {
+      "invalidEmail": "Email không hợp lệ. Vui lòng kiểm tra lại."
+    }
+  },
+  "userManagement": {
+    "title": "Quản lý người dùng",
+    "empty": "Không có người dùng nào phù hợp bộ lọc.",
+    "columns": {
+      "name": "Họ tên",
+      "email": "Email",
+      "role": "Vai trò",
+      "status": "Trạng thái",
+      "actions": "Hành động"
+    },
+    "actions": {
+      "detail": "Chi tiết",
+      "delete": "Xóa",
+      "create": "Tạo người dùng"
+    },
+    "create": {
+      "title": "Tạo người dùng mới",
+      "nameLabel": "Họ tên",
+      "namePlaceholder": "Nhập họ tên",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Nhập email",
+      "roleLabel": "Vai trò",
+      "institutionLabel": "Nơi công tác (tùy chọn)",
+      "institutionPlaceholder": "Chọn nơi công tác",
+      "trackRequiredLabel": "Track (bắt buộc cho Editor)",
+      "trackOptionalLabel": "Track (tùy chọn)",
+      "trackPlaceholder": "Chọn track",
+      "noneOption": "(Không chọn)",
+      "loading": "Đang tải..."
+    },
+    "filters": {
+      "nameLabel": "Họ tên",
+      "namePlaceholder": "Lọc theo tên",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Lọc theo email",
+      "roleLabel": "Vai trò",
+      "statusLabel": "Trạng thái",
+      "all": "Tất cả"
+    },
+    "detail": {
+      "title": "Chi tiết người dùng",
+      "close": "Đóng",
+      "id": "ID",
+      "name": "Họ tên",
+      "email": "Email",
+      "primaryRole": "Vai trò chính",
+      "allRoles": "Tất cả vai trò",
+      "status": "Trạng thái",
+      "institution": "Nơi công tác",
+      "track": "Track",
+      "gender": "Giới tính",
+      "nationality": "Quốc tịch",
+      "academicStatus": "Học hàm/Học vị",
+      "createdAt": "Ngày tạo",
+      "updatedAt": "Cập nhật lần cuối"
+    }
+  },
+  "trackManagement": {
+    "title": "Quản lý Track",
+    "selectConferenceLabel": "Chọn hội nghị *",
+    "selectConferencePlaceholder": "Chọn hội nghị để quản lý tracks",
+    "selectConferenceHint": "Vui lòng chọn hội nghị để xem và quản lý các track",
+    "createTitle": "Tạo track mới",
+    "createTrackNamePlaceholder": "Tên track",
+    "createDescriptionPlaceholder": "Mô tả",
+    "createMinRevPlaceholder": "Min Rev",
+    "loading": "Đang tải danh sách track...",
+    "empty": "Không có track nào trong hội nghị này",
+    "columns": {
+      "trackName": "Tên track",
+      "description": "Mô tả",
+      "minReviews": "Min Reviews",
+      "minReviewsPlaceholder": "Mặc định",
+      "active": "Hoạt động",
+      "chiefEditor": "Chủ biên",
+      "actions": "Hành động"
+    },
+    "editor": {
+      "placeholder": "Chọn người dùng để gán",
+      "assign": "Gán",
+      "none": "Chưa có chủ biên"
+    },
+    "actions": {
+      "save": "Lưu",
+      "delete": "Xóa",
+      "create": "Tạo"
+    },
+    "errors": {
+      "selectConferenceFirst": "Vui lòng chọn hội nghị trước",
+      "trackNameRequired": "Tên track là bắt buộc"
+    },
+    "messages": {
+      "unknownError": "Lỗi không xác định",
+      "createSuccess": "Đã tạo track thành công",
+      "updateSuccess": "Đã cập nhật track thành công",
+      "deleteSuccess": "Đã xóa track thành công",
+      "assignEditorSuccess": "Đã gán chủ biên thành công",
+      "removeEditorSuccess": "Đã gỡ gán chủ biên thành công",
+      "createFailedPrefix": "Tạo track thất bại: ",
+      "updateFailedPrefix": "Cập nhật track thất bại: ",
+      "deleteFailedPrefix": "Xóa track thất bại: ",
+      "assignEditorFailedPrefix": "Gán chủ biên thất bại: ",
+      "removeEditorFailedPrefix": "Gỡ gán chủ biên thất bại: "
+    }
+  },
+  "topicManagement": {
+    "title": "Quản lý Chủ đề (Topic)",
+    "selectConferenceLabel": "Chọn hội nghị *",
+    "selectConferencePlaceholder": "Chọn hội nghị để quản lý topics",
+    "selectConferenceHint": "Vui lòng chọn hội nghị để xem và quản lý các chủ đề",
+    "filterByTrackLabel": "Lọc theo Track (tùy chọn)",
+    "filterByTrackPlaceholder": "Tất cả các topics",
+    "empty": "Không có chủ đề nào",
+    "columns": {
+      "name": "Tên chủ đề",
+      "track": "Track",
+      "description": "Mô tả",
+      "orderIndex": "Thứ tự",
+      "active": "Kích hoạt",
+      "actions": "Hành động"
+    },
+    "common": {
+      "conferenceWide": "- (Chung conference) -",
+      "dash": "-"
+    },
+    "actions": {
+      "createNew": "Tạo chủ đề mới",
+      "create": "Tạo mới",
+      "update": "Cập nhật",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "cancel": "Hủy"
+    },
+    "modal": {
+      "createTitle": "Tạo chủ đề mới",
+      "editTitle": "Chỉnh sửa chủ đề"
+    },
+    "form": {
+      "nameLabel": "Tên chủ đề *",
+      "namePlaceholder": "VD: Machine Learning, Natural Language Processing",
+      "trackLabel": "Track (tùy chọn)",
+      "trackPlaceholder": "Chung cho cả conference",
+      "orderIndexLabel": "Thứ tự hiển thị",
+      "descriptionLabel": "Mô tả",
+      "descriptionPlaceholder": "Mô tả chi tiết về chủ đề",
+      "activeLabel": "Kích hoạt"
+    },
+    "confirmDelete": {
+      "title": "Xác nhận xóa",
+      "content": "Bạn có chắc chắn muốn xóa chủ đề này không?"
+    },
+    "errors": {
+      "selectConferenceFirst": "Vui lòng chọn hội nghị trước",
+      "topicNameRequired": "Tên chủ đề là bắt buộc"
+    },
+    "messages": {
+      "unknownError": "Lỗi không xác định",
+      "createSuccess": "Đã tạo chủ đề thành công",
+      "updateSuccess": "Đã cập nhật chủ đề thành công",
+      "deleteSuccess": "Đã xóa chủ đề thành công",
+      "createFailedPrefix": "Tạo chủ đề thất bại: ",
+      "updateFailedPrefix": "Cập nhật chủ đề thất bại: ",
+      "deleteFailedPrefix": "Xóa chủ đề thất bại: "
+    }
+  },
+  "conferenceManagement": {
+    "title": "Quản lý Hội nghị",
+    "empty": "Không có hội nghị nào",
+    "common": {
+      "dash": "-"
+    },
+    "columns": {
+      "name": "Tên hội nghị",
+      "shortName": "Mã ngắn",
+      "seasonYear": "Mùa/Năm",
+      "status": "Trạng thái",
+      "deadline": "Hạn nộp",
+      "minReviewsShort": "SL Review",
+      "actions": "Hành động"
+    },
+    "actions": {
+      "createNew": "Tạo hội nghị mới",
+      "create": "Tạo mới",
+      "update": "Cập nhật",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "cancel": "Hủy"
+    },
+    "modal": {
+      "createTitle": "Tạo hội nghị mới",
+      "editTitle": "Chỉnh sửa hội nghị"
+    },
+    "form": {
+      "nameLabel": "Tên hội nghị *",
+      "namePlaceholder": "VD: AI Summit 2026",
+      "shortNameLabel": "Mã ngắn *",
+      "shortNamePlaceholder": "VD: AI2026",
+      "seasonLabel": "Mùa",
+      "seasonPlaceholder": "VD: Spring, Fall",
+      "yearLabel": "Năm",
+      "yearPlaceholder": "VD: 2026",
+      "statusLabel": "Trạng thái *",
+      "deadlineLabel": "Hạn nộp bài",
+      "deadlinePlaceholder": "Chọn thời hạn",
+      "minReviewsLabel": "Số review tối thiểu",
+      "descriptionLabel": "Mô tả",
+      "descriptionPlaceholder": "Mô tả chi tiết về hội nghị"
+    },
+    "confirmDelete": {
+      "title": "Xác nhận xóa",
+      "content": "Bạn có chắc chắn muốn xóa hội nghị này không?"
+    },
+    "errors": {
+      "nameAndShortNameRequired": "Tên và mã ngắn là bắt buộc"
+    },
+    "messages": {
+      "unknownError": "Lỗi không xác định",
+      "createSuccess": "Đã tạo hội nghị thành công",
+      "updateSuccess": "Đã cập nhật hội nghị thành công",
+      "deleteSuccess": "Đã xóa hội nghị thành công",
+      "createFailedPrefix": "Tạo hội nghị thất bại: ",
+      "updateFailedPrefix": "Cập nhật hội nghị thất bại: ",
+      "deleteFailedPrefix": "Xóa hội nghị thất bại: "
+    }
+  },
+  "unauthorized": {
+    "title": "Bạn không có quyền truy cập",
+    "subtitle": "Vui lòng liên hệ quản trị viên nếu bạn nghĩ rằng đây là nhầm lẫn.",
+    "backHome": "Quay lại trang chủ"
+  },
+  "institutionManagement": {
+    "title": "Quản lý Nơi công tác",
+    "loading": "Đang tải danh sách nơi công tác...",
+    "empty": "Chưa có nơi công tác nào.",
+    "columns": {
+      "name": "Tên",
+      "country": "Quốc gia",
+      "website": "Website",
+      "logo": "Logo",
+      "actions": "Hành động"
+    },
+    "actions": {
+      "save": "Lưu",
+      "delete": "Xóa",
+      "create": "Tạo"
+    },
+    "form": {
+      "nameLabel": "Tên",
+      "namePlaceholder": "VD: Trường Đại học ABC",
+      "countryLabel": "Quốc gia",
+      "countryPlaceholder": "VD: Vietnam",
+      "websiteLabel": "Website",
+      "websitePlaceholder": "https://example.edu",
+      "logoLabel": "Logo",
+      "logoPlaceholder": "https://.../logo.png"
+    }
+  }
+}

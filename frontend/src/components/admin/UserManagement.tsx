@@ -6,6 +6,7 @@ import { AccountStatusOptions, RoleOptions } from '../../constants';
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack';
 import type { ColumnsType } from 'antd/es/table';
 import type { UserDto } from '../../models';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -41,6 +42,7 @@ const styles = {
 const PAGE_SIZE = 10;
 
 const UserManagement = () => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(0);
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
@@ -156,17 +158,17 @@ const UserManagement = () => {
 
   const columns: ColumnsType<UserDto> = [
     {
-      title: 'Họ tên',
+      title: t('userManagement.columns.name'),
       dataIndex: 'name',
       key: 'name',
     },
     {
-      title: 'Email',
+      title: t('userManagement.columns.email'),
       dataIndex: 'email',
       key: 'email',
     },
     {
-      title: 'Vai trò',
+      title: t('userManagement.columns.role'),
       key: 'role',
       render: (_, record) => (
         <Select
@@ -180,7 +182,7 @@ const UserManagement = () => {
       ),
     },
     {
-      title: 'Trạng thái',
+      title: t('userManagement.columns.status'),
       key: 'status',
       render: (_, record) => (
         <Select
@@ -194,17 +196,17 @@ const UserManagement = () => {
       ),
     },
     {
-      title: 'Hành động',
+      title: t('userManagement.columns.actions'),
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button onClick={() => handleOpenDetail(record)}>Chi tiết</Button>
+          <Button onClick={() => handleOpenDetail(record)}>{t('userManagement.actions.detail')}</Button>
           <Button
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
             disabled={deleteUser.isPending}
           >
-            Xóa
+            {t('userManagement.actions.delete')}
           </Button>
         </Space>
       ),
@@ -215,7 +217,7 @@ const UserManagement = () => {
     <div style={styles.container}>
       <div style={styles.header}>
         <Text strong style={{ fontSize: '24px' }}>
-          Quản lý người dùng
+          {t('userManagement.title')}
         </Text>
         <Pagination
           current={page + 1}
@@ -227,28 +229,28 @@ const UserManagement = () => {
         />
       </div>
 
-      <Card title="Tạo người dùng mới">
+      <Card title={t('userManagement.create.title')}>
         <div style={styles.createForm}>
           <div style={styles.field}>
-            <Text>Họ tên</Text>
+            <Text>{t('userManagement.create.nameLabel')}</Text>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Nhập họ tên"
+              placeholder={t('userManagement.create.namePlaceholder')}
               disabled={isMutating}
             />
           </div>
           <div style={styles.field}>
-            <Text>Email</Text>
+            <Text>{t('userManagement.create.emailLabel')}</Text>
             <Input
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              placeholder="Nhập email"
+              placeholder={t('userManagement.create.emailPlaceholder')}
               disabled={isMutating}
             />
           </div>
           <div style={styles.field}>
-            <Text>Vai trò</Text>
+            <Text>{t('userManagement.create.roleLabel')}</Text>
             <Select
               value={newRole}
               onChange={setNewRole}
@@ -258,14 +260,18 @@ const UserManagement = () => {
             />
           </div>
           <div style={styles.field}>
-            <Text>Nơi công tác (tùy chọn)</Text>
+            <Text>{t('userManagement.create.institutionLabel')}</Text>
             <Select
               value={newInstitutionId || undefined}
               onChange={(value) => setNewInstitutionId(value || '')}
               disabled={isMutating || institutionsQuery.isLoading}
-              placeholder={institutionsQuery.isLoading ? 'Đang tải...' : 'Chọn nơi công tác'}
+              placeholder={
+                institutionsQuery.isLoading
+                  ? t('userManagement.create.loading')
+                  : t('userManagement.create.institutionPlaceholder')
+              }
               options={[
-                { value: '', label: '(Không chọn)' },
+                { value: '', label: t('userManagement.create.noneOption') },
                 ...institutions.map((inst) => ({ value: inst.id, label: inst.name })),
               ]}
               style={{ width: '100%' }}
@@ -274,15 +280,21 @@ const UserManagement = () => {
           </div>
           <div style={styles.field}>
             <Text>
-              Track {newRole === 'EDITOR' ? '(bắt buộc cho Editor)' : '(tùy chọn)'}
+              {newRole === 'EDITOR'
+                ? t('userManagement.create.trackRequiredLabel')
+                : t('userManagement.create.trackOptionalLabel')}
             </Text>
             <Select
               value={newTrackId || undefined}
               onChange={(value) => setNewTrackId(value || '')}
               disabled={isMutating || tracksQuery.isLoading}
-              placeholder={tracksQuery.isLoading ? 'Đang tải...' : 'Chọn track'}
+              placeholder={
+                tracksQuery.isLoading
+                  ? t('userManagement.create.loading')
+                  : t('userManagement.create.trackPlaceholder')
+              }
               options={[
-                { value: '', label: '(Không chọn)' },
+                { value: '', label: t('userManagement.create.noneOption') },
                 ...tracks.map((track) => ({ value: track.id, label: track.name })),
               ]}
               style={{ width: '100%' }}
@@ -299,7 +311,7 @@ const UserManagement = () => {
               (newRole === 'EDITOR' && !newTrackId.trim())
             }
           >
-            Tạo người dùng
+            {t('userManagement.actions.create')}
           </Button>
         </div>
       </Card>
@@ -307,25 +319,25 @@ const UserManagement = () => {
       <Card>
         <Row gutter={[12, 12]} style={{ marginBottom: '16px' }}>
           <Col xs={24} sm={12} md={6}>
-            <Text strong>Họ tên</Text>
+            <Text strong>{t('userManagement.filters.nameLabel')}</Text>
             <Input
               size="small"
-              placeholder="Lọc theo tên"
+              placeholder={t('userManagement.filters.namePlaceholder')}
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
             />
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <Text strong>Email</Text>
+            <Text strong>{t('userManagement.filters.emailLabel')}</Text>
             <Input
               size="small"
-              placeholder="Lọc theo email"
+              placeholder={t('userManagement.filters.emailPlaceholder')}
               value={inputEmail}
               onChange={(e) => setInputEmail(e.target.value)}
             />
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <Text strong>Vai trò</Text>
+            <Text strong>{t('userManagement.filters.roleLabel')}</Text>
             <Select
               size="small"
               value={filterRole || undefined}
@@ -333,9 +345,9 @@ const UserManagement = () => {
                 setFilterRole(value || '');
                 setPage(0);
               }}
-              placeholder="Tất cả"
+              placeholder={t('userManagement.filters.all')}
               options={[
-                { value: '', label: 'Tất cả' },
+                { value: '', label: t('userManagement.filters.all') },
                 ...RoleOptions.map((role) => ({ value: role.value, label: role.label })),
               ]}
               style={{ width: '100%' }}
@@ -343,7 +355,7 @@ const UserManagement = () => {
             />
           </Col>
           <Col xs={24} sm={12} md={6}>
-            <Text strong>Trạng thái</Text>
+            <Text strong>{t('userManagement.filters.statusLabel')}</Text>
             <Select
               size="small"
               value={filterStatus || undefined}
@@ -351,9 +363,9 @@ const UserManagement = () => {
                 setFilterStatus(value || '');
                 setPage(0);
               }}
-              placeholder="Tất cả"
+              placeholder={t('userManagement.filters.all')}
               options={[
-                { value: '', label: 'Tất cả' },
+                { value: '', label: t('userManagement.filters.all') },
                 ...AccountStatusOptions.map((status) => ({ value: status.value, label: status.label })),
               ]}
               style={{ width: '100%' }}
@@ -367,61 +379,61 @@ const UserManagement = () => {
           rowKey="id"
           loading={isLoading || isFetching}
           locale={{
-            emptyText: 'Không có người dùng nào phù hợp bộ lọc.',
+            emptyText: t('userManagement.empty'),
           }}
           pagination={false}
         />
       </Card>
 
       <Modal
-        title="Chi tiết người dùng"
+        title={t('userManagement.detail.title')}
         open={detailOpen}
         onCancel={handleCloseDetail}
         footer={[
           <Button key="close" onClick={handleCloseDetail}>
-            Đóng
+            {t('userManagement.detail.close')}
           </Button>,
         ]}
         destroyOnClose
       >
         <Form layout="vertical" disabled>
-          <Form.Item label="ID">
+          <Form.Item label={t('userManagement.detail.id')}>
             <Input value={selectedUser?.id ?? ''} />
           </Form.Item>
-          <Form.Item label="Họ tên">
+          <Form.Item label={t('userManagement.detail.name')}>
             <Input value={selectedUser?.name ?? ''} />
           </Form.Item>
-          <Form.Item label="Email">
+          <Form.Item label={t('userManagement.detail.email')}>
             <Input value={selectedUser?.email ?? ''} />
           </Form.Item>
-          <Form.Item label="Vai trò chính">
+          <Form.Item label={t('userManagement.detail.primaryRole')}>
             <Input value={selectedUser?.role ?? ''} />
           </Form.Item>
-          <Form.Item label="Tất cả vai trò">
+          <Form.Item label={t('userManagement.detail.allRoles')}>
             <Input value={(selectedUser?.roles ?? []).join(', ')} />
           </Form.Item>
-          <Form.Item label="Trạng thái">
+          <Form.Item label={t('userManagement.detail.status')}>
             <Input value={selectedUser?.status ?? ''} />
           </Form.Item>
-          <Form.Item label="Nơi công tác">
+          <Form.Item label={t('userManagement.detail.institution')}>
             <Input value={selectedUser?.institution?.name ?? ''} />
           </Form.Item>
-          <Form.Item label="Track">
+          <Form.Item label={t('userManagement.detail.track')}>
             <Input value={selectedUser?.track?.name ?? ''} />
           </Form.Item>
-          <Form.Item label="Giới tính">
+          <Form.Item label={t('userManagement.detail.gender')}>
             <Input value={selectedUser?.gender ?? ''} />
           </Form.Item>
-          <Form.Item label="Quốc tịch">
+          <Form.Item label={t('userManagement.detail.nationality')}>
             <Input value={selectedUser?.nationality ?? ''} />
           </Form.Item>
-          <Form.Item label="Học hàm/Học vị">
+          <Form.Item label={t('userManagement.detail.academicStatus')}>
             <Input value={selectedUser?.academicStatus ?? ''} />
           </Form.Item>
-          <Form.Item label="Ngày tạo">
+          <Form.Item label={t('userManagement.detail.createdAt')}>
             <Input value={selectedUser?.createdAt ?? ''} />
           </Form.Item>
-          <Form.Item label="Cập nhật lần cuối">
+          <Form.Item label={t('userManagement.detail.updatedAt')}>
             <Input value={selectedUser?.updatedAt ?? ''} />
           </Form.Item>
         </Form>

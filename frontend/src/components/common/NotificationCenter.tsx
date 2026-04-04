@@ -4,6 +4,7 @@ import {
   Badge,
   Typography,
   Spin,
+  theme as antdTheme,
 } from "antd";
 import { BellOutlined, CloseOutlined } from "@ant-design/icons";
 import { useEffect, useCallback, useState } from "react";
@@ -12,6 +13,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { api } from "../../services/api";
 import type { BaseResponseDto, PageResponseDto } from "../../models";
 import { ArticleStatus } from "../../constants/article-status";
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -30,10 +32,13 @@ interface Notification {
 }
 
 export const NotificationCenter = () => {
+  const { token } = antdTheme.useToken();
+  const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
   const { accessToken } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -81,6 +86,32 @@ export const NotificationCenter = () => {
     []
   );
 
+  const handleMarkAllAsRead = useCallback(async () => {
+    const unreadNotifications = notifications.filter((notification) => !notification.readAt);
+    if (unreadNotifications.length === 0) return;
+
+    try {
+      setMarkingAllRead(true);
+      await Promise.allSettled(
+        unreadNotifications.map((notification) =>
+          api.post(`/notifications/${notification.id}/read`)
+        )
+      );
+
+      const readAt = new Date().toISOString();
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification.readAt ? notification : { ...notification, readAt }
+        )
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    } finally {
+      setMarkingAllRead(false);
+    }
+  }, [notifications]);
+
   const handleNotificationClick = useCallback(
     (notification: Notification) => {
       // Special-case reviewer invite: always go to the invitation page.
@@ -109,13 +140,13 @@ export const NotificationCenter = () => {
 
   const getNotificationLabel = (type: string): string => {
     const labels: Record<string, string> = {
-      ARTICLE_SUBMITTED: "Bài báo đã nộp",
-      ARTICLE_STATUS_CHANGED: "Trạng thái bài báo thay đổi",
-      ARTICLE_REVISION_SUBMITTED: "Tác giả đã nộp bản sửa",
-      REVIEWER_INVITED: "Mời phản biện",
-      REVIEWER_REVOKED: "Thu hồi phản biện",
-      COMMENT_ACTIVITY: "Hoạt động nhận xét",
-      FILE_UPLOADED: "Tệp đã tải lên",
+      ARTICLE_SUBMITTED: t('notifications.types.articleSubmitted'),
+      ARTICLE_STATUS_CHANGED: t('notifications.types.articleStatusChanged'),
+      ARTICLE_REVISION_SUBMITTED: t('notifications.types.articleRevisionSubmitted'),
+      REVIEWER_INVITED: t('notifications.types.reviewerInvited'),
+      REVIEWER_REVOKED: t('notifications.types.reviewerRevoked'),
+      COMMENT_ACTIVITY: t('notifications.types.commentActivity'),
+      FILE_UPLOADED: t('notifications.types.fileUploaded'),
     };
     return labels[type] || type;
   };
@@ -123,16 +154,16 @@ export const NotificationCenter = () => {
   const getArticleStatusLabel = (status: unknown): string => {
     if (typeof status !== 'string') return ''
     const labels: Record<string, string> = {
-      [ArticleStatus.SUBMITTED]: 'Đã nộp',
-      [ArticleStatus.PENDING_REVIEW]: 'Chờ phản biện',
-      [ArticleStatus.IN_REVIEW]: 'Đang phản biện',
-      [ArticleStatus.REVIEWS_COMPLETED]: 'Đã hoàn tất phản biện',
-      [ArticleStatus.REVISIONS_REQUESTED]: 'Yêu cầu sửa',
-      [ArticleStatus.REVISIONS]: 'Đang sửa',
-      [ArticleStatus.REJECT_REQUESTED]: 'Đề nghị loại bỏ',
-      [ArticleStatus.ACCEPT_REQUESTED]: 'Đề nghị chấp thuận',
-      [ArticleStatus.REJECTED]: 'Đã từ chối',
-      [ArticleStatus.ACCEPTED]: 'Đã chấp nhận',
+      [ArticleStatus.SUBMITTED]: t('notifications.articleStatus.submitted'),
+      [ArticleStatus.PENDING_REVIEW]: t('notifications.articleStatus.pendingReview'),
+      [ArticleStatus.IN_REVIEW]: t('notifications.articleStatus.inReview'),
+      [ArticleStatus.REVIEWS_COMPLETED]: t('notifications.articleStatus.reviewsCompleted'),
+      [ArticleStatus.REVISIONS_REQUESTED]: t('notifications.articleStatus.revisionsRequested'),
+      [ArticleStatus.REVISIONS]: t('notifications.articleStatus.revisions'),
+      [ArticleStatus.REJECT_REQUESTED]: t('notifications.articleStatus.rejectRequested'),
+      [ArticleStatus.ACCEPT_REQUESTED]: t('notifications.articleStatus.acceptRequested'),
+      [ArticleStatus.REJECTED]: t('notifications.articleStatus.rejected'),
+      [ArticleStatus.ACCEPTED]: t('notifications.articleStatus.accepted'),
     }
     return labels[status] || status
   }
@@ -166,11 +197,11 @@ export const NotificationCenter = () => {
 
       const lines: string[] = []
       if (author || preview) {
-        lines.push(`${author ? author + ': ' : ''}${preview || 'Có cập nhật nhận xét'}`)
+        lines.push(`${author ? author + ': ' : ''}${preview || t('notifications.commentUpdated')}`)
       }
 
       const metaParts: string[] = []
-      if (pageNumber !== null) metaParts.push(`Trang ${pageNumber}`)
+      if (pageNumber !== null) metaParts.push(t('notifications.pageNumber', { page: pageNumber }))
       if (version !== null) metaParts.push(`v${version}`)
       if (action) metaParts.push(action)
       if (status) metaParts.push(status)
@@ -182,19 +213,19 @@ export const NotificationCenter = () => {
 
     if (notification.type === 'ARTICLE_REVISION_SUBMITTED') {
       const version = typeof p.version === 'number' ? p.version : null
-      return [version !== null ? `Đã nộp bản sửa v${version}` : 'Đã nộp bản sửa']
+      return [version !== null ? t('notifications.revisionSubmittedVersion', { version }) : t('notifications.revisionSubmitted')]
     }
 
     if (notification.type === 'REVIEWER_INVITED') {
       const email = typeof p.email === 'string' ? p.email : ''
-      return email ? [`Mời: ${email}`] : []
+      return email ? [t('notifications.invitedEmail', { email })] : []
     }
 
     return []
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ position: "relative", display: "inline-block" }}>
       <Dropdown
         open={dropdownOpen}
         onOpenChange={setDropdownOpen}
@@ -205,15 +236,40 @@ export const NotificationCenter = () => {
             overflowY: "auto",
             overflowX: "hidden",
             minWidth: "450px",
-            backgroundColor: '#fff',
+            backgroundColor: token.colorBgElevated,
             borderRadius: '4px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            boxShadow: token.boxShadowSecondary,
           }}>
+            <div
+              style={{
+                padding: "10px 12px",
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <Text strong>{t('notifications.title')}</Text>
+              <Button
+                type="link"
+                size="small"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleMarkAllAsRead();
+                }}
+                disabled={unreadCount === 0}
+                loading={markingAllRead}
+                style={{ paddingInline: 0 }}
+              >
+                {t('notifications.markAllRead')}
+              </Button>
+            </div>
             {loading && notifications.length === 0 ? (
               <div style={{
                 padding: "16px",
                 textAlign: "center",
-                color: "#999",
+                color: token.colorTextSecondary,
               }}>
                 <Spin size="small" />
               </div>
@@ -221,9 +277,9 @@ export const NotificationCenter = () => {
               <div style={{
                 padding: "16px",
                 textAlign: "center",
-                color: "#999",
+                color: token.colorTextSecondary,
               }}>
-                <Text>Không có thông báo</Text>
+                <Text>{t('notifications.empty')}</Text>
               </div>
             ) : (
               notifications.map((notification) => {
@@ -234,18 +290,18 @@ export const NotificationCenter = () => {
                     key={notification.id}
                     style={{
                       padding: "12px",
-                      borderBottom: "1px solid #e0e0e0",
+                      borderBottom: `1px solid ${token.colorBorderSecondary}`,
                       cursor: "pointer",
                       wordWrap: "break-word",
                       overflowWrap: "break-word",
-                      backgroundColor: !notification.readAt ? "#fffce6" : "transparent",
+                      backgroundColor: !notification.readAt ? token.colorWarningBg : "transparent",
                     }}
                     onClick={() => {
                       handleNotificationClick(notification)
                       setDropdownOpen(false)
                     }}
-                    onMouseEnter={(e) => !notification.readAt && (e.currentTarget.style.backgroundColor = "#ffedd5")}
-                    onMouseLeave={(e) => !notification.readAt && (e.currentTarget.style.backgroundColor = "#fffce6")}
+                    onMouseEnter={(e) => !notification.readAt && (e.currentTarget.style.backgroundColor = token.colorWarningBgHover)}
+                    onMouseLeave={(e) => !notification.readAt && (e.currentTarget.style.backgroundColor = token.colorWarningBg)}
                   >
                     <div
                       style={{
@@ -263,7 +319,7 @@ export const NotificationCenter = () => {
                         {title && (
                           <div style={{
                             fontSize: "12px",
-                            color: "#666",
+                            color: token.colorTextSecondary,
                             display: "block",
                             lineHeight: "1.4",
                             marginBottom: "4px",
@@ -276,7 +332,7 @@ export const NotificationCenter = () => {
                             key={`${notification.id}_detail_${idx}`}
                             style={{
                               fontSize: "12px",
-                              color: "#666",
+                              color: token.colorTextSecondary,
                               display: "block",
                               lineHeight: "1.4",
                               marginBottom: idx === detailLines.length - 1 ? "4px" : "2px",
@@ -287,11 +343,11 @@ export const NotificationCenter = () => {
                         ))}
                         <div style={{
                           fontSize: "12px",
-                          color: "#666",
+                          color: token.colorTextSecondary,
                           display: "block",
                           lineHeight: "1.4",
                         }}>
-                          {new Date(notification.createdAt).toLocaleString('vi-VN')}
+                          {new Date(notification.createdAt).toLocaleString(i18n.language.toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US')}
                         </div>
                       </div>
                       {!notification.readAt && (
@@ -313,14 +369,17 @@ export const NotificationCenter = () => {
         <Button
           type="text"
           icon={<BellOutlined />}
-          aria-label="Notifications"
+          aria-label={t('notifications.ariaLabel')}
         />
       </Dropdown>
       {unreadCount > 0 && (
         <Badge
           count={unreadCount > 9 ? '9+' : unreadCount}
           style={{
-            backgroundColor: '#ff4d4f',
+            backgroundColor: token.colorError,
+            position: "absolute",
+            top: -20,
+            right: unreadCount > 9 ? -12 : -4,
           }}
         />
       )}

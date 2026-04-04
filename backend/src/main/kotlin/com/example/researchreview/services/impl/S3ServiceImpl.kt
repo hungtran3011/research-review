@@ -47,7 +47,7 @@ class S3ServiceImpl @Autowired constructor(
         val bytes: ByteArray = try {
             file.inputStream.use { it.readBytes() }
         } catch (ex: Exception) {
-            throw RuntimeException("Failed to read upload stream for key '$cleanKey'", ex)
+            throw RuntimeException("s3.readUploadStreamFailed", ex)
         }
 
         val metadata = ObjectMetadata.builder()
@@ -99,7 +99,7 @@ class S3ServiceImpl @Autowired constructor(
                     Thread.sleep(backoff)
                 } catch (ie: InterruptedException) {
                     Thread.currentThread().interrupt()
-                    throw RuntimeException("Upload interrupted while waiting to retry s3://$bucketName/$cleanKey", ie)
+                    throw RuntimeException("s3.uploadInterrupted", ie)
                 }
             }
         }
@@ -113,7 +113,7 @@ class S3ServiceImpl @Autowired constructor(
             context?.get("attachmentId"),
             context?.get("articleId")
         )
-        throw RuntimeException("Failed to upload object with a key '$cleanKey' to bucket '$bucketName'", lastEx)
+        throw RuntimeException("s3.uploadFailed", lastEx)
     }
 
     override fun download(bucketName: String, key: String): ByteArray? {
@@ -151,7 +151,7 @@ class S3ServiceImpl @Autowired constructor(
             val range = when {
                 rangeStart != null && rangeEndInclusive != null -> "bytes=$rangeStart-$rangeEndInclusive"
                 rangeStart != null -> "bytes=$rangeStart-"
-                else -> throw IllegalArgumentException("rangeEndInclusive without rangeStart is not supported")
+                else -> throw IllegalArgumentException("s3.invalidRangeParameters")
             }
             requestBuilder.range(range)
         }

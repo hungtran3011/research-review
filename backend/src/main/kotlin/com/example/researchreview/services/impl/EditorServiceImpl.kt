@@ -2,6 +2,7 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.dtos.EditorDto
 import com.example.researchreview.dtos.EditorRequestDto
+import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.TrackDto
 import com.example.researchreview.dtos.InstitutionDto
@@ -34,15 +35,27 @@ class EditorServiceImpl(
     @Transactional(readOnly = true)
     override fun getById(id: String): EditorDto {
         val editor = editorRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow { EntityNotFoundException("Editor not found with id $id") }
+            .orElseThrow { EntityNotFoundException("editor.notFound") }
         return toDto(editor)
     }
 
     @Transactional
     override fun create(request: EditorRequestDto): EditorDto {
+        val track = findTrackOrThrow(request.trackId)
+        val user = findUserOrThrow(request.userId)
+
+        val existing = editorRepository.findByUserIdAndTrackIdAndDeletedFalse(user.id, track.id)
+        if (existing.isPresent) {
+            return toDto(existing.get())
+        }
+
+        if (!user.hasRole(Role.EDITOR)) {
+            user.role = Role.EDITOR
+        }
+
         val editor = Editor().apply {
-            track = findTrackOrThrow(request.trackId)
-            user = findUserOrThrow(request.userId)
+            this.track = track
+            this.user = user
         }
         val saved = editorRepository.save(editor)
         return toDto(saved)
@@ -51,7 +64,7 @@ class EditorServiceImpl(
     @Transactional
     override fun update(id: String, request: EditorRequestDto): EditorDto {
         val existing = editorRepository.findByIdAndDeletedFalse(id)
-            .orElseThrow { EntityNotFoundException("Editor not found with id $id") }
+            .orElseThrow { EntityNotFoundException("editor.notFound") }
 
         if (request.trackId.isNotBlank() && existing.track.id != request.trackId) {
             existing.track = findTrackOrThrow(request.trackId)
@@ -72,18 +85,18 @@ class EditorServiceImpl(
 
     private fun findTrackOrThrow(trackId: String): Track {
         if (trackId.isBlank()) {
-            throw IllegalArgumentException("trackId must not be blank")
+            throw IllegalArgumentException("editor.trackIdRequired")
         }
         return trackRepository.findByIdAndDeletedFalse(trackId)
-            .orElseThrow { EntityNotFoundException("Track not found with id $trackId") }
+            .orElseThrow { EntityNotFoundException("users.trackNotFound") }
     }
 
     private fun findUserOrThrow(userId: String): User {
         if (userId.isBlank()) {
-            throw IllegalArgumentException("userId must not be blank")
+            throw IllegalArgumentException("editor.userIdRequired")
         }
         return userRepository.findByIdAndDeletedFalse(userId)
-            .orElseThrow { EntityNotFoundException("User not found with id $userId") }
+            .orElseThrow { EntityNotFoundException("user.notFound") }
     }
 
     private fun toDto(editor: Editor): EditorDto {

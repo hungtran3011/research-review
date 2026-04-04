@@ -28,7 +28,7 @@ class InstitutionServiceImpl(
     @Cacheable(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#id")
     override fun getById(id: String): InstitutionDto {
         val institution = institutionRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("Institution not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("institution.notFound") }
         return toDto(institution)
     }
 
@@ -44,7 +44,7 @@ class InstitutionServiceImpl(
     @CachePut(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#id")
     override fun update(id: String, institutionDto: InstitutionDto): InstitutionDto {
         val institution = institutionRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("Institution not found with id: $id") }
+            .orElseThrow { IllegalArgumentException("institution.notFound") }
         
         institution.name = institutionDto.name
         institution.country = institutionDto.country
@@ -58,8 +58,8 @@ class InstitutionServiceImpl(
     @Transactional
     @CacheEvict(cacheNames = [CacheNames.INSTITUTION_BY_ID], key = "#id")
     override fun delete(id: String) {
-        val institution = institutionRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("Institution not found with id: $id") }
+        institutionRepository.findById(id)
+            .orElseThrow { IllegalArgumentException("institution.notFound") }
         institutionRepository.deleteById(id)
     }
 

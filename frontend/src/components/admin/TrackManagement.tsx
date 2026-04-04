@@ -11,18 +11,24 @@ import {
   Select,
   InputNumber,
   Alert,
+  Tag,
 } from 'antd';
 import { DeleteOutlined, SaveOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { conferenceService } from '../../services/conference.service';
 import { adminTrackService } from '../../services/admin-track.service';
+import { editorService } from '../../services/editor.service';
+import { userService } from '../../services/user.service';
 import type { ColumnsType } from 'antd/es/table';
 import type {
   AdminTrackConfigDto,
   AdminTrackConfigCreateRequestDto,
   AdminTrackConfigUpdateRequestDto,
+  EditorDto,
+  UserDto,
 } from '../../models';
 import { useBasicToast } from '../../hooks/useBasicToast';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -56,6 +62,7 @@ type TrackDraft = {
 const TrackManagement = () => {
   const queryClient = useQueryClient();
   const { success, error } = useBasicToast();
+  const { t } = useTranslation();
   const [selectedConferenceId, setSelectedConferenceId] = useState<string>('');
 
   // Query for fetching conferences
@@ -83,6 +90,23 @@ const TrackManagement = () => {
   const tracks = useMemo(() => tracksQuery.data || [], [tracksQuery.data]);
   const isLoading = tracksQuery.isLoading;
 
+  const usersQuery = useQuery({
+    queryKey: ['admin-users-for-editor-assignment'],
+    queryFn: async () => {
+      const response = await userService.getUsers({ page: 0, size: 100 });
+      return response.data?.content || [];
+    },
+  });
+
+  const editorAssignmentsQuery = useQuery({
+    queryKey: ['editor-assignments', selectedConferenceId],
+    queryFn: async () => {
+      const response = await editorService.list(0, 500);
+      return response.data?.content || [];
+    },
+    enabled: !!selectedConferenceId,
+  });
+
   const [createForm, setCreateForm] = useState<TrackDraft>({
     name: '',
     description: '',
@@ -91,6 +115,7 @@ const TrackManagement = () => {
   });
 
   const [draftById, setDraftById] = useState<Record<string, TrackDraft>>({});
+  const [editorDraftByTrackId, setEditorDraftByTrackId] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (tracks.length === 0) return;
@@ -113,11 +138,11 @@ const TrackManagement = () => {
   // Create mutation
   const createTrack = useMutation({
     mutationFn: async (data: AdminTrackConfigCreateRequestDto) => {
-      if (!selectedConferenceId) throw new Error('No conference selected');
+      if (!selectedConferenceId) throw new Error(t('trackManagement.errors.selectConferenceFirst'));
       return await adminTrackService.create(selectedConferenceId, data);
     },
     onSuccess: () => {
-      success('Đã tạo track thành công');
+      success(t('trackManagement.messages.createSuccess'));
       queryClient.invalidateQueries({ queryKey: ['admin-tracks', selectedConferenceId] });
       setCreateForm({
         name: '',
@@ -130,9 +155,9 @@ const TrackManagement = () => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Tạo track thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('trackManagement.messages.unknownError')
+        : t('trackManagement.messages.unknownError');
+      error(t('trackManagement.messages.createFailedPrefix') + message);
     },
   });
 
@@ -145,52 +170,107 @@ const TrackManagement = () => {
       trackId: string;
       data: AdminTrackConfigUpdateRequestDto;
     }) => {
-      if (!selectedConferenceId) throw new Error('No conference selected');
+      if (!selectedConferenceId) throw new Error(t('trackManagement.errors.selectConferenceFirst'));
       return await adminTrackService.update(selectedConferenceId, trackId, data);
     },
     onSuccess: () => {
-      success('Đã cập nhật track thành công');
+      success(t('trackManagement.messages.updateSuccess'));
       queryClient.invalidateQueries({ queryKey: ['admin-tracks', selectedConferenceId] });
     },
     onError: (err: unknown) => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Cập nhật track thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('trackManagement.messages.unknownError')
+        : t('trackManagement.messages.unknownError');
+      error(t('trackManagement.messages.updateFailedPrefix') + message);
     },
   });
 
   // Delete mutation
   const deleteTrack = useMutation({
     mutationFn: async (trackId: string) => {
-      if (!selectedConferenceId) throw new Error('No conference selected');
+      if (!selectedConferenceId) throw new Error(t('trackManagement.errors.selectConferenceFirst'));
       return await adminTrackService.delete(selectedConferenceId, trackId);
     },
     onSuccess: () => {
-      success('Đã xóa track thành công');
+      success(t('trackManagement.messages.deleteSuccess'));
       queryClient.invalidateQueries({ queryKey: ['admin-tracks', selectedConferenceId] });
     },
     onError: (err: unknown) => {
       const message = err instanceof Error 
         ? err.message 
         : typeof err === 'object' && err !== null && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Unknown error'
-        : 'Unknown error';
-      error('Xóa track thất bại: ' + message);
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('trackManagement.messages.unknownError')
+        : t('trackManagement.messages.unknownError');
+      error(t('trackManagement.messages.deleteFailedPrefix') + message);
     },
   });
 
   const isMutating = createTrack.isPending || updateTrack.isPending || deleteTrack.isPending;
 
+  const assignEditor = useMutation({
+    mutationFn: async ({ trackId, userId }: { trackId: string; userId: string }) => {
+      return editorService.create({ trackId, userId });
+    },
+    onSuccess: () => {
+      success(t('trackManagement.messages.assignEditorSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['editor-assignments', selectedConferenceId] });
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('trackManagement.messages.unknownError')
+          : t('trackManagement.messages.unknownError');
+      error(t('trackManagement.messages.assignEditorFailedPrefix') + message);
+    },
+  });
+
+  const removeEditorAssignment = useMutation({
+    mutationFn: async (editorId: string) => editorService.delete(editorId),
+    onSuccess: () => {
+      success(t('trackManagement.messages.removeEditorSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['editor-assignments', selectedConferenceId] });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || t('trackManagement.messages.unknownError')
+          : t('trackManagement.messages.unknownError');
+      error(t('trackManagement.messages.removeEditorFailedPrefix') + message);
+    },
+  });
+
+  const isAssigningEditor = assignEditor.isPending || removeEditorAssignment.isPending;
+
+  const availableEditorUsers = useMemo(() => {
+    const users = usersQuery.data || [];
+    return users.filter((user: UserDto) => user.status === 'ACTIVE' && user.role !== 'ADMIN');
+  }, [usersQuery.data]);
+
+  const assignmentsByTrackId = useMemo(() => {
+    const trackIds = new Set(tracks.map((track) => track.id));
+    const assignments = (editorAssignmentsQuery.data || []).filter((assignment: EditorDto) => trackIds.has(assignment.track.id));
+    return assignments.reduce<Record<string, EditorDto[]>>((acc, assignment) => {
+      const key = assignment.track.id;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(assignment);
+      return acc;
+    }, {});
+  }, [editorAssignmentsQuery.data, tracks]);
+
   const handleCreate = () => {
     if (!selectedConferenceId) {
-      error('Vui lòng chọn hội nghị trước');
+      error(t('trackManagement.errors.selectConferenceFirst'));
       return;
     }
     if (!createForm.name.trim()) {
-      error('Tên track là bắt buộc');
+      error(t('trackManagement.errors.trackNameRequired'));
       return;
     }
 
@@ -240,7 +320,7 @@ const TrackManagement = () => {
 
   const columns: ColumnsType<AdminTrackConfigDto> = [
     {
-      title: 'Tên track',
+      title: t('trackManagement.columns.trackName'),
       key: 'name',
       render: (_, record) => (
         <Input
@@ -251,7 +331,7 @@ const TrackManagement = () => {
       ),
     },
     {
-      title: 'Mô tả',
+      title: t('trackManagement.columns.description'),
       key: 'description',
       render: (_, record) => (
         <Input
@@ -262,7 +342,7 @@ const TrackManagement = () => {
       ),
     },
     {
-      title: 'Min Reviews',
+      title: t('trackManagement.columns.minReviews'),
       key: 'minReviews',
       render: (_, record) => (
         <InputNumber
@@ -271,14 +351,14 @@ const TrackManagement = () => {
             updateDraft(record.id, { reviewPolicyMinCompletedReviews: value })
           }
           min={1}
-          placeholder="Default"
+          placeholder={t('trackManagement.columns.minReviewsPlaceholder')}
           style={{ width: '100%' }}
           disabled={isMutating}
         />
       ),
     },
     {
-      title: 'Hoạt động',
+      title: t('trackManagement.columns.active'),
       key: 'isActive',
       width: 100,
       render: (_, record) => (
@@ -290,7 +370,68 @@ const TrackManagement = () => {
       ),
     },
     {
-      title: 'Hành động',
+      title: t('trackManagement.columns.chiefEditor'),
+      key: 'chiefEditor',
+      render: (_, record) => {
+        const selectedUserId = editorDraftByTrackId[record.id];
+        const assignedEditors = assignmentsByTrackId[record.id] || [];
+        return (
+          <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+            <Space.Compact style={{ width: '100%' }}>
+              <Select
+                value={selectedUserId || undefined}
+                onChange={(value) =>
+                  setEditorDraftByTrackId((prev) => ({
+                    ...prev,
+                    [record.id]: value,
+                  }))
+                }
+                placeholder={t('trackManagement.editor.placeholder')}
+                showSearch
+                optionFilterProp="label"
+                options={availableEditorUsers.map((user) => ({
+                  value: user.id,
+                  label: `${user.name} (${user.email})`,
+                }))}
+                disabled={isAssigningEditor || usersQuery.isLoading}
+                style={{ width: '100%' }}
+              />
+              <Button
+                onClick={() => {
+                  const userId = editorDraftByTrackId[record.id];
+                  if (!userId) return;
+                  assignEditor.mutate({ trackId: record.id, userId });
+                }}
+                disabled={!editorDraftByTrackId[record.id] || isAssigningEditor}
+              >
+                {t('trackManagement.editor.assign')}
+              </Button>
+            </Space.Compact>
+
+            <Space wrap size={[4, 4]}>
+              {assignedEditors.length === 0 ? (
+                <Tag>{t('trackManagement.editor.none')}</Tag>
+              ) : (
+                assignedEditors.map((assignment) => (
+                  <Tag
+                    key={assignment.id}
+                    closable
+                    onClose={(event) => {
+                      event.preventDefault();
+                      removeEditorAssignment.mutate(assignment.id);
+                    }}
+                  >
+                    {assignment.user?.name || assignment.user?.email || assignment.id}
+                  </Tag>
+                ))
+              )}
+            </Space>
+          </Space>
+        );
+      },
+    },
+    {
+      title: t('trackManagement.columns.actions'),
       key: 'actions',
       width: 120,
       render: (_, record) => (
@@ -301,7 +442,7 @@ const TrackManagement = () => {
             disabled={isMutating}
             size="small"
           >
-            Lưu
+            {t('trackManagement.actions.save')}
           </Button>
           <Button
             icon={<DeleteOutlined />}
@@ -310,7 +451,7 @@ const TrackManagement = () => {
             danger
             size="small"
           >
-            Xóa
+            {t('trackManagement.actions.delete')}
           </Button>
         </Space>
       ),
@@ -323,16 +464,16 @@ const TrackManagement = () => {
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <div>
             <Text strong style={{ fontSize: '24px' }}>
-              Quản lý Track
+              {t('trackManagement.title')}
             </Text>
           </div>
 
           <div style={styles.field}>
-            <Text strong>Chọn hội nghị *</Text>
+            <Text strong>{t('trackManagement.selectConferenceLabel')}</Text>
             <Select
               value={selectedConferenceId || undefined}
               onChange={setSelectedConferenceId}
-              placeholder="Chọn hội nghị để quản lý tracks"
+              placeholder={t('trackManagement.selectConferencePlaceholder')}
               loading={conferencesQuery.isLoading}
               options={conferences.map((conf) => ({
                 value: conf.id,
@@ -344,7 +485,7 @@ const TrackManagement = () => {
 
           {!selectedConferenceId && (
             <Alert
-              message="Vui lòng chọn hội nghị để xem và quản lý các track"
+              message={t('trackManagement.selectConferenceHint')}
               type="info"
               showIcon
             />
@@ -352,22 +493,22 @@ const TrackManagement = () => {
 
           {selectedConferenceId && (
             <>
-              <Card title="Tạo track mới" size="small">
+              <Card title={t('trackManagement.createTitle')} size="small">
                 <div style={styles.formRow}>
                   <Input
-                    placeholder="Tên track"
+                    placeholder={t('trackManagement.createTrackNamePlaceholder')}
                     value={createForm.name}
                     onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                     disabled={isMutating}
                   />
                   <Input
-                    placeholder="Mô tả"
+                    placeholder={t('trackManagement.createDescriptionPlaceholder')}
                     value={createForm.description}
                     onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                     disabled={isMutating}
                   />
                   <InputNumber
-                    placeholder="Min Rev"
+                    placeholder={t('trackManagement.createMinRevPlaceholder')}
                     value={createForm.reviewPolicyMinCompletedReviews}
                     onChange={(value) =>
                       setCreateForm({ ...createForm, reviewPolicyMinCompletedReviews: value })
@@ -387,21 +528,22 @@ const TrackManagement = () => {
                     onClick={handleCreate}
                     disabled={isMutating}
                   >
-                    Tạo
+                    {t('trackManagement.actions.create')}
                   </Button>
                 </div>
               </Card>
 
               {isLoading ? (
-                <Spin size="large" tip="Đang tải danh sách track..." />
+                <Spin size="large" tip={t('trackManagement.loading')} />
               ) : (
                 <Table
                   columns={columns}
                   dataSource={tracks}
                   rowKey="id"
+                  scroll={{ x: 1200 }}
                   pagination={{ pageSize: 15 }}
                   locale={{
-                    emptyText: 'Không có track nào trong hội nghị này',
+                    emptyText: t('trackManagement.empty'),
                   }}
                 />
               )}

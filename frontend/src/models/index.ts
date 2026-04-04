@@ -1,5 +1,6 @@
 // Index file to export all models
 export * from './article.model';
+export * from './article-dashboard.model';
 export * from './article-request.model';
 export * from './article-submission.model';
 export * from './article-version.model';

@@ -3,18 +3,30 @@ import type { ArticleVersionDto, CommentDto, ArticleSubmissionDto } from '../../
 
 export const sampleVersions: ArticleVersionDto[] = [
     {
+        id: 'version-1',
+        articleId: 'article-123',
+        versionNumber: 1,
+        supplements: [],
         version: 1,
         fileUrl: '/sample-papers/ArchiMate-Cookbook.pdf',
         uploadedAt: '2025-01-15T00:00:00.000Z',
         uploadedBy: 'Dr. John Smith'
     },
     {
+        id: 'version-2',
+        articleId: 'article-123',
+        versionNumber: 2,
+        supplements: [],
         version: 2,
         fileUrl: '/sample-papers/Trần Quang Hưng - SE.pdf',
         uploadedAt: '2025-02-10T00:00:00.000Z',
         uploadedBy: 'Dr. John Smith'
     },
     {
+        id: 'version-3',
+        articleId: 'article-123',
+        versionNumber: 3,
+        supplements: [],
         version: 3,
         fileUrl: '/sample-papers/test-no-toc.pdf',
         uploadedAt: '2025-03-05T00:00:00.000Z',

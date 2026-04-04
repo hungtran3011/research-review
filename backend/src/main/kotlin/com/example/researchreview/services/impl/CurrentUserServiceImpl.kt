@@ -20,5 +20,5 @@ class CurrentUserServiceImpl(
         return userRepository.findByIdAndDeletedFalse(userId).orElse(null)
     }
 
-    override fun requireUser(): User = currentUser() ?: throw EntityNotFoundException("Current user not found")
+    override fun requireUser(): User = currentUser() ?: throw EntityNotFoundException("currentUser.notFound")
 }

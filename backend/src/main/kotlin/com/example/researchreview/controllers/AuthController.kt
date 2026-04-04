@@ -12,6 +12,8 @@ import com.example.researchreview.exceptions.TooManyCodeRequestException
 import com.example.researchreview.exceptions.VerifiedEmailException
 import com.example.researchreview.services.AuthService
 import jakarta.validation.Valid
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -20,8 +22,11 @@ import java.time.Instant
 @RestController
 @RequestMapping("/api/v1/auth")
 class AuthController(
-    private val authService: AuthService
+    private val authService: AuthService,
+    private val messageSource: MessageSource,
 ) {
+
+    private fun msg(code: String): String = messageSource.getMessage(code, null, LocaleContextHolder.getLocale())
 
     @PostMapping("/signup")
     fun signUp(@Valid @RequestBody request: AuthRequestDto): ResponseEntity<BaseResponseDto<AuthResponseDto>> {
@@ -31,10 +36,10 @@ class AuthController(
             return ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Magic link sent to your email",
+                    message = msg("auth.magicLinkSent"),
                     data = AuthResponseDto(
                         success = true,
-                        message = "Magic link sent to your email",
+                        message = msg("auth.magicLinkSent"),
                         canResendAt = now + sendResult.cooldownSeconds,
                         attemptsRemaining = sendResult.attemptsRemaining
                     )
@@ -44,10 +49,10 @@ class AuthController(
             val retryAfter = e.retryAfterSeconds
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(BaseResponseDto(
                 code = 429,
-                message = "Too many code requests, please try again later",
+                message = msg("auth.tooManyRequests"),
                 data = AuthResponseDto(
                     success = false,
-                    message = "Too many code requests, please try again later",
+                    message = msg("auth.tooManyRequests"),
                     canResendAt = now + retryAfter,
                     attemptsRemaining = 0
                 )
@@ -55,23 +60,23 @@ class AuthController(
         } catch (_: EmailExistedException) {
             return ResponseEntity.badRequest().body(BaseResponseDto(
                 code = 400,
-                message = "Email already exists",
-                data = AuthResponseDto(success = false, message = "Email already exists")
+                message = msg("auth.emailExists"),
+                data = AuthResponseDto(success = false, message = msg("auth.emailExists"))
             ))
         } catch (_: VerifiedEmailException) {
             return ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = "Email is already verified",
-                    data = AuthResponseDto(success = false, message = "Email is already verified")
+                    message = msg("auth.emailAlreadyVerified"),
+                    data = AuthResponseDto(success = false, message = msg("auth.emailAlreadyVerified"))
                 )
             )
         } catch (_: Exception) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error",
-                    data = AuthResponseDto(success = false, message = "Internal server error")
+                    message = msg("auth.internalServer"),
+                    data = AuthResponseDto(success = false, message = msg("auth.internalServer"))
                 )
             )
         }
@@ -85,10 +90,10 @@ class AuthController(
             return ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Magic link sent to your email",
+                    message = msg("auth.magicLinkSent"),
                     data = AuthResponseDto(
                         success = true,
-                        message = "Magic link sent to your email",
+                        message = msg("auth.magicLinkSent"),
                         canResendAt = now + sendResult.cooldownSeconds,
                         attemptsRemaining = sendResult.attemptsRemaining
                     )
@@ -99,10 +104,10 @@ class AuthController(
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(
                 BaseResponseDto(
                     code = 429,
-                    message = "Too many code requests, please try again later",
+                    message = msg("auth.tooManyRequests"),
                     data = AuthResponseDto(
                         success = false,
-                        message = "Too many code requests, please try again later",
+                        message = msg("auth.tooManyRequests"),
                         canResendAt = now + retryAfter,
                         attemptsRemaining = 0
                     )
@@ -112,24 +117,24 @@ class AuthController(
             return ResponseEntity.status(HttpStatus.FAILED_DEPENDENCY).body(
                 BaseResponseDto(
                     code = 424,
-                    message = "Failed to send email",
-                    data = AuthResponseDto(success = false, message = "Failed to send email")
+                    message = msg("auth.failedSendEmail"),
+                    data = AuthResponseDto(success = false, message = msg("auth.failedSendEmail"))
                 )
             )
         } catch (e: InternalErrorException) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error",
-                    data = AuthResponseDto(success = false, message = "Internal server error")
+                    message = msg("auth.internalServer"),
+                    data = AuthResponseDto(success = false, message = msg("auth.internalServer"))
                 )
             )
         } catch (_: Exception) {
             return ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = "Failed to send email",
-                    data = AuthResponseDto(success = false, message = "Failed to send email")
+                    message = msg("auth.failedSendEmail"),
+                    data = AuthResponseDto(success = false, message = msg("auth.failedSendEmail"))
                 )
             )
         }
@@ -144,10 +149,10 @@ class AuthController(
                 ResponseEntity.ok(
                     BaseResponseDto(
                         code = 200,
-                        message = "Token verified successfully",
+                        message = msg("auth.tokenVerified"),
                         data = AuthResponseDto(
                             success = true,
-                            message = "Token verified successfully",
+                            message = msg("auth.tokenVerified"),
                             accessToken = issuedTokens?.accessToken,
                             refreshToken = null
                         )
@@ -157,10 +162,10 @@ class AuthController(
                 ResponseEntity.badRequest().body(
                     BaseResponseDto(
                         code = 400,
-                        message = "Invalid token",
+                        message = msg("auth.invalidToken"),
                         data = AuthResponseDto(
                             success = false,
-                            message = "Invalid token"
+                            message = msg("auth.invalidToken")
                         )
                     )
                 )
@@ -169,16 +174,16 @@ class AuthController(
             return ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
-                    message = "Invalid token",
-                    data = AuthResponseDto(success = false, message = "Invalid token")
+                    message = msg("auth.invalidToken"),
+                    data = AuthResponseDto(success = false, message = msg("auth.invalidToken"))
                 )
             )
         } catch (e: Exception) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error",
-                    data = AuthResponseDto(success = false, message = "Internal server error")
+                    message = msg("auth.internalServer"),
+                    data = AuthResponseDto(success = false, message = msg("auth.internalServer"))
                 )
             )
         }
@@ -191,10 +196,10 @@ class AuthController(
             return ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Tokens refreshed successfully",
+                    message = msg("auth.tokensRefreshed"),
                     data = AuthResponseDto(
                         success = true,
-                        message = "Tokens refreshed successfully",
+                        message = msg("auth.tokensRefreshed"),
                         accessToken = tokens.accessToken,
                         refreshToken = null
                     )
@@ -204,8 +209,8 @@ class AuthController(
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 BaseResponseDto(
                     code = 401,
-                    message = "Invalid token",
-                    data = AuthResponseDto(success = false, message = "Invalid token")
+                    message = msg("auth.invalidToken"),
+                    data = AuthResponseDto(success = false, message = msg("auth.invalidToken"))
                 )
             )
         }
@@ -219,10 +224,10 @@ class AuthController(
             return ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "New magic link sent to your email",
+                    message = msg("auth.newMagicLinkSent"),
                     data = AuthResponseDto(
                         success = true,
-                        message = "New magic link sent to your email",
+                        message = msg("auth.newMagicLinkSent"),
                         canResendAt = now + sendResult.cooldownSeconds,
                         attemptsRemaining = sendResult.attemptsRemaining
                     )
@@ -233,10 +238,10 @@ class AuthController(
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(
                 BaseResponseDto(
                     code = 429,
-                    message = "Too many code requests, please try again later",
+                    message = msg("auth.tooManyRequests"),
                     data = AuthResponseDto(
                         success = false,
-                        message = "Too many code requests, please try again later",
+                        message = msg("auth.tooManyRequests"),
                         canResendAt = now + retryAfter,
                         attemptsRemaining = 0
                     )
@@ -246,16 +251,16 @@ class AuthController(
             return ResponseEntity.status(HttpStatus.FAILED_DEPENDENCY).body(
                 BaseResponseDto(
                     code = 424,
-                    message = "Failed to send email",
-                    data = AuthResponseDto(success = false, message = "Failed to send email")
+                    message = msg("auth.failedSendEmail"),
+                    data = AuthResponseDto(success = false, message = msg("auth.failedSendEmail"))
                 )
             )
         } catch (e: InternalErrorException) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "Internal server error",
-                    data = AuthResponseDto(success = false, message = "Internal server error")
+                    message = msg("auth.internalServer"),
+                    data = AuthResponseDto(success = false, message = msg("auth.internalServer"))
                 )
             )
         }
@@ -267,7 +272,7 @@ class AuthController(
         return ResponseEntity.ok(
             AuthResponseDto(
                 success = true,
-                message = "Signed out successfully"
+                message = msg("auth.signedOut")
             )
         )
     }

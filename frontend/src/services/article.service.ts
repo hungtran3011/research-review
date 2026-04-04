@@ -1,6 +1,8 @@
 import { api } from './api';
 import type {
+  ArticleDashboardStatsDto,
   ArticleDto,
+  ArticleListFilterDto,
   ArticleRequestDto,
   BaseResponseDto,
   InitialReviewRequestDto,
@@ -12,11 +14,33 @@ export const articleService = {
   list: async (
     page: number = 0,
     size: number = 10,
+    filters?: ArticleListFilterDto,
   ): Promise<BaseResponseDto<PageResponseDto<ArticleDto>>> => {
     const response = await api.get<BaseResponseDto<PageResponseDto<ArticleDto>>>(
       '/articles',
-      { params: { page, size } },
+      {
+        params: {
+          page,
+          size,
+          title: filters?.title?.trim() || undefined,
+          author: filters?.author?.trim() || undefined,
+          status: filters?.status || undefined,
+        },
+      },
     );
+    return response.data;
+  },
+
+  dashboardStats: async (
+    filters?: ArticleListFilterDto,
+  ): Promise<BaseResponseDto<ArticleDashboardStatsDto>> => {
+    const response = await api.get<BaseResponseDto<ArticleDashboardStatsDto>>('/articles/dashboard/stats', {
+      params: {
+        title: filters?.title?.trim() || undefined,
+        author: filters?.author?.trim() || undefined,
+        status: filters?.status || undefined,
+      },
+    });
     return response.data;
   },
   getById: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {

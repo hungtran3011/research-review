@@ -57,20 +57,20 @@ class ReviewerServiceImpl(
     @Transactional
     override fun contactReviewers(articleId: String, request: ReviewerContactRequestDto): List<ReviewerDto> {
         val user = currentUserService.requireUser()
-        if (!user.hasRole(Role.EDITOR)) {
-            throw AccessDeniedException("Only EDITOR can contact reviewers")
+        if (!user.hasRole(Role.EDITOR) && !user.hasRole(Role.CHAIR)) {
+            throw AccessDeniedException("reviewer.onlyEditorOrChairCanContact")
         }
 
         val article = articleAccessGuard.fetchAccessibleArticle(articleId)
         if (article.status != ArticleStatus.PENDING_REVIEW) {
-            throw IllegalStateException("Reviewers can only be contacted after initial review (PENDING_REVIEW)")
+            throw IllegalStateException("reviewer.contactOnlyAfterInitialReview")
         }
 
         val reviewers = mutableListOf<Reviewer>()
         if (request.reviewerIds.isNotEmpty()) {
             val existing = reviewerRepository.findAllById(request.reviewerIds)
             if (existing.size != request.reviewerIds.size) {
-                throw EntityNotFoundException("One or more reviewers could not be located")
+                throw EntityNotFoundException("reviewer.someNotFound")
             }
             reviewers.addAll(existing)
         }
@@ -78,7 +78,7 @@ class ReviewerServiceImpl(
         request.newReviewers.forEach { reviewers.add(upsertReviewer(it)) }
 
         if (reviewers.isEmpty()) {
-            throw IllegalArgumentException("At least one reviewer must be provided")
+            throw IllegalArgumentException("reviewer.atLeastOneRequired")
         }
 
         val subject = request.subject.ifBlank { "Invitation to review \"${article.title}\"" }
@@ -123,7 +123,7 @@ class ReviewerServiceImpl(
     @Transactional
     override fun revokeInvitation(articleId: String, reviewerId: String) {
         val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(articleId, reviewerId)
-            ?: throw EntityNotFoundException("Reviewer not assigned to article")
+            ?: throw EntityNotFoundException("reviewer.notAssignedToArticle")
     relation.status = ReviewerInvitationStatus.REVOKED
     relation.deleted = true
         reviewerArticleRepository.save(relation)
@@ -131,7 +131,7 @@ class ReviewerServiceImpl(
 
     private fun upsertReviewer(dto: ReviewerRequestDto): Reviewer {
         val institution = institutionRepository.findById(dto.institutionId)
-            .orElseThrow { EntityNotFoundException("Institution not found with id ${dto.institutionId}") }
+            .orElseThrow { EntityNotFoundException("institution.notFound") }
         val reviewer = reviewerRepository.findByEmail(dto.email) ?: Reviewer()
         reviewer.name = dto.name
         reviewer.email = dto.email
