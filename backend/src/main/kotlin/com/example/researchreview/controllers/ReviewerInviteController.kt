@@ -61,7 +61,7 @@ class ReviewerInviteController(
     }
 
     @PostMapping("/accept")
-    @PreAuthorize("hasRole('REVIEWER')")
+    @PreAuthorize("isAuthenticated()")
     fun accept(@RequestParam token: String): ResponseEntity<BaseResponseDto<ReviewerInviteDecisionDto>> {
         return try {
             val dto = reviewerInviteDecisionService.accept(token)
@@ -84,7 +84,7 @@ class ReviewerInviteController(
     }
 
     @PostMapping("/decline")
-    @PreAuthorize("hasRole('REVIEWER')")
+    @PreAuthorize("isAuthenticated()")
     fun decline(@RequestParam token: String): ResponseEntity<BaseResponseDto<ReviewerInviteDecisionDto>> {
         return try {
             val dto = reviewerInviteDecisionService.decline(token)

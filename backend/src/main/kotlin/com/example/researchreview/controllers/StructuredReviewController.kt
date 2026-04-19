@@ -22,7 +22,7 @@ class StructuredReviewController(
 ) {
 
     @PostMapping
-    @PreAuthorize("hasRole('REVIEWER')")
+    @PreAuthorize("isAuthenticated()")
     fun saveOrSubmit(
         @PathVariable articleId: String,
         @Valid @RequestBody request: StructuredReviewSubmitRequestDto,
@@ -38,21 +38,28 @@ class StructuredReviewController(
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('REVIEWER')")
+    @PreAuthorize("isAuthenticated()")
     fun getMyReview(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<StructuredReviewDto?>> {
         val data = structuredReviewService.getMyReview(articleId)
         return ResponseEntity.ok(BaseResponseDto(code = 200, message = "My structured review retrieved", data = data))
     }
 
+    @GetMapping("/editor-view")
+    @PreAuthorize("isAuthenticated()")
+    fun getEditorView(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<StructuredReviewDto>>> {
+        val data = structuredReviewService.getEditorView(articleId)
+        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Structured reviews retrieved", data = data))
+    }
+
     @GetMapping("/chair-view")
-    @PreAuthorize("hasAnyRole('CHAIR','ADMIN')")
-    fun getChairView(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<StructuredReviewDto>>> {
-        val data = structuredReviewService.getChairView(articleId)
+    @PreAuthorize("isAuthenticated()")
+    fun getChairViewCompat(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<StructuredReviewDto>>> {
+        val data = structuredReviewService.getEditorView(articleId)
         return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Structured reviews retrieved", data = data))
     }
 
     @GetMapping("/anonymized")
-    @PreAuthorize("hasAnyRole('RESEARCHER','EDITOR','CHAIR','ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     fun getAnonymizedView(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<StructuredReviewAnonymizedDto>>> {
         val data = structuredReviewService.getAnonymizedView(articleId)
         return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Anonymized structured reviews retrieved", data = data))

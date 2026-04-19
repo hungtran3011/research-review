@@ -144,7 +144,10 @@ class AuthServiceImpl(
         emailService.sendEmail(
             to = listOf(email),
             subject = "Research Review Signup",
-            message = "Please use the following code to sign up:  $url",
+            message = """
+                <p>Please use the following link to continue:</p>
+                <p><a href="$url">$url</a></p>
+            """.trimIndent(),
             template = "signup-email"
         )
 
@@ -189,7 +192,7 @@ class AuthServiceImpl(
             val user = usersService.getByEmail(email) ?: throw TokenInvalidException()
             // issue tokens and set refresh httpOnly cookie on the current response
             val tokens = try {
-                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.role, user.roles), providedFpHash)
+                val issued = jwtService.issueTokensForUser(user.id, buildAuthorities(user.globalRole), providedFpHash)
                 setCookiesFromTokens(issued, getCurrentResponse())
                 redisTemplate.delete(eKey)
                 redisTemplate.delete(resendKey(email, deviceFingerprint))
@@ -227,7 +230,7 @@ class AuthServiceImpl(
             val userId = jwt.subject
             val user = usersService.getById(userId)
             val deviceFpHash = jwt.getClaimAsString("device_fp")
-            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.role, user.roles), deviceFpHash)
+            val tokens = jwtService.refreshTokens(userId, refreshToken, buildAuthorities(user.globalRole), deviceFpHash)
             // set rotated refresh cookie on response if available
             try {
                 setCookiesFromTokens(tokens, getCurrentResponse())
@@ -262,16 +265,14 @@ class AuthServiceImpl(
         } catch (_: Exception) {
             null
         } ?: return
-        val tokens = jwtService.issueTokensForUser(userId, buildAuthorities(user.role, user.roles))
+        val tokens = jwtService.issueTokensForUser(userId, buildAuthorities(user.globalRole))
         val resp = getCurrentResponse() ?: return
         setCookiesFromTokens(tokens, resp)
     }
 
-    private fun buildAuthorities(role: String?, roles: List<String>? = null): List<String> {
-        val base = roles?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
-            ?: role?.takeIf { it.isNotBlank() }?.let { listOf(it) }
-            ?: emptyList()
-        return base.map { it.uppercase() }.distinct()
+    private fun buildAuthorities(globalRole: String?): List<String> {
+        val normalizedRole = globalRole?.trim()?.takeIf { it.isNotBlank() }?.uppercase() ?: "USER"
+        return listOf(normalizedRole)
     }
 
     private fun setCookiesFromTokens(tokens: com.example.researchreview.services.Tokens, response: HttpServletResponse?) {
@@ -279,7 +280,7 @@ class AuthServiceImpl(
         // only set refresh cookie (HttpOnly) — access token will be returned in response body for FE store
         val refreshCookie = Cookie("refresh_token", tokens.refreshToken)
         refreshCookie.isHttpOnly = true
-        refreshCookie.secure = true
+        refreshCookie.secure = shouldUseSecureCookies()
         refreshCookie.path = "/"
         refreshCookie.maxAge = (tokens.refreshExpiresAt.epochSecond - java.time.Instant.now().epochSecond).toInt()
         response.addCookie(refreshCookie)
@@ -292,7 +293,14 @@ class AuthServiceImpl(
         refreshCookie.path = "/"
         refreshCookie.maxAge = 0
         refreshCookie.isHttpOnly = true
-        refreshCookie.secure = true
+        refreshCookie.secure = shouldUseSecureCookies()
         response.addCookie(refreshCookie)
+    }
+
+    private fun shouldUseSecureCookies(): Boolean {
+        val attrs = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes ?: return false
+        val request = attrs.request
+        val forwardedProto = request.getHeader("X-Forwarded-Proto")?.lowercase()
+        return request.isSecure || forwardedProto == "https"
     }
 }

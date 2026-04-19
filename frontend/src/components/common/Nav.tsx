@@ -36,21 +36,18 @@ function Nav() {
   const { mutate: signOut } = useSignOut()
   const { data: currentUserResponse } = useCurrentUser(Boolean(isAuthenticated))
 
-  const roles = currentUserResponse?.data?.roles?.length
-    ? currentUserResponse.data.roles
-    : currentUserResponse?.data?.role
-      ? [currentUserResponse.data.role]
-      : []
-
-  const isAdmin = roles.includes('ADMIN')
-  const isResearcher = roles.includes('RESEARCHER')
+  const isAdmin = currentUserResponse?.data?.globalRole === 'ADMIN'
+  const canSubmitArticle = isAuthenticated && !isAdmin
   const currentLocale = i18n.language.toLowerCase().startsWith('vi') ? 'vi' : 'en'
 
   const links = [
     { to: '/', label: t('nav.home'), icon: <HomeOutlined /> },
     { to: '/help', label: t('nav.help'), icon: <FileTextOutlined /> },
-    ...(isAuthenticated && isResearcher
-      ? [{ to: '/articles/submit', label: t('nav.submitArticle'), icon: <PlusOutlined /> }]
+    ...(canSubmitArticle
+      ? [
+        { to: '/conferences/register', label: t('nav.registerConference'), icon: <PlusOutlined /> },
+        { to: '/articles/submit', label: t('nav.submitArticle'), icon: <PlusOutlined /> },
+      ]
       : []),
     ...(isAuthenticated ? [{ to: '/profile', label: t('nav.myProfile'), icon: <UserOutlined /> }] : []),
     ...(isAdmin ? [{ to: '/admin', label: t('nav.admin'), icon: <SettingOutlined /> }] : []),

@@ -1,6 +1,6 @@
 package com.example.researchreview.controllers
 
-import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.dtos.AdminCreateUserRequestDto
 import com.example.researchreview.dtos.AdminTopicConfigCreateRequestDto
 import com.example.researchreview.dtos.AdminTopicConfigDto
@@ -263,12 +263,12 @@ class AdminConfigurationController(
         return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User deleted", data = Unit))
     }
 
-    private fun extractRole(principal: Jwt): Role {
+    private fun extractRole(principal: Jwt): GlobalRole {
         val roles = principal.getClaimAsStringList("roles") ?: emptyList()
         val roleName = roles.firstOrNull()
             ?: throw AccessDeniedException("Role information missing")
         return try {
-            Role.valueOf(roleName)
+            GlobalRole.valueOf(roleName)
         } catch (_: IllegalArgumentException) {
             throw AccessDeniedException("Invalid role in token: $roleName")
         }

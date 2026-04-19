@@ -24,12 +24,12 @@ function ArticleWorkspace() {
     const { data: articleResponse, isLoading: isArticleLoading } = useArticle(articleId, !!articleId)
     const article = articleResponse?.data
 
-    const currentRoles = useMemo(() => {
-        const roles = (currentUser as { roles?: string[] } | undefined)?.roles
-        if (Array.isArray(roles) && roles.length > 0) return roles
-        const role = (currentUser as { role?: string } | undefined)?.role
-        return role ? [role] : []
-    }, [currentUser])
+    const currentConferenceRoles = useMemo(() => {
+        if (!article?.conferenceId || !currentUser?.conferences) return []
+        return currentUser.conferences
+            .filter((membership) => membership.conferenceId === article.conferenceId)
+            .map((membership) => membership.membershipRole)
+    }, [article?.conferenceId, currentUser?.conferences])
 
     const isAssignedReviewer = useMemo(() => {
         if (!article) return false
@@ -41,8 +41,9 @@ function ArticleWorkspace() {
         })
     }, [article, currentUser, currentUserEmail])
 
-    const isEditor = useMemo(() => currentRoles.includes('EDITOR') || currentRoles.includes('ADMIN'), [currentRoles])
-    const isReviewer = useMemo(() => currentRoles.includes('REVIEWER'), [currentRoles])
+    const isAdmin = currentUser?.globalRole === 'ADMIN'
+    const isEditor = useMemo(() => isAdmin || currentConferenceRoles.includes('EDITOR'), [isAdmin, currentConferenceRoles])
+    const isReviewer = useMemo(() => currentConferenceRoles.includes('REVIEWER'), [currentConferenceRoles])
 
     const canShowInitialReviewPanel = isEditor && article?.status === ArticleStatus.SUBMITTED
     const canShowReviewerPanel = isReviewer && isAssignedReviewer

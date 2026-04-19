@@ -10,17 +10,20 @@ import {
   Select,
   InputNumber,
   Modal,
+  Drawer,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { conferenceService } from '../../services/conference.service';
 import { ConferenceStatusOptions } from '../../constants';
+import { useConferenceMembers } from '../../hooks/useConferenceMembership';
 import type { ColumnsType } from 'antd/es/table';
 import type {
   ConferenceDto,
   ConferenceCreateRequestDto,
   ConferenceUpdateRequestDto,
   ConferenceStatus,
+  ConferenceMembershipDto,
 } from '../../models';
 import dayjs from 'dayjs';
 import { useBasicToast } from '../../hooks/useBasicToast';
@@ -62,6 +65,8 @@ const ConferenceManagement = () => {
   const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
+  const [selectedConferenceId, setSelectedConferenceId] = useState<string | null>(null);
   
   // Form fields for create/edit
   const [formName, setFormName] = useState('');
@@ -72,6 +77,9 @@ const ConferenceManagement = () => {
   const [formStatus, setFormStatus] = useState<ConferenceStatus>('DRAFT' as ConferenceStatus);
   const [formDeadline, setFormDeadline] = useState<dayjs.Dayjs | null>(null);
   const [formMinReviews, setFormMinReviews] = useState(3);
+
+  // Membership hooks
+  const membersQuery = useConferenceMembers(selectedConferenceId || '', memberDrawerOpen);
 
   // Query for fetching conferences
   const conferencesQuery = useQuery({
@@ -273,6 +281,17 @@ const ConferenceManagement = () => {
         <Space>
           <Button
             size="small"
+            icon={<TeamOutlined />}
+            onClick={() => {
+              setSelectedConferenceId(record.id);
+              setMemberDrawerOpen(true);
+            }}
+            disabled={isMutating}
+          >
+            {t('conferenceManagement.actions.members')}
+          </Button>
+          <Button
+            size="small"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
             disabled={isMutating}
@@ -434,6 +453,48 @@ const ConferenceManagement = () => {
           </div>
         </div>
       </Modal>
+
+      <Drawer
+        title={t('conferenceManagement.membership.title')}
+        placement="right"
+        onClose={() => {
+          setMemberDrawerOpen(false);
+          setSelectedConferenceId(null);
+        }}
+        open={memberDrawerOpen}
+        width={500}
+      >
+        {selectedConferenceId && (
+          <Card title={t('conferenceManagement.membership.memberListTitle')}>
+            <Table<ConferenceMembershipDto>
+              columns={[
+                {
+                  title: t('conferenceManagement.membership.columns.name'),
+                  render: (_, record) => record.userName,
+                },
+                {
+                  title: t('conferenceManagement.membership.columns.email'),
+                  render: (_, record) => record.userEmail,
+                },
+                {
+                  title: t('conferenceManagement.membership.columns.role'),
+                  render: (_, record) => {
+                    const roleKey = `conferenceManagement.membership.roles.${record.membershipRole}`;
+                    return t(roleKey);
+                  },
+                },
+              ]}
+              dataSource={membersQuery.data?.data ?? []}
+              rowKey="id"
+              loading={membersQuery.isLoading}
+              pagination={false}
+              locale={{
+                emptyText: t('conferenceManagement.membership.empty'),
+              }}
+            />
+          </Card>
+        )}
+      </Drawer>
     </div>
   );
 };

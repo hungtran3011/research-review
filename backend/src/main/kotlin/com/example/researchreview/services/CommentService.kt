@@ -10,4 +10,5 @@ interface CommentService {
     fun createThread(articleId: String, request: CommentCreateRequestDto): CommentThreadDto
     fun reply(threadId: String, request: CommentReplyRequestDto): CommentThreadDto
     fun updateStatus(threadId: String, request: CommentStatusUpdateRequestDto): CommentThreadDto
+    fun deleteComment(commentId: String): CommentThreadDto
 }

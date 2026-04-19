@@ -13,10 +13,8 @@ data class UserDto(
     @field:NotBlank(message = "Name is required")
     var name: String = "",
 
-    @field:NotBlank(message = "Role is required")
-    var role: String = "",
-
-    var roles: List<String> = emptyList(),
+    @field:NotBlank(message = "Global role is required")
+    var globalRole: String = "USER",
 
     @field:NotBlank(message = "Email is required")
     @field:Email(message = "Invalid email")

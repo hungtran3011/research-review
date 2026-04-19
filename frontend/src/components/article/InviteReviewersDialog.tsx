@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Modal, Button, Typography, Input, Select, Radio, Spin, Form } from 'antd'
-import { useQueryClient } from '@tanstack/react-query'
-import { useUsers } from '../../hooks/useUser'
+import { DeleteOutlined } from '@ant-design/icons'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useInstitutions } from '../../hooks/useInstitutionTrack'
 import { useBasicToast, getApiErrorMessage } from '../../hooks/useBasicToast'
 import { articleService } from '../../services/article.service'
@@ -55,13 +55,13 @@ export function InviteReviewersDialog({
     const [manualReviewerEmail, setManualReviewerEmail] = useState('')
     const [manualReviewerInstitutionId, setManualReviewerInstitutionId] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [removingReviewerId, setRemovingReviewerId] = useState<string | null>(null)
 
-    const { data: usersResponse, isLoading: isLoadingUsers } = useUsers(
-        0,
-        100,
-        { role: 'REVIEWER' },
-        open,
-    )
+    const { data: usersResponse, isLoading: isLoadingUsers } = useQuery({
+        queryKey: ['reviewerCandidates', articleId],
+        queryFn: () => articleService.getReviewerCandidates(articleId),
+        enabled: open && !!articleId,
+    })
 
     const { data: institutionsResponse, isLoading: isLoadingInstitutions } = useInstitutions(0, 100)
     const institutions = useMemo(() => institutionsResponse?.data?.content ?? [], [institutionsResponse])
@@ -70,8 +70,8 @@ export function InviteReviewersDialog({
     const invitedEmails = useMemo(() => getInvitedEmails(invitedReviewers), [invitedReviewers])
 
     const reviewerUsers = useMemo(() => {
-        const all = usersResponse?.data?.content ?? []
-        return all.filter((u) => !invitedUserIds.has(u.id) && !invitedEmails.has((u.email ?? '').toLowerCase()))
+        const all: UserDto[] = usersResponse?.data ?? []
+        return all.filter((u: UserDto) => !invitedUserIds.has(u.id) && !invitedEmails.has((u.email ?? '').toLowerCase()))
     }, [usersResponse, invitedUserIds, invitedEmails])
 
     const handleClose = () => {
@@ -102,7 +102,7 @@ export function InviteReviewersDialog({
 
             if (entryMode === 'existing') {
                 for (const reviewerId of selectedReviewerIds) {
-                    const user = reviewerUsers.find((u) => u.id === reviewerId)
+                    const user = reviewerUsers.find((u: UserDto) => u.id === reviewerId)
                     if (!user) continue
 
                     await articleService.assignReviewer(articleId, {
@@ -129,6 +129,20 @@ export function InviteReviewersDialog({
             error(`${t('inviteReviewersDialog.messages.inviteFailedPrefix')}${getApiErrorMessage(e, t('inviteReviewersDialog.messages.tryAgain'))}`)
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    const handleRemoveReviewer = async (reviewerId: string) => {
+        if (!articleId) return
+        setRemovingReviewerId(reviewerId)
+        try {
+            await articleService.unassignReviewer(articleId, reviewerId)
+            success(t('inviteReviewersDialog.messages.removeSuccess'))
+            queryClient.invalidateQueries({ queryKey: ['article', articleId] })
+        } catch (e) {
+            error(`${t('inviteReviewersDialog.messages.removeFailedPrefix')}${getApiErrorMessage(e, t('inviteReviewersDialog.messages.tryAgain'))}`)
+        } finally {
+            setRemovingReviewerId(null)
         }
     }
 
@@ -166,10 +180,21 @@ export function InviteReviewersDialog({
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {invitedReviewers.map((r) => (
-                            <Text key={r.id}>
-                                {r.name} ({r.email})
-                                {r.institution?.name ? ` - ${r.institution.name}` : ''}
-                            </Text>
+                            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                                <Text>
+                                    {r.name} ({r.email})
+                                    {r.institution?.name ? ` - ${r.institution.name}` : ''}
+                                </Text>
+                                <Button
+                                    type="text"
+                                    danger
+                                    size="small"
+                                    icon={<DeleteOutlined />}
+                                    loading={removingReviewerId === r.id}
+                                    onClick={() => handleRemoveReviewer(r.id)}
+                                    title={t('inviteReviewersDialog.actions.remove')}
+                                />
+                            </div>
                         ))}
                     </div>
                 )}

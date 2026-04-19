@@ -1,17 +1,20 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.ArticleStatus
-import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.ConferenceMembershipRole
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.ReviewerInvitationStatus
 import com.example.researchreview.entities.Article
 import com.example.researchreview.entities.ArticleAuthor
 import com.example.researchreview.entities.Author
 import com.example.researchreview.entities.Reviewer
 import com.example.researchreview.entities.ReviewerArticle
+import com.example.researchreview.entities.UserConferenceMembership
 import com.example.researchreview.entities.User
 import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.ReviewerArticleRepository
+import com.example.researchreview.repositories.UserConferenceMembershipRepository
 import com.example.researchreview.services.ArticleAccessGuard
 import com.example.researchreview.services.CurrentUserService
 import jakarta.persistence.EntityNotFoundException
@@ -26,7 +29,8 @@ class ArticleAccessGuardImpl(
     private val articleRepository: ArticleRepository,
     private val editorRepository: EditorRepository,
     private val reviewerArticleRepository: ReviewerArticleRepository,
-    private val currentUserService: CurrentUserService
+    private val currentUserService: CurrentUserService,
+    private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
 ) : ArticleAccessGuard {
 
     override fun listAccessibleArticles(pageable: Pageable): Page<Article> {
@@ -59,31 +63,31 @@ class ArticleAccessGuardImpl(
     override fun fetchAccessibleArticle(articleId: String): Article {
         val user = currentUserService.currentUser()
         val article = when {
-            user == null || user.hasRole(Role.ADMIN) || user.hasRole(Role.CHAIR) -> {
+            user == null || user.globalRole == GlobalRole.ADMIN -> {
                 articleRepository.findByIdAndDeletedFalse(articleId).orElse(null)
             }
-            user.hasRole(Role.EDITOR) -> {
-                val trackIds = resolveEditorTrackIds(user.id)
-                if (trackIds.isEmpty()) null
-                else articleRepository.findByIdAndDeletedFalseAndTrackIdIn(articleId, trackIds).orElse(null)
+            hasConferenceMembership(user.id, articleId, setOf(ConferenceMembershipRole.EDITOR)) -> {
+                articleRepository.findByIdAndDeletedFalse(articleId).orElse(null)
             }
             else -> {
-                val reviewerHit = if (user.hasRole(Role.REVIEWER)) {
+                val reviewerHit = if (hasConferenceMembership(user.id, articleId, setOf(ConferenceMembershipRole.REVIEWER))) {
                     val relation = reviewerArticleRepository
                         .findByArticleIdAndReviewerUserIdOrEmail(articleId, user.id, user.email)
                         .orElse(null)
                     if (relation != null && relation.status == ReviewerInvitationStatus.ACCEPTED) {
-                        articleRepository.findByIdAndDeletedFalse(articleId).orElse(null)
+                        val candidate = articleRepository.findByIdAndDeletedFalse(articleId).orElse(null)
+                        if (candidate != null && hasConferenceMembership(user.id, candidate)) candidate else null
                     } else {
                         null
                     }
                 } else {
                     null
                 }
-                reviewerHit ?: if (user.hasRole(Role.RESEARCHER)) {
+                reviewerHit ?: if (hasConferenceMembership(user.id, articleId, setOf(ConferenceMembershipRole.RESEARCHER))) {
                     // Check if user is author OR creator of the article
-                    articleRepository.findByIdForAuthor(articleId, user.id)?.orElse(null)
+                    val candidate = articleRepository.findByIdForAuthor(articleId, user.id)?.orElse(null)
                         ?: articleRepository.findByIdAndCreator(articleId, user.id).orElse(null)
+                    if (candidate != null && hasConferenceMembership(user.id, candidate)) candidate else null
                 } else {
                     null
                 }
@@ -104,18 +108,26 @@ class ArticleAccessGuardImpl(
             val predicates = mutableListOf<Predicate>()
             predicates += cb.isFalse(root.get("deleted"))
 
-            if (user == null || user.hasRole(Role.ADMIN) || user.hasRole(Role.CHAIR)) {
+            if (user == null || user.globalRole == GlobalRole.ADMIN) {
                 return@Specification cb.and(*predicates.toTypedArray())
             }
 
-            if (user.hasRole(Role.EDITOR)) {
-                val trackIds = resolveEditorTrackIds(user.id)
-                if (trackIds.isEmpty()) return@Specification cb.disjunction()
-                predicates += root.get<String>("track").get<String>("id").`in`(trackIds)
+            if (hasAnyConferenceMembership(user.id, setOf(ConferenceMembershipRole.EDITOR))) {
+                val criteriaQuery = query ?: return@Specification cb.disjunction()
+                val membershipSubquery = criteriaQuery.subquery(String::class.java)
+                val membership = membershipSubquery.from(UserConferenceMembership::class.java)
+                membershipSubquery.select(membership.get("id"))
+                    .where(
+                        cb.equal(membership.get<User>("user").get<String>("id"), user.id),
+                        cb.equal(membership.get<Any>("conference").get<String>("id"), root.get<Any>("conference").get<String>("id")),
+                        cb.isFalse(membership.get("deleted")),
+                        cb.equal(membership.get<ConferenceMembershipRole>("membershipRole"), ConferenceMembershipRole.EDITOR)
+                    )
+                predicates += cb.exists(membershipSubquery)
                 return@Specification cb.and(*predicates.toTypedArray())
             }
 
-            if (user.hasRole(Role.REVIEWER)) {
+            if (hasAnyConferenceMembership(user.id, setOf(ConferenceMembershipRole.REVIEWER))) {
                 val criteriaQuery = query ?: return@Specification cb.disjunction()
                 val sub = criteriaQuery.subquery(String::class.java)
                 val ra = sub.from(ReviewerArticle::class.java)
@@ -131,10 +143,20 @@ class ArticleAccessGuardImpl(
                         )
                     )
                 predicates += cb.exists(sub)
+
+                val membershipSubquery = criteriaQuery.subquery(String::class.java)
+                val membership = membershipSubquery.from(UserConferenceMembership::class.java)
+                membershipSubquery.select(membership.get("id"))
+                    .where(
+                        cb.equal(membership.get<User>("user").get<String>("id"), user.id),
+                        cb.equal(membership.get<Any>("conference").get<String>("id"), root.get<Any>("conference").get<String>("id")),
+                        cb.isFalse(membership.get("deleted"))
+                    )
+                predicates += cb.exists(membershipSubquery)
                 return@Specification cb.and(*predicates.toTypedArray())
             }
 
-            if (user.hasRole(Role.RESEARCHER)) {
+            if (hasAnyConferenceMembership(user.id, setOf(ConferenceMembershipRole.RESEARCHER))) {
                 val criteriaQuery = query ?: return@Specification cb.disjunction()
                 val sub = criteriaQuery.subquery(String::class.java)
                 val aa = sub.from(ArticleAuthor::class.java)
@@ -146,6 +168,16 @@ class ArticleAccessGuardImpl(
                         cb.equal(author.get<User>("user").get<String>("id"), user.id)
                     )
                 predicates += cb.exists(sub)
+
+                val membershipSubquery = criteriaQuery.subquery(String::class.java)
+                val membership = membershipSubquery.from(UserConferenceMembership::class.java)
+                membershipSubquery.select(membership.get("id"))
+                    .where(
+                        cb.equal(membership.get<User>("user").get<String>("id"), user.id),
+                        cb.equal(membership.get<Any>("conference").get<String>("id"), root.get<Any>("conference").get<String>("id")),
+                        cb.isFalse(membership.get("deleted"))
+                    )
+                predicates += cb.exists(membershipSubquery)
                 return@Specification cb.and(*predicates.toTypedArray())
             }
 
@@ -187,5 +219,34 @@ class ArticleAccessGuardImpl(
 
             if (predicates.isEmpty()) cb.conjunction() else cb.and(*predicates.toTypedArray())
         }
+    }
+
+    private fun hasConferenceMembership(
+        userId: String,
+        article: Article,
+        allowedRoles: Set<ConferenceMembershipRole>? = null,
+    ): Boolean {
+        val conferenceId = article.conference?.id ?: return false
+        val membership = userConferenceMembershipRepository
+            .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, userId)
+            .orElse(null) ?: return false
+        return allowedRoles?.contains(membership.membershipRole) ?: true
+    }
+
+    private fun hasConferenceMembership(
+        userId: String,
+        articleId: String,
+        allowedRoles: Set<ConferenceMembershipRole>? = null,
+    ): Boolean {
+        val article = articleRepository.findByIdAndDeletedFalse(articleId).orElse(null) ?: return false
+        return hasConferenceMembership(userId, article, allowedRoles)
+    }
+
+    private fun hasAnyConferenceMembership(
+        userId: String,
+        allowedRoles: Set<ConferenceMembershipRole>,
+    ): Boolean {
+        val memberships = userConferenceMembershipRepository.findAllByUserIdAndDeletedFalse(userId)
+        return memberships.any { allowedRoles.contains(it.membershipRole) }
     }
 }

@@ -7,6 +7,7 @@ import com.example.researchreview.dtos.StructuredReviewSubmitRequestDto
 interface StructuredReviewService {
     fun saveOrSubmit(articleId: String, request: StructuredReviewSubmitRequestDto): StructuredReviewDto
     fun getMyReview(articleId: String): StructuredReviewDto?
-    fun getChairView(articleId: String): List<StructuredReviewDto>
+    fun getEditorView(articleId: String): List<StructuredReviewDto>
+    fun getChairView(articleId: String): List<StructuredReviewDto> = getEditorView(articleId)
     fun getAnonymizedView(articleId: String): List<StructuredReviewAnonymizedDto>
 }

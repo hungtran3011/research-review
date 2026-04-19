@@ -31,7 +31,7 @@ const PublicOnlyRoute = ({ children, redirectTo = '/' }: PublicOnlyRouteProps) =
       <div style={{ 
         display: 'flex', 
         justifyContent: 'center', alignItems: 'center', 
-        padding: '48px 16px', minHeight: '50vh',
+        padding: '48px 16px', minHeight: '100vh',
         background: token.colorBgLayout, 
       }}>
         <Spin tip={t('route.restoringSession')} />

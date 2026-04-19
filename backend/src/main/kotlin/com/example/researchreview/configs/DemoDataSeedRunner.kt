@@ -4,9 +4,9 @@ import com.example.researchreview.constants.AccountStatus
 import com.example.researchreview.constants.ArticleStatus
 import com.example.researchreview.constants.ConferenceMembershipRole
 import com.example.researchreview.constants.ConferenceStatus
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.ReviewRecommendation
 import com.example.researchreview.constants.ReviewerInvitationStatus
-import com.example.researchreview.constants.Role
 import com.example.researchreview.entities.Article
 import com.example.researchreview.entities.ArticleAuthor
 import com.example.researchreview.entities.ArticleTopic
@@ -23,7 +23,6 @@ import com.example.researchreview.entities.Topic
 import com.example.researchreview.entities.Track
 import com.example.researchreview.entities.User
 import com.example.researchreview.entities.UserConferenceMembership
-import com.example.researchreview.entities.UserRole
 import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.repositories.ArticleTopicRepository
@@ -122,60 +121,53 @@ class DemoDataSeedRunner(
         val admin = createUser(
             name = "Demo Admin",
             email = "seed.admin@demo.local",
-            primaryRole = Role.ADMIN,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.ADMIN,
             institution = institutionA
         )
         val chair = createUser(
             name = "Demo Chair",
             email = "seed.chair@demo.local",
-            primaryRole = Role.CHAIR,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.USER,
             institution = institutionA
         )
         val editor = createUser(
             name = "Demo Editor",
             email = "seed.editor@demo.local",
-            primaryRole = Role.EDITOR,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.USER,
             institution = institutionA
         )
         val researcher = createUser(
             name = "Demo Researcher",
             email = "seed.researcher@demo.local",
-            primaryRole = Role.RESEARCHER,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.USER,
             institution = institutionB
         )
         val reviewer1User = createUser(
             name = "Reviewer One",
             email = "seed.reviewer1@demo.local",
-            primaryRole = Role.REVIEWER,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.USER,
             institution = institutionB
         )
         val reviewer2User = createUser(
             name = "Reviewer Two",
             email = "seed.reviewer2@demo.local",
-            primaryRole = Role.REVIEWER,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.USER,
             institution = institutionB
         )
         val reviewer3User = createUser(
             name = "Reviewer Three",
             email = "seed.reviewer3@demo.local",
-            primaryRole = Role.REVIEWER,
-            extraRoles = setOf(Role.USER),
+            globalRole = GlobalRole.USER,
             institution = institutionA
         )
 
-        createMembership(chair, conference, ConferenceMembershipRole.CHAIR)
+        createMembership(chair, conference, ConferenceMembershipRole.EDITOR)
         createMembership(editor, conference, ConferenceMembershipRole.EDITOR)
-        createMembership(researcher, conference, ConferenceMembershipRole.PARTICIPANT)
-        createMembership(reviewer1User, conference, ConferenceMembershipRole.PARTICIPANT)
-        createMembership(reviewer2User, conference, ConferenceMembershipRole.PARTICIPANT)
-        createMembership(reviewer3User, conference, ConferenceMembershipRole.PARTICIPANT)
-        createMembership(admin, conference, ConferenceMembershipRole.PARTICIPANT)
+        createMembership(researcher, conference, ConferenceMembershipRole.RESEARCHER)
+        createMembership(reviewer1User, conference, ConferenceMembershipRole.REVIEWER)
+        createMembership(reviewer2User, conference, ConferenceMembershipRole.REVIEWER)
+        createMembership(reviewer3User, conference, ConferenceMembershipRole.REVIEWER)
+        createMembership(admin, conference, ConferenceMembershipRole.EDITOR)
 
         val author = findOrCreateAuthor(researcher.name, researcher.email, institutionB, researcher)
         val reviewer1 = findOrCreateReviewer(reviewer1User.name, reviewer1User.email, institutionB, reviewer1User)
@@ -346,8 +338,7 @@ class DemoDataSeedRunner(
     private fun createUser(
         name: String,
         email: String,
-        primaryRole: Role,
-        extraRoles: Set<Role>,
+        globalRole: GlobalRole,
         institution: Institution,
     ): User {
         val existing = userRepository.findByEmail(email)
@@ -356,17 +347,10 @@ class DemoDataSeedRunner(
         val user = User().apply {
             this.name = name
             this.email = email
-            this.role = primaryRole
+            this.globalRole = globalRole
             this.status = AccountStatus.ACTIVE
             this.nationality = "VN"
             this.institution = institution
-        }
-
-        (extraRoles + primaryRole).forEach { role ->
-            user.roles.add(UserRole().apply {
-                this.user = user
-                this.role = role
-            })
         }
 
         return userRepository.save(user)

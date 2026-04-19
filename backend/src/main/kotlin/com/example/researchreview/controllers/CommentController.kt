@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -96,6 +97,29 @@ class CommentController(
                 BaseResponseDto(
                     code = 404,
                     message = ex.message ?: "comments.threadNotFound"
+                )
+            )
+        }
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    fun deleteComment(
+        @PathVariable commentId: String
+    ): ResponseEntity<BaseResponseDto<CommentThreadDto>> {
+        return try {
+            val updated = commentService.deleteComment(commentId)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "Comment deleted",
+                    data = updated
+                )
+            )
+        } catch (ex: EntityNotFoundException) {
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                BaseResponseDto(
+                    code = 404,
+                    message = ex.message ?: "comments.commentNotFound"
                 )
             )
         }

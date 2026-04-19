@@ -2,6 +2,7 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.ArticleStatus
 import com.example.researchreview.constants.ConferenceMembershipRole
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
 import com.example.researchreview.dtos.StructuredReviewAnonymizedDto
@@ -15,10 +16,12 @@ import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.StructuredReviewRepository
 import com.example.researchreview.repositories.StructuredReviewScoreRepository
 import com.example.researchreview.repositories.UserConferenceMembershipRepository
+import com.example.researchreview.services.ConferenceAuthorizationService
 import com.example.researchreview.services.CurrentUserService
 import com.example.researchreview.services.NotificationService
 import com.example.researchreview.services.StructuredReviewService
 import jakarta.persistence.EntityNotFoundException
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -30,6 +33,7 @@ class StructuredReviewServiceImpl(
     private val structuredReviewRepository: StructuredReviewRepository,
     private val structuredReviewScoreRepository: StructuredReviewScoreRepository,
     private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
+    private val conferenceAuthorizationService: ConferenceAuthorizationService,
     private val currentUserService: CurrentUserService,
     private val notificationService: NotificationService,
 ) : StructuredReviewService {
@@ -100,14 +104,19 @@ class StructuredReviewServiceImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun getChairView(articleId: String): List<StructuredReviewDto> {
+    override fun getEditorView(articleId: String): List<StructuredReviewDto> {
+        conferenceAuthorizationService.requireCanManageReview(articleId, "GET /api/v1/articles/{articleId}/structured-reviews/editor-view")
         return structuredReviewRepository.findAllByReviewerArticleArticleIdAndDeletedFalse(articleId)
             .sortedBy { it.reviewerArticle.displayIndex }
             .map { toDto(it) }
     }
 
     @Transactional(readOnly = true)
+    override fun getChairView(articleId: String): List<StructuredReviewDto> = getEditorView(articleId)
+
+    @Transactional(readOnly = true)
     override fun getAnonymizedView(articleId: String): List<StructuredReviewAnonymizedDto> {
+        requireCanViewAnonymized(articleId)
         return structuredReviewRepository.findAllByReviewerArticleArticleIdAndSubmittedAtIsNotNullAndDeletedFalse(articleId)
             .sortedBy { it.reviewerArticle.displayIndex }
             .map { review ->
@@ -120,6 +129,24 @@ class StructuredReviewServiceImpl(
                     submittedAt = review.submittedAt,
                 )
             }
+    }
+
+    private fun requireCanViewAnonymized(articleId: String) {
+        val currentUser = currentUserService.requireUser()
+        if (currentUser.globalRole == GlobalRole.ADMIN) {
+            return
+        }
+
+        if (conferenceAuthorizationService.canManageReview(articleId, currentUser.id)) {
+            return
+        }
+
+        val isAuthor = articleRepository.findByIdForAuthor(articleId, currentUser.id).isPresent ||
+            articleRepository.findByIdAndCreator(articleId, currentUser.id).isPresent
+
+        if (!isAuthor) {
+            throw AccessDeniedException("structuredReview.anonymizedViewForbidden")
+        }
     }
 
     private fun syncScores(review: StructuredReview, scores: List<StructuredReviewScoreDto>) {
@@ -186,15 +213,15 @@ class StructuredReviewServiceImpl(
         articleRepository.save(article)
 
         val conferenceId = article.conference?.id ?: return
-        val chairUserIds = userConferenceMembershipRepository
-            .findAllByConferenceIdAndMembershipRoleAndDeletedFalse(conferenceId, ConferenceMembershipRole.CHAIR)
+        val editorUserIds = userConferenceMembershipRepository
+            .findAllByConferenceIdAndMembershipRoleAndDeletedFalse(conferenceId, ConferenceMembershipRole.EDITOR)
             .map { it.user.id }
             .filter { it.isNotBlank() }
             .distinct()
 
-        if (chairUserIds.isNotEmpty()) {
+        if (editorUserIds.isNotEmpty()) {
             notificationService.notifyUsers(
-                chairUserIds,
+                editorUserIds,
                 NotificationType.REVIEW_THRESHOLD_REACHED,
                 payload = mapOf(
                     "articleId" to article.id,

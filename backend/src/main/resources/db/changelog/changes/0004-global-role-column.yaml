@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0004-add-users-global-role
+      author: copilot
+      preConditions:
+        onFail: MARK_RAN
+        onError: MARK_RAN
+        not:
+          columnExists:
+            tableName: users
+            columnName: global_role
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: global_role
+                  type: varchar(16)
+                  defaultValue: USER
+                  constraints:
+                    nullable: true
+        - sql:
+            sql: |
+              UPDATE users
+              SET global_role = CASE
+                  WHEN role = 0 THEN 'ADMIN'
+                  ELSE 'USER'
+              END
+              WHERE global_role IS NULL;
+        - addNotNullConstraint:
+            tableName: users
+            columnName: global_role
+            columnDataType: varchar(16)

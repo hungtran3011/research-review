@@ -2,15 +2,18 @@ package com.example.researchreview.services.impl
 
 import com.example.researchreview.dtos.EditorDto
 import com.example.researchreview.dtos.EditorRequestDto
-import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.TrackDto
 import com.example.researchreview.dtos.InstitutionDto
+import com.example.researchreview.constants.ConferenceMembershipRole
+import com.example.researchreview.entities.Conference
 import com.example.researchreview.entities.Editor
 import com.example.researchreview.entities.Track
 import com.example.researchreview.entities.User
+import com.example.researchreview.entities.UserConferenceMembership
 import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.TrackRepository
+import com.example.researchreview.repositories.UserConferenceMembershipRepository
 import com.example.researchreview.repositories.UserRepository
 import com.example.researchreview.services.EditorService
 import jakarta.persistence.EntityNotFoundException
@@ -23,7 +26,8 @@ import org.springframework.transaction.annotation.Transactional
 class EditorServiceImpl(
     private val editorRepository: EditorRepository,
     private val trackRepository: TrackRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
 ): EditorService {
 
     @Transactional(readOnly = true)
@@ -49,15 +53,12 @@ class EditorServiceImpl(
             return toDto(existing.get())
         }
 
-        if (!user.hasRole(Role.EDITOR)) {
-            user.role = Role.EDITOR
-        }
-
         val editor = Editor().apply {
             this.track = track
             this.user = user
         }
         val saved = editorRepository.save(editor)
+        ensureConferenceEditorMembership(user, track.conference)
         return toDto(saved)
     }
 
@@ -75,6 +76,7 @@ class EditorServiceImpl(
         }
 
         val saved = editorRepository.save(existing)
+        ensureConferenceEditorMembership(saved.user, saved.track.conference)
         return toDto(saved)
     }
 
@@ -97,6 +99,29 @@ class EditorServiceImpl(
         }
         return userRepository.findByIdAndDeletedFalse(userId)
             .orElseThrow { EntityNotFoundException("user.notFound") }
+    }
+
+    private fun ensureConferenceEditorMembership(user: User, conference: Conference?) {
+        if (conference == null) return
+        val existing = userConferenceMembershipRepository
+            .findByConferenceIdAndUserIdAndDeletedFalse(conference.id, user.id)
+            .orElse(null)
+
+        if (existing == null) {
+            userConferenceMembershipRepository.save(
+                UserConferenceMembership().apply {
+                    this.user = user
+                    this.conference = conference
+                    this.membershipRole = ConferenceMembershipRole.EDITOR
+                }
+            )
+            return
+        }
+
+        if (existing.membershipRole != ConferenceMembershipRole.EDITOR) {
+            existing.membershipRole = ConferenceMembershipRole.EDITOR
+            userConferenceMembershipRepository.save(existing)
+        }
     }
 
     private fun toDto(editor: Editor): EditorDto {
@@ -123,8 +148,7 @@ class EditorServiceImpl(
         return UserDto(
             id = user.id,
             name = user.name,
-            role = user.role.name,
-            roles = user.effectiveRoles.map { it.name },
+            globalRole = user.globalRole.name,
             email = user.email,
             institution = user.institution?.let {
                 InstitutionDto(

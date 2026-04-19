@@ -16,7 +16,7 @@ class SubmissionMetadataController(
 ) {
 
     @GetMapping("/metadata")
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun getSubmissionMetadata(): ResponseEntity<BaseResponseDto<SubmissionMetadataDto>> {
         val data = submissionMetadataService.getSubmissionMetadata()
         return ResponseEntity.ok(

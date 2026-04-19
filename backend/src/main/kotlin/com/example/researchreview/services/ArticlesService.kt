@@ -7,6 +7,7 @@ import com.example.researchreview.dtos.ArticleRequestDto
 import com.example.researchreview.dtos.InitialReviewRequestDto
 import com.example.researchreview.dtos.ReviewerDto
 import com.example.researchreview.dtos.ReviewerRequestDto
+import com.example.researchreview.dtos.UserDto
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.web.multipart.MultipartFile
@@ -35,6 +36,7 @@ interface ArticlesService {
     fun reject(id: String)
     fun approve(id: String)
     fun getReviewers(id: String): List<ReviewerDto>
+    fun getReviewerCandidates(id: String): List<UserDto>
     fun markReviewsCompleted(id: String): ArticleDto
     fun requestRevisions(id: String): ArticleDto
     fun initialReview(articleId: String, request: InitialReviewRequestDto): ArticleDto

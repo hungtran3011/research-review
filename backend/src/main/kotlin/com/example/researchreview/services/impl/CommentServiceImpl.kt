@@ -1,9 +1,9 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.CommentStatus
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
-import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.CommentCreateRequestDto
 import com.example.researchreview.dtos.CommentDto
 import com.example.researchreview.dtos.CommentReplyRequestDto
@@ -45,10 +45,11 @@ class CommentServiceImpl(
 
     private fun shouldMaskReviewerIdentity(viewer: User?): Boolean {
         if (viewer == null) return false
-        if (viewer.hasRole(Role.ADMIN) || viewer.hasRole(Role.EDITOR)) return false
-        // Preserve old behavior: researchers should not see reviewer identity.
-        // If a user is both REVIEWER and RESEARCHER, do not mask.
-        return viewer.hasRole(Role.RESEARCHER) && !viewer.hasRole(Role.REVIEWER)
+        if (viewer.globalRole == GlobalRole.ADMIN) return false
+        val hasEditorTracks = editorRepository.findAllByUserIdAndDeletedFalse(viewer.id).isNotEmpty()
+        if (hasEditorTracks) return false
+        val reviewerProfile = reviewerRepository.findByUserId(viewer.id)
+        return reviewerProfile == null
     }
 
     @Transactional(readOnly = true)
@@ -59,7 +60,8 @@ class CommentServiceImpl(
         val threads = commentThreadRepository.findAllByArticleId(articleId)
             // Reviewers can only see their own comment threads
             val filtered = when {
-                viewer?.hasRole(Role.REVIEWER) == true && !viewer.hasRole(Role.ADMIN) && !viewer.hasRole(Role.EDITOR) ->
+                viewer != null && viewer.globalRole != GlobalRole.ADMIN && reviewerRepository.findByUserId(viewer.id) != null &&
+                    editorRepository.findAllByUserIdAndDeletedFalse(viewer.id).isEmpty() ->
                     threads.filter { thread -> threadBelongsToReviewer(thread, viewer.id) }
                 else -> threads
             }
@@ -74,11 +76,7 @@ class CommentServiceImpl(
 
         // Only accepted reviewers may create review threads.
         // Authors/researchers should reply to existing threads instead.
-        val reviewer = if (creator.hasRole(Role.REVIEWER) && !creator.hasRole(Role.ADMIN) && !creator.hasRole(Role.EDITOR)) {
-            reviewerRepository.findByUserId(creator.id)
-        } else {
-            null
-        }
+        val reviewer = reviewerRepository.findByUserId(creator.id)
         if (reviewer == null) {
             throw AccessDeniedException("comments.onlyReviewerCanCreateThread")
         }
@@ -146,6 +144,27 @@ class CommentServiceImpl(
         return saved.toDto(shouldMaskReviewerIdentity(viewer), reviewerArticleManager.reviewerLabels(thread.article.id))
     }
 
+    @Transactional
+    override fun deleteComment(commentId: String): CommentThreadDto {
+        val comment = commentRepository.findById(commentId)
+            .orElseThrow { EntityNotFoundException("comments.commentNotFound") }
+        if (comment.deleted) {
+            throw EntityNotFoundException("comments.commentNotFound")
+        }
+
+        val thread = comment.thread
+        articleAccessGuard.fetchAccessibleArticle(thread.article.id)
+        ensureThreadPermission(thread)
+        ensureDeleteCommentPermission(thread, comment)
+
+        comment.deleted = true
+        commentRepository.save(comment)
+        notifyCommentActivity(thread, comment, CommentActivityAction.COMMENT_DELETED)
+
+        val viewer = currentUserService.currentUser()
+        return thread.toDto(shouldMaskReviewerIdentity(viewer), reviewerArticleManager.reviewerLabels(thread.article.id))
+    }
+
     private fun CommentThread.toDto(
         maskReviewerIdentity: Boolean,
         reviewerLabels: Map<String, String>
@@ -208,8 +227,8 @@ class CommentServiceImpl(
     private fun ensureThreadPermission(thread: CommentThread) {
         val viewer = currentUserService.currentUser() ?: throw AccessDeniedException("comments.accessDenied")
         when {
-            viewer.hasRole(Role.ADMIN) -> return
-            viewer.hasRole(Role.EDITOR) -> {
+            viewer.globalRole == GlobalRole.ADMIN -> return
+            editorRepository.findAllByUserIdAndDeletedFalse(viewer.id).isNotEmpty() -> {
                 val editorTrackIds = editorRepository.findAllByUserIdAndDeletedFalse(viewer.id)
                     .map { it.track.id }
                     .toSet()
@@ -220,7 +239,7 @@ class CommentServiceImpl(
                     throw AccessDeniedException("comments.editorCannotAccessThread")
                 }
             }
-            viewer.hasRole(Role.REVIEWER) -> {
+            reviewerRepository.findByUserId(viewer.id) != null -> {
                 if (!threadBelongsToReviewer(thread, viewer.id)) {
                     throw AccessDeniedException("comments.reviewerCannotAccessThread")
                 }
@@ -231,10 +250,28 @@ class CommentServiceImpl(
                     throw AccessDeniedException("comments.reviewerMustAcceptInvitation")
                 }
             }
-            viewer.hasRole(Role.RESEARCHER) -> {
+            else -> {
                 // articleAccessGuard.fetchAccessibleArticle already ensures ownership; nothing extra
             }
-            else -> throw AccessDeniedException("comments.accessDenied")
+        }
+    }
+
+    private fun ensureDeleteCommentPermission(thread: CommentThread, comment: Comment) {
+        val viewer = currentUserService.currentUser() ?: throw AccessDeniedException("comments.accessDenied")
+        if (viewer.globalRole == GlobalRole.ADMIN) {
+            return
+        }
+
+        val canManageAsEditor = editorRepository.findAllByUserIdAndDeletedFalse(viewer.id)
+            .any { editor -> editor.track.id == thread.article.track.id }
+        if (canManageAsEditor) {
+            return
+        }
+
+        val isCommentOwner = comment.createdBy == viewer.id ||
+            (comment.authorId.isNotBlank() && comment.authorId == viewer.id)
+        if (!isCommentOwner) {
+            throw AccessDeniedException("comments.deleteDenied")
         }
     }
 
@@ -290,6 +327,7 @@ class CommentServiceImpl(
     private enum class CommentActivityAction {
         THREAD_CREATED,
         COMMENT_REPLIED,
-        STATUS_UPDATED
+        STATUS_UPDATED,
+        COMMENT_DELETED
     }
 }

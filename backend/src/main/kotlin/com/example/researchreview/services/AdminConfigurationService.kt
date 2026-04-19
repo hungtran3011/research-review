@@ -1,6 +1,6 @@
 package com.example.researchreview.services
 
-import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.dtos.AdminCreateUserRequestDto
 import com.example.researchreview.dtos.AdminTopicConfigCreateRequestDto
 import com.example.researchreview.dtos.AdminTopicConfigDto
@@ -46,7 +46,7 @@ interface AdminConfigurationService {
         pageable: Pageable,
     ): Page<UserDto>
     fun createUser(request: AdminCreateUserRequestDto): UserDto
-    fun updateUserRole(userId: String, role: String, performedBy: Role): UserDto
+    fun updateUserRole(userId: String, role: String, performedBy: GlobalRole): UserDto
     fun updateUserStatus(userId: String, status: String): UserDto
     fun deleteUser(userId: String)
 

@@ -57,7 +57,7 @@ export const useCurrentUser = (enabled: boolean = true) => {
 export const useUsers = (
   page: number = 0,
   size: number = 20,
-  filters: Partial<{ name: string; email: string; institutionName: string; role: string; status: string }> = {},
+  filters: Partial<{ name: string; email: string; institutionName: string; role: string; status: string; conferenceId: string }> = {},
   enabled: boolean = true
 ) => {
   const hasFilters = Object.values(filters).some((v) => (v ?? '').toString().trim().length > 0);

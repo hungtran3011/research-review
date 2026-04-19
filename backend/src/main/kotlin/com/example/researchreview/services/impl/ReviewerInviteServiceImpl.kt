@@ -24,10 +24,13 @@ class ReviewerInviteServiceImpl(
 
     @Transactional
     override fun createInvite(email: String, articleId: String): String {
+        val normalizedEmail = normalizeEmail(email)
+        deactivatePreviousPendingInvites(normalizedEmail, articleId)
+
         val token = CodeGen.genCode()
         val invite = ReviewerInvite().apply {
             this.tokenHash = CodeGen.sha256(token)
-            this.email = normalizeEmail(email)
+            this.email = normalizedEmail
             this.articleId = articleId
             this.expiresAt = LocalDateTime.now().plusDays(ttlDays)
             this.usedAt = null
@@ -36,7 +39,7 @@ class ReviewerInviteServiceImpl(
         return token
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     override fun resolve(token: String): ReviewerInviteResolveDto {
         val invite = findValidInviteOrThrow(token, forUpdate = false)
         return toResolveDto(invite)
@@ -72,7 +75,7 @@ class ReviewerInviteServiceImpl(
         val invite = if (forUpdate) {
             reviewerInviteRepository.findByTokenHashForUpdate(tokenHash)
         } else {
-            reviewerInviteRepository.findByTokenHash(tokenHash)
+            reviewerInviteRepository.findByTokenHashAndDeletedFalse(tokenHash)
         }
             ?: throw IllegalArgumentException("reviewerInvite.invalidToken")
 
@@ -81,9 +84,23 @@ class ReviewerInviteServiceImpl(
         }
 
         if (invite.expiresAt.isBefore(LocalDateTime.now())) {
+            invite.deleted = true
+            reviewerInviteRepository.save(invite)
             throw IllegalArgumentException("reviewerInvite.tokenExpired")
         }
 
         return invite
+    }
+
+    private fun deactivatePreviousPendingInvites(email: String, articleId: String) {
+        val now = LocalDateTime.now()
+        reviewerInviteRepository
+            .findAllByArticleIdAndEmailAndUsedAtIsNullAndDeletedFalse(articleId, email)
+            .forEach { existing ->
+                existing.deleted = true
+                if (existing.expiresAt.isBefore(now) && existing.usedAt == null) {
+                    existing.usedAt = now
+                }
+            }
     }
 }

@@ -6,6 +6,7 @@ import {
     Card as AntCard,
     Tag,
     Select,
+    Tooltip,
     Modal,
     Spin,
     theme as antdTheme,
@@ -16,17 +17,21 @@ import {
     CheckOutlined as CheckmarkRegular,
     MenuFoldOutlined as PanelRightContractRegular,
     MenuUnfoldOutlined as PanelRightExpandRegular,
-    OrderedListOutlined as NavigationRegular,
     FileOutlined as DocumentRegular,
+    PaperClipOutlined as AttachmentRegular,
+    UpOutlined,
+    DownOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
+import { ArticleStatusTag } from './ArticleStatusTag'
 import { CommentStatus } from '../../constants'
 import type { CommentStatusType } from '../../constants'
 import { ArticleStatus } from '../../constants'
 import { useParams } from 'react-router'
 import { useArticle } from '../../hooks/useArticles'
-import { useArticleComments, useCreateComment, useUpdateCommentStatus } from '../../hooks/useComments'
+import { useArticleComments, useCreateComment, useDeleteComment, useUpdateCommentStatus } from '../../hooks/useComments'
 import { useReplyComment } from '../../hooks/useComments'
 import { useAuthStore } from '../../stores/authStore'
 import { useCurrentUser } from '../../hooks/useUser'
@@ -78,8 +83,8 @@ const Button = ({
     )
 }
 
-const Text = ({ children, weight, size, style }: { children?: React.ReactNode; weight?: 'semibold'; size?: number; style?: React.CSSProperties }) => (
-    <Typography.Text style={{ fontWeight: weight === 'semibold' ? 600 : undefined, fontSize: size ? sizeToFontPx[size] : undefined, ...(style ?? {}) }}>
+const Text = ({ children, weight, size, style, className }: { children?: React.ReactNode; weight?: 'semibold'; size?: number; style?: React.CSSProperties; className?: string }) => (
+    <Typography.Text className={className} style={{ fontWeight: weight === 'semibold' ? 600 : undefined, fontSize: size ? sizeToFontPx[size] : undefined, ...(style ?? {}) }}>
         {children}
     </Typography.Text>
 )
@@ -182,10 +187,27 @@ const Spinner = ({ size, label }: { size?: 'small' | 'large'; label?: string }) 
 
 const useStyles = () => ({
     root: 'review-root',
+    pageShell: 'review-pageShell',
+    pageHero: 'review-pageHero',
+    pageHeroCopy: 'review-pageHeroCopy',
+    pageHeroKicker: 'review-pageHeroKicker',
+    pageHeroTitle: 'review-pageHeroTitle',
+    pageHeroMeta: 'review-pageHeroMeta',
+    pageHeroSummary: 'review-pageHeroSummary',
+    pageHeroFooter: 'review-pageHeroFooter',
+    pageHeroStats: 'review-pageHeroStats',
+    pageHeroStat: 'review-pageHeroStat',
+    pageHeroStatLabel: 'review-pageHeroStatLabel',
+    pageHeroStatValue: 'review-pageHeroStatValue',
     tocWrapper: 'review-tocWrapper',
     tocWrapperHidden: 'review-tocWrapperHidden',
     viewerSection: 'review-viewerSection',
     viewerHeader: 'review-viewerHeader',
+    viewerHeaderToggleBar: 'review-viewerHeaderToggleBar',
+    viewerActions: 'review-viewerActions',
+    viewerCanvas: 'review-viewerCanvas',
+    viewerWorkspace: 'review-viewerWorkspace',
+    viewerPdfPane: 'review-viewerPdfPane',
     commentsSection: 'review-commentsSection',
     commentsSectionCollapsed: 'review-commentsSectionCollapsed',
     commentsSectionHidden: 'review-commentsSectionHidden',
@@ -199,7 +221,12 @@ const useStyles = () => ({
     commentMeta: 'review-commentMeta',
     commentContent: 'review-commentContent',
     commentActions: 'review-commentActions',
+    commentSelectedText: 'review-commentSelectedText',
+    commentReplyThread: 'review-commentReplyThread',
+    commentReplyCard: 'review-commentReplyCard',
     newCommentForm: 'review-newCommentForm',
+    commentComposer: 'review-commentComposer',
+    composerMeta: 'review-composerMeta',
     annotationMarker: 'review-annotationMarker',
     highlightOverlay: 'review-highlightOverlay',
     floatingButton: 'review-floatingButton',
@@ -211,6 +238,8 @@ const useStyles = () => ({
     attachmentsBar: 'review-attachmentsBar',
     attachmentsList: 'review-attachmentsList',
     numberInput: 'review-numberInput',
+    emptyState: 'review-emptyState',
+    panelLabel: 'review-panelLabel',
 })
 
 type CommentItem = {
@@ -255,7 +284,10 @@ function ReviewArticle() {
 
     const reviewThemeVars = useMemo(() => ({
         '--review-bg': token.colorBgLayout,
+        '--review-bg-accent': token.colorPrimaryBg,
+        '--review-bg-accent-strong': token.colorPrimaryBorder,
         '--review-panel-bg': token.colorBgContainer,
+        '--review-panel-raised': token.colorFillQuaternary,
         '--review-muted-bg': token.colorFillQuaternary,
         '--review-border-color': token.colorBorderSecondary,
         '--review-input-border': token.colorBorder,
@@ -264,7 +296,11 @@ function ReviewArticle() {
         '--review-overlay-bg': token.colorBgMask,
         '--review-shadow-hover': token.boxShadow,
         '--review-shadow-selected': token.boxShadowSecondary,
+        '--review-shadow-elevated': token.boxShadowTertiary,
         '--review-mobile-shadow': token.boxShadowSecondary,
+        '--review-accent': token.colorPrimary,
+        '--review-accent-soft': token.colorPrimaryBgHover,
+        '--review-text-subtle': token.colorTextSecondary,
     }) as React.CSSProperties, [token])
 
     const classes = useStyles()
@@ -290,6 +326,7 @@ function ReviewArticle() {
     const { mutate: createComment, isPending: isCreatingComment } = useCreateComment(safeArticleId)
     const { mutate: updateCommentStatus, isPending: isUpdatingCommentStatus } = useUpdateCommentStatus(safeArticleId)
     const { mutate: replyToComment, isPending: isReplying } = useReplyComment(safeArticleId)
+    const { mutate: deleteComment, isPending: isDeletingComment } = useDeleteComment(safeArticleId)
     const { data: myStructuredReviewResponse } = useMyStructuredReview(articleId, !!articleId)
     const { mutate: submitStructuredReview, isPending: isSubmittingStructuredReview } = useSubmitStructuredReview(safeArticleId)
     const myStructuredReview = myStructuredReviewResponse?.data
@@ -314,8 +351,10 @@ function ReviewArticle() {
     const initialIsMobile = typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
     const [isTocVisible, setIsTocVisible] = useState<boolean>(!initialIsMobile)
     const [isCommentsVisible, setIsCommentsVisible] = useState<boolean>(!initialIsMobile)
+    const [isHeaderVisible, setIsHeaderVisible] = useState<boolean>(true)
     const [isMobile, setIsMobile] = useState<boolean>(initialIsMobile)
     const [isStructuredDialogOpen, setIsStructuredDialogOpen] = useState(false)
+    const [isAttachmentsDialogOpen, setIsAttachmentsDialogOpen] = useState(false)
     const [structuredRecommendation, setStructuredRecommendation] = useState<keyof typeof ReviewRecommendation>('BORDERLINE')
     const [structuredSummary, setStructuredSummary] = useState('')
     const [structuredConfidentialRemarks, setStructuredConfidentialRemarks] = useState('')
@@ -365,6 +404,33 @@ function ReviewArticle() {
     const displayAuthorName = useCallback((comment: { authorName: string; createdBy?: string | null; authorId?: string | null }) => {
         return isMyComment(comment) ? t('reviewArticle.you') : comment.authorName
     }, [isMyComment, t])
+
+    const currentConferenceRoles = useMemo(() => {
+        if (!article?.conferenceId || !currentUserData?.data?.conferences) return [] as string[]
+        return currentUserData.data.conferences
+            .filter((membership) => membership.conferenceId === article.conferenceId)
+            .map((membership) => membership.membershipRole)
+    }, [article?.conferenceId, currentUserData?.data?.conferences])
+
+    const canManageComments = (currentUserData?.data?.globalRole === 'ADMIN') || currentConferenceRoles.includes('EDITOR')
+
+    const canDeleteComment = useCallback((comment?: { createdBy?: string | null; authorId?: string | null } | null) => {
+        if (!comment) return false
+        if (canManageComments) return true
+        return isMyComment(comment)
+    }, [canManageComments, isMyComment])
+
+    const handleDeleteComment = useCallback((commentId: string) => {
+        Modal.confirm({
+            title: t('articleDetails.confirmDeleteComment'),
+            okText: t('articleDetails.deleteComment'),
+            cancelText: t('articleDetails.cancel'),
+            okButtonProps: { danger: true },
+            onOk: () => {
+                deleteComment({ commentId })
+            },
+        })
+    }, [deleteComment, t])
 
     const isStructuredReviewSubmitted = !!myStructuredReview?.submittedAt
     const canSubmitStructuredReview = !!article && (
@@ -531,47 +597,47 @@ function ReviewArticle() {
 
         let cancelled = false
 
-        ;(async () => {
-            const fallbackDate = article.updatedAt ?? article.createdAt ?? new Date().toISOString()
-            const baseVersions: VersionView[] = [
-                {
-                    version: 1,
-                    fileUrl: buildPdfProxyUrl(article.id, 1),
-                    uploadedAt: fallbackDate,
-                    uploadedBy: article.createdBy ?? t('reviewArticle.system'),
-                    supplements: [],
-                },
-            ]
+            ; (async () => {
+                const fallbackDate = article.updatedAt ?? article.createdAt ?? new Date().toISOString()
+                const baseVersions: VersionView[] = [
+                    {
+                        version: 1,
+                        fileUrl: buildPdfProxyUrl(article.id, 1),
+                        uploadedAt: fallbackDate,
+                        uploadedBy: article.createdBy ?? t('reviewArticle.system'),
+                        supplements: [],
+                    },
+                ]
 
-            try {
-                const versionResp = await articleVersionService.listVersions(article.id)
-                const backendVersions = versionResp.data ?? []
-                const mappedVersions: VersionView[] = backendVersions
-                    .map((versionItem: ArticleVersionDto) => ({
-                        version: versionItem.versionNumber,
-                        fileUrl: buildPdfProxyUrl(article.id, versionItem.versionNumber),
-                        uploadedAt: versionItem.submittedAt ?? versionItem.mainAttachment?.createdAt ?? fallbackDate,
-                        uploadedBy: versionItem.submittedBy ?? versionItem.mainAttachment?.createdBy ?? t('reviewArticle.system'),
-                        mainAttachment: versionItem.mainAttachment,
-                        supplements: (versionItem.supplements ?? [])
-                            .filter((item) => item.status === AttachmentStatus.AVAILABLE),
-                    }))
-                    .sort((a, b) => a.version - b.version)
+                try {
+                    const versionResp = await articleVersionService.listVersions(article.id)
+                    const backendVersions = versionResp.data ?? []
+                    const mappedVersions: VersionView[] = backendVersions
+                        .map((versionItem: ArticleVersionDto) => ({
+                            version: versionItem.versionNumber,
+                            fileUrl: buildPdfProxyUrl(article.id, versionItem.versionNumber),
+                            uploadedAt: versionItem.submittedAt ?? versionItem.mainAttachment?.createdAt ?? fallbackDate,
+                            uploadedBy: versionItem.submittedBy ?? versionItem.mainAttachment?.createdBy ?? t('reviewArticle.system'),
+                            mainAttachment: versionItem.mainAttachment,
+                            supplements: (versionItem.supplements ?? [])
+                                .filter((item) => item.status === AttachmentStatus.AVAILABLE),
+                        }))
+                        .sort((a, b) => a.version - b.version)
 
-                const versionList = mappedVersions.length > 0 ? mappedVersions : baseVersions
+                    const versionList = mappedVersions.length > 0 ? mappedVersions : baseVersions
 
-                if (cancelled) return
-                setVersions(versionList)
-                const latestVersion = versionList[versionList.length - 1]
-                setCurrentVersion(latestVersion?.version ?? 1)
-                setPdfUrl(latestVersion?.fileUrl ?? null)
-            } catch {
-                if (cancelled) return
-                setVersions(baseVersions)
-                setCurrentVersion(1)
-                setPdfUrl(baseVersions[0]?.fileUrl ?? null)
-            }
-        })()
+                    if (cancelled) return
+                    setVersions(versionList)
+                    const latestVersion = versionList[versionList.length - 1]
+                    setCurrentVersion(latestVersion?.version ?? 1)
+                    setPdfUrl(latestVersion?.fileUrl ?? null)
+                } catch {
+                    if (cancelled) return
+                    setVersions(baseVersions)
+                    setCurrentVersion(1)
+                    setPdfUrl(baseVersions[0]?.fileUrl ?? null)
+                }
+            })()
 
         return () => {
             cancelled = true
@@ -624,43 +690,43 @@ function ReviewArticle() {
             getDestination: (dest: string) => Promise<unknown>
             getPageIndex: (ref: unknown) => Promise<number>
         }
-        
+
         for (const item of items) {
             const tocEntry = item as {
                 title: string
                 dest?: string | unknown[]
                 items?: unknown[]
             }
-            
+
             try {
                 let pageNumber = 1
                 if (tocEntry.dest) {
                     const dest = typeof tocEntry.dest === 'string'
                         ? await pdfDoc.getDestination(tocEntry.dest)
                         : tocEntry.dest
-                    
+
                     const destArray = dest as unknown[]
                     if (destArray && destArray[0]) {
                         const pageIndex = await pdfDoc.getPageIndex(destArray[0])
                         pageNumber = pageIndex + 1
                     }
                 }
-                
+
                 const tocItem: TocItem = {
                     title: tocEntry.title,
                     pageNumber,
                 }
-                
+
                 if (tocEntry.items && tocEntry.items.length > 0) {
                     tocItem.items = await parseTocItems(tocEntry.items, pdf)
                 }
-                
+
                 parsed.push(tocItem)
             } catch (error) {
                 console.error('Error parsing TOC item:', error)
             }
         }
-        
+
         return parsed
     }, [])
 
@@ -668,7 +734,7 @@ function ReviewArticle() {
     const handleDocumentLoadSuccess = useCallback(async (pdf: unknown) => {
         pdfDocumentRef.current = pdf
         const pdfDoc = pdf as { getOutline: () => Promise<unknown[] | null> }
-        
+
         try {
             const outline = await pdfDoc.getOutline()
             if (outline) {
@@ -702,6 +768,9 @@ function ReviewArticle() {
                 return timeB - timeA
             })
     }, [commentItems, currentVersion])
+
+    const articleTitle = article?.title?.trim() || t('reviewArticle.title')
+    const articleSubtitle = article?.track?.name
 
     const versionThreads = useMemo(() => {
         return commentThreads
@@ -761,12 +830,12 @@ function ReviewArticle() {
             for (let i = 0; i < items.length; i++) {
                 const current = items[i]
                 const next = items[i + 1]
-                
+
                 // If this is the exact page, return this section
                 if (current.pageNumber === pageNumber) {
                     return current.title
                 }
-                
+
                 // If page is between this section and the next, it belongs to current
                 if (next) {
                     if (pageNumber >= current.pageNumber && pageNumber < next.pageNumber) {
@@ -787,7 +856,7 @@ function ReviewArticle() {
                         return current.title
                     }
                 }
-                
+
                 // Check nested items
                 if (current.items) {
                     const nestedSection = findSection(current.items)
@@ -796,7 +865,7 @@ function ReviewArticle() {
             }
             return undefined
         }
-        
+
         return findSection(tocData)
     }, [tocData])
 
@@ -809,13 +878,6 @@ function ReviewArticle() {
         }
         const { color, text } = config[status] ?? config[CommentStatus.OPEN]
         return <Badge appearance="filled" color={color}>{text}</Badge>
-    }
-
-    // Handle overlay click to close TOC on mobile
-    const handleOverlayClick = () => {
-        if (isMobile && isTocVisible) {
-            setIsTocVisible(false)
-        }
     }
 
     const centeredStateStyles = {
@@ -927,200 +989,231 @@ function ReviewArticle() {
                         const repliesCount = thread?.comments?.length ? Math.max(0, thread.comments.length - 1) : 0
                         const isExpanded = !!expandedThreads[comment.id]
                         return (
-                        <Card
-                            key={comment.id}
-                            className={`${classes.commentCard} ${
-                                selectedComment?.id === comment.id ? classes.commentCardSelected : ''
-                            }`}
-                            onClick={() => setSelectedComment(comment)}
-                        >
-                            <div className={classes.commentHeader}>
-                                <div style={{ flex: 1 }}>
-                                    <Text weight="semibold" size={300}>
-                                        {displayedAuthor}
-                                    </Text>
-                                    <Badge
-                                        appearance="outline"
-                                        color={comment.version === currentVersion ? "brand" : "informative"}
-                                        size="small"
-                                        style={{ marginLeft: '8px' }}
-                                    >
-                                        {comment.version === currentVersion
-                                            ? t('reviewArticle.comments.currentVersionBadge', { version: comment.version })
-                                            : t('reviewArticle.comments.versionBadge', { version: comment.version })}
-                                    </Badge>
-                                </div>
-                                {getStatusBadge(comment.status)}
-                            </div>
-
-                            <div className={classes.commentMeta}>
-                                {comment.section && (
-                                    <>
-                                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                            {comment.section}
+                            <Card
+                                key={comment.id}
+                                className={`${classes.commentCard} ${selectedComment?.id === comment.id ? classes.commentCardSelected : ''
+                                    }`}
+                                onClick={() => setSelectedComment(comment)}
+                            >
+                                <div className={classes.commentHeader}>
+                                    <div style={{ flex: 1 }}>
+                                        <Text weight="semibold" size={300}>
+                                            {displayedAuthor}
                                         </Text>
-                                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                            •
-                                        </Text>
-                                    </>
-                                )}
-                                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    {t('reviewArticle.comments.page', { page: comment.pageNumber })}
-                                </Text>
-                                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    •
-                                </Text>
-                                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                    {displayedCreatedAt?.toLocaleString(dateTimeLocale)}
-                                </Text>
-                            </div>
-
-                            {comment.selectedText && (
-                                <div style={{
-                                    padding: '8px',
-                                    borderLeft: `3px solid ${tokens.colorPaletteYellowBorder2}`,
-                                    marginBottom: '8px',
-                                    fontSize: '13px',
-                                    fontStyle: 'italic',
-                                }}>
-                                    "{comment.selectedText}"
-                                </div>
-                            )}
-
-                            <div className={classes.commentContent}>
-                                <Text size={300}>{displayedContent}</Text>
-                            </div>
-
-                            {thread && (
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                    <Button
-                                        size="small"
-                                        appearance="subtle"
-                                        onClick={(e: React.MouseEvent<HTMLElement>) => {
-                                            e.stopPropagation()
-                                            setExpandedThreads((prev) => ({ ...prev, [comment.id]: !prev[comment.id] }))
-                                        }}
-                                    >
-                                        {isExpanded
-                                            ? t('reviewArticle.comments.hideReplies')
-                                            : repliesCount > 0
-                                                ? t('reviewArticle.comments.viewRepliesCount', { count: repliesCount })
-                                                : t('reviewArticle.comments.viewReplies')}
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        appearance="subtle"
-                                        icon={<CommentRegular />}
-                                        onClick={(e: React.MouseEvent<HTMLElement>) => {
-                                            e.stopPropagation()
-                                            setExpandedThreads((prev) => ({ ...prev, [comment.id]: true }))
-                                            setReplyingTo(comment.id)
-                                        }}
-                                    >
-                                        {t('reviewArticle.comments.reply')}
-                                    </Button>
-                                </div>
-                            )}
-
-                            {thread && isExpanded && (
-                                <div style={{ marginTop: '12px' }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '8px',
-                                        paddingLeft: '12px',
-                                        borderLeft: `2px solid ${tokens.colorNeutralStroke2}`,
-                                    }}>
-                                        {(thread.comments ?? []).slice(1).length === 0 ? (
-                                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                                                {t('reviewArticle.comments.noReplies')}
-                                            </Text>
-                                        ) : (
-                                            (thread.comments ?? []).slice(1).map((c) => (
-                                                <div
-                                                    key={c.id}
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderRadius: '6px',
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-                                                        <Text weight="semibold" size={200}>
-                                                            {displayAuthorName(c)}
-                                                        </Text>
-                                                        {c.createdAt && (
-                                                            <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
-                                                                {new Date(c.createdAt).toLocaleString(dateTimeLocale)}
-                                                            </Text>
-                                                        )}
-                                                    </div>
-                                                    <Text size={300} style={{ display: 'block', marginTop: '4px' }}>
-                                                        {c.content}
-                                                    </Text>
-                                                </div>
-                                            ))
-                                        )}
+                                        <Badge
+                                            appearance="outline"
+                                            color={comment.version === currentVersion ? "brand" : "informative"}
+                                            size="small"
+                                            style={{ marginLeft: '8px' }}
+                                        >
+                                            {comment.version === currentVersion
+                                                ? t('reviewArticle.comments.currentVersionBadge', { version: comment.version })
+                                                : t('reviewArticle.comments.versionBadge', { version: comment.version })}
+                                        </Badge>
                                     </div>
+                                    {getStatusBadge(comment.status)}
+                                </div>
 
-                                    {replyingTo === thread.id && (
-                                        <div className={classes.newCommentForm} style={{ marginTop: '12px' }}>
-                                            <Text weight="semibold" size={300}>{t('reviewArticle.comments.replyFormTitle')}</Text>
-                                            <Textarea
-                                                placeholder={t('reviewArticle.comments.replyPlaceholder')}
-                                                value={replyText}
-                                                onChange={(_, data) => setReplyText(data.value)}
-                                                rows={3}
-                                            />
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <Button
-                                                    appearance="primary"
-                                                    onClick={() => handleReplyToThread(thread.id)}
-                                                    disabled={!replyText.trim() || isReplying}
-                                                >
-                                                    {isReplying ? t('reviewArticle.comments.sending') : t('reviewArticle.comments.send')}
-                                                </Button>
-                                                <Button
-                                                    appearance="subtle"
-                                                    onClick={() => {
-                                                        setReplyingTo(null)
-                                                        setReplyText('')
-                                                    }}
-                                                >
-                                                    {t('reviewArticle.common.cancel')}
-                                                </Button>
-                                            </div>
+                                <div className={classes.commentMeta}>
+                                    {comment.section && (
+                                        <>
+                                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                                {comment.section}
+                                            </Text>
+                                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                                •
+                                            </Text>
+                                        </>
+                                    )}
+                                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                        {t('reviewArticle.comments.page', { page: comment.pageNumber })}
+                                    </Text>
+                                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                        •
+                                    </Text>
+                                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                        {displayedCreatedAt?.toLocaleString(dateTimeLocale)}
+                                    </Text>
+                                </div>
+
+                                {comment.selectedText && (
+                                    <div style={{
+                                        padding: '8px',
+                                        borderLeft: `3px solid ${tokens.colorPaletteYellowBorder2}`,
+                                        marginBottom: '8px',
+                                        fontSize: '13px',
+                                        fontStyle: 'italic',
+                                    }}>
+                                        "{comment.selectedText}"
+                                    </div>
+                                )}
+
+                                <div className={classes.commentContent}>
+                                    {rootComment && canDeleteComment(rootComment) && (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
+                                            <Button
+                                                size="small"
+                                                appearance="subtle"
+                                                icon={<DeleteOutlined />}
+                                                onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                                    e.stopPropagation()
+                                                    handleDeleteComment(rootComment.id)
+                                                }}
+                                                disabled={isDeletingComment}
+                                            >
+                                                {t('articleDetails.deleteComment')}
+                                            </Button>
                                         </div>
                                     )}
+                                    <Text size={300}>{displayedContent}</Text>
                                 </div>
-                            )}
 
-                            <div className={classes.commentActions}>
-                                <Button
-                                    size="small"
-                                    appearance="subtle"
-                                    icon={<CheckmarkRegular />}
-                                    onClick={(e: React.MouseEvent<HTMLElement>) => {
-                                        e.stopPropagation()
-                                        handleCommentStatusChange(comment.id, CommentStatus.RESOLVED)
-                                    }}
-                                    disabled={isUpdatingCommentStatus}
-                                >
-                                    {t('reviewArticle.comments.resolve')}
-                                </Button>
-                                <Button
-                                    size="small"
-                                    appearance="subtle"
-                                    icon={<DismissRegular />}
-                                    onClick={(e: React.MouseEvent<HTMLElement>) => {
-                                        e.stopPropagation()
-                                        handleCommentStatusChange(comment.id, CommentStatus.ADDRESSED)
-                                    }}
-                                    disabled={isUpdatingCommentStatus}
-                                >
-                                    {t('reviewArticle.comments.markAddressed')}
-                                </Button>
-                            </div>
-                        </Card>
+                                {thread && (
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                        <Button
+                                            size="small"
+                                            appearance="subtle"
+                                            onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                                e.stopPropagation()
+                                                setExpandedThreads((prev) => ({ ...prev, [comment.id]: !prev[comment.id] }))
+                                            }}
+                                        >
+                                            {isExpanded
+                                                ? t('reviewArticle.comments.hideReplies')
+                                                : repliesCount > 0
+                                                    ? t('reviewArticle.comments.viewRepliesCount', { count: repliesCount })
+                                                    : t('reviewArticle.comments.viewReplies')}
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            appearance="subtle"
+                                            icon={<CommentRegular />}
+                                            onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                                e.stopPropagation()
+                                                setExpandedThreads((prev) => ({ ...prev, [comment.id]: true }))
+                                                setReplyingTo(comment.id)
+                                            }}
+                                        >
+                                            {t('reviewArticle.comments.reply')}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {thread && isExpanded && (
+                                    <div style={{ marginTop: '12px' }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '8px',
+                                            paddingLeft: '12px',
+                                            borderLeft: `2px solid ${tokens.colorNeutralStroke2}`,
+                                        }}>
+                                            {(thread.comments ?? []).slice(1).length === 0 ? (
+                                                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                                    {t('reviewArticle.comments.noReplies')}
+                                                </Text>
+                                            ) : (
+                                                (thread.comments ?? []).slice(1).map((c) => (
+                                                    <div
+                                                        key={c.id}
+                                                        style={{
+                                                            padding: '8px',
+                                                            borderRadius: '6px',
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                                                                <Text weight="semibold" size={200}>
+                                                                    {displayAuthorName(c)}
+                                                                </Text>
+                                                                {c.createdAt && (
+                                                                    <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+                                                                        {new Date(c.createdAt).toLocaleString(dateTimeLocale)}
+                                                                    </Text>
+                                                                )}
+                                                            </div>
+                                                            {canDeleteComment(c) && (
+                                                                <Button
+                                                                    size="small"
+                                                                    appearance="subtle"
+                                                                    icon={<DeleteOutlined />}
+                                                                    onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                                                        e.stopPropagation()
+                                                                        handleDeleteComment(c.id)
+                                                                    }}
+                                                                    disabled={isDeletingComment}
+                                                                >
+                                                                    {t('articleDetails.deleteComment')}
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                        <Text size={300} style={{ display: 'block', marginTop: '4px' }}>
+                                                            {c.content}
+                                                        </Text>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        {replyingTo === thread.id && (
+                                            <div className={classes.newCommentForm} style={{ marginTop: '12px' }}>
+                                                <Text weight="semibold" size={300}>{t('reviewArticle.comments.replyFormTitle')}</Text>
+                                                <Textarea
+                                                    placeholder={t('reviewArticle.comments.replyPlaceholder')}
+                                                    value={replyText}
+                                                    onChange={(_, data) => setReplyText(data.value)}
+                                                    rows={3}
+                                                />
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <Button
+                                                        appearance="primary"
+                                                        onClick={() => handleReplyToThread(thread.id)}
+                                                        disabled={!replyText.trim() || isReplying}
+                                                    >
+                                                        {isReplying ? t('reviewArticle.comments.sending') : t('reviewArticle.comments.send')}
+                                                    </Button>
+                                                    <Button
+                                                        appearance="subtle"
+                                                        onClick={() => {
+                                                            setReplyingTo(null)
+                                                            setReplyText('')
+                                                        }}
+                                                    >
+                                                        {t('reviewArticle.common.cancel')}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className={classes.commentActions}>
+                                    <Button
+                                        size="small"
+                                        appearance="subtle"
+                                        icon={<CheckmarkRegular />}
+                                        onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                            e.stopPropagation()
+                                            handleCommentStatusChange(comment.id, CommentStatus.RESOLVED)
+                                        }}
+                                        disabled={isUpdatingCommentStatus}
+                                    >
+                                        {t('reviewArticle.comments.resolve')}
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        appearance="subtle"
+                                        icon={<DismissRegular />}
+                                        onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                            e.stopPropagation()
+                                            handleCommentStatusChange(comment.id, CommentStatus.ADDRESSED)
+                                        }}
+                                        disabled={isUpdatingCommentStatus}
+                                    >
+                                        {t('reviewArticle.comments.markAddressed')}
+                                    </Button>
+                                </div>
+                            </Card>
                         )
                     })
                 )}
@@ -1129,24 +1222,26 @@ function ReviewArticle() {
             {isAddingComment && (
                 <div className={classes.newCommentForm}>
                     <Text weight="semibold" size={300}>{t('reviewArticle.comments.newCommentTitle')}</Text>
-                    
+
                     {selectedText && (
-                        <div style={{
-                            padding: '8px',
-                            borderLeft: `3px solid ${tokens.colorPaletteYellowBorder2}`,
-                            marginBottom: '8px',
-                            fontSize: '13px',
-                            fontStyle: 'italic',
-                        }}>
+                        <div className={classes.commentSelectedText}>
                             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                                 {t('reviewArticle.comments.selectedTextLabel')}
                             </Text>
-                            <Text size={300} style={{ display: 'block', marginTop: '4px' }}>
+                            <Typography.Paragraph
+                                ellipsis={{ rows: 5 }}
+                                style={{
+                                    marginTop: '4px',
+                                    marginBottom: 0,
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                }}
+                            >
                                 "{selectedText}"
-                            </Text>
+                            </Typography.Paragraph>
                         </div>
                     )}
-                    
+
                     <div style={{
                         padding: '8px',
                         borderRadius: '4px',
@@ -1161,7 +1256,7 @@ function ReviewArticle() {
                             {t('reviewArticle.comments.pageLabel')}: <strong>{currentPdfPage}</strong>
                         </Text>
                     </div>
-                    
+
                     <Textarea
                         placeholder={t('reviewArticle.comments.newCommentPlaceholder')}
                         value={newCommentText}
@@ -1190,252 +1285,366 @@ function ReviewArticle() {
 
     return (
         <div className={classes.root} style={reviewThemeVars}>
-            {/* Overlay for mobile when TOC is visible */}
-            {isMobile && isTocVisible && (
-                <div className={classes.overlay} onClick={handleOverlayClick} />
-            )}
-
-            {/* Table of Contents Section */}
-            <div className={`${classes.tocWrapper} ${!isTocVisible ? classes.tocWrapperHidden : ''}`}>
-                <TableOfContents 
-                    items={tocData}
-                    onItemClick={handleTocClick}
-                    onClose={() => setIsTocVisible(false)}
-                />
-            </div>
-
-            {/* PDF Viewer Section */}
-            <div className={classes.viewerSection}>
-                <div className={classes.viewerHeader}>
-                    <Text weight="semibold" size={500}>
-                        {t('reviewArticle.title')}
-                    </Text>
-                    <Button
-                        appearance="primary"
-                        icon={<CommentRegular />}
-                        onClick={() => {
-                            setIsAddingComment(true)
-                            setIsCommentsVisible(true)
-                        }}
-                    >
-                        {t('reviewArticle.actions.addComment')}
-                    </Button>
-                    <Button
-                        appearance="secondary"
-                        icon={<DocumentRegular />}
-                        disabled={
-                            isSubmittingStructuredReview ||
-                            isArticleLoading ||
-                            !article ||
-                            !canSubmitStructuredReview ||
-                            isStructuredReviewSubmitted
-                        }
-                        onClick={() => setIsStructuredDialogOpen(true)}
-                    >
-                        {isStructuredReviewSubmitted ? t('reviewArticle.actions.submittedReview') : t('reviewArticle.actions.structuredReviewTemplate')}
-                    </Button>
-                    {myStructuredReview?.submittedAt && (
-                        <Text size={200}>
-                            {t('reviewArticle.submittedAt', { date: new Date(myStructuredReview.submittedAt).toLocaleString(dateTimeLocale) })}
-                        </Text>
-                    )}
-                    <Button
-                        className={classes.commentsToggleButton}
-                        appearance="subtle"
-                        icon={isCommentsVisible ? <PanelRightContractRegular /> : <PanelRightExpandRegular />}
-                        onClick={() => setIsCommentsVisible(!isCommentsVisible)}
-                    >
-                        {isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
-                    </Button>
-                </div>
-                <div className={classes.attachmentsBar}>
-                    <Text size={200} weight="semibold">{t('reviewArticle.attachments.title')}</Text>
-                    {versionAttachments.length === 0 ? (
-                        <Text size={200}>{t('reviewArticle.attachments.empty')}</Text>
-                    ) : (
-                        <div className={classes.attachmentsList}>
-                            {versionAttachments.map((attachment) => (
+            <div className={classes.pageShell}>
+                <div className={classes.viewerSection}>
+                    {isHeaderVisible ? (
+                        <div className={classes.viewerHeader}>
+                            <div className={classes.pageHero}>
+                                <div className={classes.pageHeroCopy}>
+                                    <Text className={classes.pageHeroKicker} size={200}>{t('reviewArticle.title')}</Text>
+                                    <Typography.Title level={2} className={classes.pageHeroTitle}>{articleTitle}</Typography.Title>
+                                    <div className={classes.pageHeroMeta}>
+                                        {articleSubtitle ? <Text size={200}>{articleSubtitle}</Text> : null}
+                                        {articleSubtitle && article.conferenceName ? <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>•</Text> : null}
+                                        {article.conferenceName ? <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>{article.conferenceName}</Text> : null}
+                                    </div>
+                                    {article.abstract ? (
+                                        <Typography.Paragraph className={classes.pageHeroSummary} ellipsis={{ rows: 2, expandable: false }}>
+                                            {article.abstract}
+                                        </Typography.Paragraph>
+                                    ) : null}
+                                </div>
                                 <Button
-                                    key={attachment.id}
-                                    appearance="secondary"
+                                    appearance="subtle"
                                     size="small"
-                                    icon={<DocumentRegular />}
-                                    onClick={() => handleDownloadAttachment(attachment)}
-                                    disabled={downloadingAttachmentId === attachment.id}
+                                    icon={<UpOutlined />}
+                                    onClick={() => setIsHeaderVisible(false)}
+                                    style={{ position: 'absolute', top: 0, right: 0, border: 'none' }}
+                                    title={t('reviewArticle.actions.hideHeader')}
+                                />
+                            </div>
+                            <div className={classes.viewerActions}>
+                                <ArticleStatusTag status={article.status} />
+                                <Button
+                                    appearance="primary"
+                                    icon={<CommentRegular />}
+                                    onClick={() => {
+                                        setIsAddingComment(true)
+                                        setIsCommentsVisible(true)
+                                    }}
                                 >
-                                    {kindLabels[attachment.kind] ?? attachment.kind} • {attachment.fileName} ({formatFileSize(attachment.fileSize)})
+                                    {t('reviewArticle.actions.addComment')}
                                 </Button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-                <PdfViewer
-                    fileUrl={pdfUrl}
-                    emptyMessage={t('reviewArticle.states.noPdf')}
-                    onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                    jumpToPage={jumpToPage}
-                    onPageChange={setCurrentPdfPage}
-                />
-
-                <Dialog open={isStructuredDialogOpen} onOpenChange={(_, data) => setIsStructuredDialogOpen(data.open)}>
-                    <DialogSurface>
-                        <DialogBody>
-                            <DialogTitle>{t('reviewArticle.structured.title')}</DialogTitle>
-                            <DialogContent>
-                                <div className={classes.structuredForm}>
-                                    <Text size={200}>{t('reviewArticle.structured.scoreHint')}</Text>
-                                    {[
-                                        { key: 'originality', label: t('reviewArticle.structured.criteria.originality') },
-                                        { key: 'technical_quality', label: t('reviewArticle.structured.criteria.technicalQuality') },
-                                        { key: 'clarity', label: t('reviewArticle.structured.criteria.clarity') },
-                                        { key: 'relevance', label: t('reviewArticle.structured.criteria.relevance') },
-                                        { key: 'overall', label: t('reviewArticle.structured.criteria.overall') },
-                                    ].map((criterion) => (
-                                        <div key={criterion.key} className={classes.scoreRow}>
-                                            <Text>{criterion.label}</Text>
-                                            <input
-                                                className={classes.numberInput}
-                                                type="number"
-                                                min={1}
-                                                max={10}
-                                                step={1}
-                                                value={structuredScores[criterion.key] ?? 6}
-                                                onChange={(event) => setScore(criterion.key, Number(event.target.value))}
-                                                disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
-                                            />
-                                        </div>
-                                    ))}
-
-                                    <Text>{t('reviewArticle.structured.recommendationLabel')}</Text>
-                                    <Dropdown
-                                        value={structuredRecommendation}
-                                        selectedOptions={[structuredRecommendation]}
-                                        onOptionSelect={(_, data) => {
-                                            const nextValue = data.optionValue as keyof typeof ReviewRecommendation | undefined
-                                            if (!nextValue) return
-                                            setStructuredRecommendation(nextValue)
-                                        }}
-                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
-                                    >
-                                        {Object.keys(ReviewRecommendation).map((value) => (
-                                            <Option key={value} value={value}>
-                                                {value}
-                                            </Option>
-                                        ))}
-                                    </Dropdown>
-
-                                    <Text>{t('reviewArticle.structured.summaryLabel')}</Text>
-                                    <Textarea
-                                        value={structuredSummary}
-                                        onChange={(_, data) => setStructuredSummary(data.value)}
-                                        placeholder={t('reviewArticle.structured.summaryPlaceholder')}
-                                        resize="vertical"
-                                        rows={4}
-                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
-                                    />
-
-                                    <Text>{t('reviewArticle.structured.confidentialLabel')}</Text>
-                                    <Textarea
-                                        value={structuredConfidentialRemarks}
-                                        onChange={(_, data) => setStructuredConfidentialRemarks(data.value)}
-                                        placeholder={t('reviewArticle.structured.confidentialPlaceholder')}
-                                        resize="vertical"
-                                        rows={3}
-                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
-                                    />
-
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                        <Button appearance="subtle" onClick={() => setIsStructuredDialogOpen(false)}>
-                                            {t('reviewArticle.common.close')}
-                                        </Button>
+                                {myStructuredReview?.submittedAt ? (
+                                    <Tooltip title={t('reviewArticle.structured.submittedAtTooltip', { date: new Date(myStructuredReview.submittedAt).toLocaleString(dateTimeLocale) })}>
                                         <Button
                                             appearance="secondary"
-                                            onClick={() => submitStructuredForm(false)}
-                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                            icon={<DocumentRegular />}
+                                            disabled={
+                                                isSubmittingStructuredReview ||
+                                                isArticleLoading ||
+                                                !article ||
+                                                !canSubmitStructuredReview ||
+                                                isStructuredReviewSubmitted
+                                            }
+                                            onClick={() => setIsStructuredDialogOpen(true)}
                                         >
-                                            {t('reviewArticle.structured.saveDraft')}
+                                            {isStructuredReviewSubmitted ? t('reviewArticle.actions.submittedReview') : t('reviewArticle.actions.structuredReviewTemplate')}
                                         </Button>
-                                        <Button
-                                            appearance="primary"
-                                            icon={<CheckmarkRegular />}
-                                            onClick={() => submitStructuredForm(true)}
-                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
-                                        >
-                                            {isSubmittingStructuredReview ? t('reviewArticle.comments.sending') : t('reviewArticle.structured.submitReview')}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </DialogContent>
-                        </DialogBody>
-                    </DialogSurface>
-                </Dialog>
-            </div>
-
-            {/* Comments Section - Desktop */}
-            <div className={`${classes.commentsSection} ${
-                !isCommentsVisible ? classes.commentsSectionHidden : ''
-            }`}>
-                {renderCommentsContent()}
-            </div>
-
-            {/* Comments Dialog - Mobile */}
-            {isMobile && (
-                <Dialog
-                    open={isCommentsVisible}
-                    onOpenChange={(_, data) => setIsCommentsVisible(data.open)}
-                >
-                    <DialogSurface className={classes.commentsDialogSurface}>
-                        <DialogBody className={classes.commentsDialogBody}>
-                            <DialogTitle>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text weight="semibold" size={500}>
-                                        {t('reviewArticle.comments.modalTitle')}
-                                    </Text>
+                                    </Tooltip>
+                                ) : (
                                     <Button
-                                        appearance="subtle"
-                                        icon={<DismissRegular />}
-                                        onClick={() => setIsCommentsVisible(false)}
-                                    />
-                                </div>
-                            </DialogTitle>
-                            <DialogContent style={{ 
-                                flex: 1, 
-                                overflow: 'hidden',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                padding: 0,
-                            }}>
-                                {renderCommentsContent()}
-                            </DialogContent>
-                        </DialogBody>
-                    </DialogSurface>
-                </Dialog>
-            )}
+                                        appearance="secondary"
+                                        icon={<DocumentRegular />}
+                                        disabled={
+                                            isSubmittingStructuredReview ||
+                                            isArticleLoading ||
+                                            !article ||
+                                            !canSubmitStructuredReview ||
+                                            isStructuredReviewSubmitted
+                                        }
+                                        onClick={() => setIsStructuredDialogOpen(true)}
+                                    >
+                                        {isStructuredReviewSubmitted ? t('reviewArticle.actions.submittedReview') : t('reviewArticle.actions.structuredReviewTemplate')}
+                                    </Button>
+                                )}
+                                <Button
+                                    appearance="subtle"
+                                    icon={<AttachmentRegular />}
+                                    onClick={() => setIsAttachmentsDialogOpen(true)}
+                                >
+                                    {t('reviewArticle.attachments.title')} ({versionAttachments.length})
+                                </Button>
+                                <Button
+                                    className={classes.commentsToggleButton}
+                                    appearance="subtle"
+                                    icon={isCommentsVisible ? <PanelRightContractRegular /> : <PanelRightExpandRegular />}
+                                    onClick={() => setIsCommentsVisible(!isCommentsVisible)}
+                                >
+                                    {isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={classes.viewerHeaderToggleBar}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <Button
+                                    appearance="primary"
+                                    icon={<CommentRegular />}
+                                    onClick={() => {
+                                        setIsAddingComment(true)
+                                        setIsCommentsVisible(true)
+                                    }}
+                                    size="small"
+                                >
+                                    {t('reviewArticle.actions.addComment')}
+                                </Button>
+                                {myStructuredReview?.submittedAt ? (
+                                    <Button
+                                        appearance="secondary"
+                                        icon={<DocumentRegular />}
+                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        onClick={() => setIsStructuredDialogOpen(true)}
+                                        size="small"
+                                    >
+                                        {isStructuredReviewSubmitted ? t('reviewArticle.actions.submittedReview') : t('reviewArticle.actions.structuredReviewTemplate')}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        appearance="secondary"
+                                        icon={<DocumentRegular />}
+                                        disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        onClick={() => setIsStructuredDialogOpen(true)}
+                                        size="small"
+                                    >
+                                        {isStructuredReviewSubmitted ? t('reviewArticle.actions.submittedReview') : t('reviewArticle.actions.structuredReviewTemplate')}
+                                    </Button>
+                                )}
+                                <Button
+                                    appearance="subtle"
+                                    icon={<AttachmentRegular />}
+                                    onClick={() => setIsAttachmentsDialogOpen(true)}
+                                    size="small"
+                                    title={t('reviewArticle.attachments.title')}
+                                />
+                                <Button
+                                    appearance="subtle"
+                                    icon={isCommentsVisible ? <PanelRightContractRegular /> : <PanelRightExpandRegular />}
+                                    onClick={() => setIsCommentsVisible(!isCommentsVisible)}
+                                    size="small"
+                                    title={isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
+                                />
+                                <Button
+                                    // appearance="subtle"
+                                    icon={<DownOutlined />}
+                                    onClick={() => setIsHeaderVisible(true)}
+                                    size="small"
+                                    title={t('reviewArticle.actions.showHeader')}
+                                />
+                            </div>
+                        </div>
+                    )}
 
-            {/* Floating Buttons for Mobile */}
-            {isMobile && (
-                <>
-                    <Button
-                        className={classes.tocToggleButton}
-                        appearance="primary"
-                        shape="circular"
-                        size="large"
-                        icon={<NavigationRegular />}
-                        onClick={() => setIsTocVisible(!isTocVisible)}
-                        title={isTocVisible ? t('reviewArticle.actions.hideToc') : t('reviewArticle.actions.showToc')}
-                    />
+                    <div className={classes.viewerCanvas}>
+                        <div className={classes.viewerWorkspace}>
+                            <div className={classes.viewerPdfPane}>
+                                <PdfViewer
+                                    fileUrl={pdfUrl}
+                                    emptyMessage={t('reviewArticle.states.noPdf')}
+                                    onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                                    jumpToPage={jumpToPage}
+                                    onPageChange={setCurrentPdfPage}
+                                    tocPanel={
+                                        <TableOfContents
+                                            items={tocData}
+                                            onItemClick={handleTocClick}
+                                            onClose={() => setIsTocVisible(false)}
+                                        />
+                                    }
+                                    isTocVisible={isTocVisible}
+                                    onToggleToc={() => setIsTocVisible((prev) => !prev)}
+                                    tocToggleLabel={
+                                        isTocVisible
+                                            ? t('reviewArticle.actions.hideToc')
+                                            : t('reviewArticle.actions.showToc')
+                                    }
+                                />
+                            </div>
+                        </div>
+                    </div>
 
-                    <Button
-                        className={classes.floatingButton}
-                        appearance="primary"
-                        shape="circular"
-                        size="large"
-                        icon={<CommentRegular />}
-                        onClick={() => setIsCommentsVisible(!isCommentsVisible)}
-                        title={isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
-                    />
-                </>
-            )}
+                </div>
+
+                <div className={`${classes.commentsSection} ${!isCommentsVisible ? classes.commentsSectionHidden : ''}`}>
+                    {renderCommentsContent()}
+                </div>
+
+                    {/* Attachments Dialog */}
+                    <Dialog open={isAttachmentsDialogOpen} onOpenChange={(_, data) => setIsAttachmentsDialogOpen(data.open)}>
+                        <DialogSurface>
+                            <DialogBody>
+                                <DialogTitle>{t('reviewArticle.attachments.title')}</DialogTitle>
+                                <DialogContent>
+                                    {versionAttachments.length === 0 ? (
+                                        <div className={classes.emptyState}>
+                                            <Text size={200}>{t('reviewArticle.attachments.empty')}</Text>
+                                        </div>
+                                    ) : (
+                                        <div className={classes.attachmentsList}>
+                                            {versionAttachments.map((attachment) => (
+                                                <div key={attachment.id} style={{ marginBottom: 8 }}>
+                                                    <Button
+                                                        appearance="secondary"
+                                                        size="small"
+                                                        icon={<DocumentRegular />}
+                                                        onClick={() => handleDownloadAttachment(attachment)}
+                                                        disabled={downloadingAttachmentId === attachment.id}
+                                                        style={{ width: '100%' }}
+                                                    >
+                                                        {kindLabels[attachment.kind] ?? attachment.kind} • {attachment.fileName} ({formatFileSize(attachment.fileSize)})
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </DialogContent>
+                            </DialogBody>
+                        </DialogSurface>
+                    </Dialog>
+
+                    {/* Structured Review Dialog */}
+                    <Dialog open={isStructuredDialogOpen} onOpenChange={(_, data) => setIsStructuredDialogOpen(data.open)}>
+                        <DialogSurface>
+                            <DialogBody>
+                                <DialogTitle>{t('reviewArticle.structured.title')}</DialogTitle>
+                                <DialogContent>
+                                    <div className={classes.structuredForm}>
+                                        <Text size={200}>{t('reviewArticle.structured.scoreHint')}</Text>
+                                        {[
+                                            { key: 'originality', label: t('reviewArticle.structured.criteria.originality') },
+                                            { key: 'technical_quality', label: t('reviewArticle.structured.criteria.technicalQuality') },
+                                            { key: 'clarity', label: t('reviewArticle.structured.criteria.clarity') },
+                                            { key: 'relevance', label: t('reviewArticle.structured.criteria.relevance') },
+                                            { key: 'overall', label: t('reviewArticle.structured.criteria.overall') },
+                                        ].map((criterion) => (
+                                            <div key={criterion.key} className={classes.scoreRow}>
+                                                <Text>{criterion.label}</Text>
+                                                <input
+                                                    className={classes.numberInput}
+                                                    type="number"
+                                                    min={1}
+                                                    max={10}
+                                                    step={1}
+                                                    value={structuredScores[criterion.key] ?? 6}
+                                                    onChange={(event) => setScore(criterion.key, Number(event.target.value))}
+                                                    disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                                />
+                                            </div>
+                                        ))}
+
+                                        <Text>{t('reviewArticle.structured.recommendationLabel')}</Text>
+                                        <Dropdown
+                                            value={structuredRecommendation}
+                                            selectedOptions={[structuredRecommendation]}
+                                            onOptionSelect={(_, data) => {
+                                                const nextValue = data.optionValue as keyof typeof ReviewRecommendation | undefined
+                                                if (!nextValue) return
+                                                setStructuredRecommendation(nextValue)
+                                            }}
+                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        >
+                                            {(Object.keys(ReviewRecommendation) as Array<keyof typeof ReviewRecommendation>).map((value) => (
+                                                <Option key={value} value={value}>
+                                                    {t(`reviewArticle.structured.recommendations.${value}`)}
+                                                </Option>
+                                            ))}
+                                        </Dropdown>
+
+                                        <Text>{t('reviewArticle.structured.summaryLabel')}</Text>
+                                        <Textarea
+                                            value={structuredSummary}
+                                            onChange={(_, data) => setStructuredSummary(data.value)}
+                                            placeholder={t('reviewArticle.structured.summaryPlaceholder')}
+                                            resize="vertical"
+                                            rows={4}
+                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        />
+
+                                        <Text>{t('reviewArticle.structured.confidentialLabel')}</Text>
+                                        <Textarea
+                                            value={structuredConfidentialRemarks}
+                                            onChange={(_, data) => setStructuredConfidentialRemarks(data.value)}
+                                            placeholder={t('reviewArticle.structured.confidentialPlaceholder')}
+                                            resize="vertical"
+                                            rows={3}
+                                            disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                        />
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                            <Button appearance="subtle" onClick={() => setIsStructuredDialogOpen(false)}>
+                                                {t('reviewArticle.common.close')}
+                                            </Button>
+                                            <Button
+                                                appearance="secondary"
+                                                onClick={() => submitStructuredForm(false)}
+                                                disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                            >
+                                                {t('reviewArticle.structured.saveDraft')}
+                                            </Button>
+                                            <Button
+                                                appearance="primary"
+                                                icon={<CheckmarkRegular />}
+                                                onClick={() => submitStructuredForm(true)}
+                                                disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
+                                            >
+                                                {isSubmittingStructuredReview ? t('reviewArticle.comments.sending') : t('reviewArticle.structured.submitReview')}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </DialogContent>
+                            </DialogBody>
+                        </DialogSurface>
+                    </Dialog>
+
+                    {/* Comments Dialog - Mobile */}
+                    {isMobile && (
+                        <Dialog
+                            open={isCommentsVisible}
+                            onOpenChange={(_, data) => setIsCommentsVisible(data.open)}
+                        >
+                            <DialogSurface className={classes.commentsDialogSurface}>
+                                <DialogBody className={classes.commentsDialogBody}>
+                                    <DialogTitle>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text weight="semibold" size={500}>
+                                                {t('reviewArticle.comments.modalTitle')}
+                                            </Text>
+                                            <Button
+                                                appearance="subtle"
+                                                icon={<DismissRegular />}
+                                                onClick={() => setIsCommentsVisible(false)}
+                                            />
+                                        </div>
+                                    </DialogTitle>
+                                    <DialogContent style={{
+                                        flex: 1,
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        padding: 0,
+                                    }}>
+                                        {renderCommentsContent()}
+                                    </DialogContent>
+                                </DialogBody>
+                            </DialogSurface>
+                        </Dialog>
+                    )}
+
+                    {/* Floating Buttons for Mobile */}
+                    {isMobile && (
+                        <>
+                            <Button
+                                className={classes.floatingButton}
+                                appearance="primary"
+                                shape="circular"
+                                size="large"
+                                icon={<CommentRegular />}
+                                onClick={() => setIsCommentsVisible(!isCommentsVisible)}
+                                title={isCommentsVisible ? t('reviewArticle.actions.hideComments') : t('reviewArticle.actions.showComments')}
+                            />
+                        </>
+                    )}
+            </div>
         </div>
     )
 }

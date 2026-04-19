@@ -1,28 +1,31 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.AccountStatus
-import com.example.researchreview.constants.ConferenceMembershipRole
-import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.NotificationType
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.AcademicStatus
 import com.example.researchreview.constants.Gender
 import com.example.researchreview.dtos.AdminCreateUserRequestDto
 import com.example.researchreview.dtos.ConferenceMembershipDto
 import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.dtos.UserRequestDto
-import com.example.researchreview.dtos.UserSearchRequestDto
 import com.example.researchreview.dtos.InstitutionDto
 import com.example.researchreview.dtos.TrackDto
 import com.example.researchreview.entities.Editor
-import com.example.researchreview.entities.UserRole
+import com.example.researchreview.constants.ReviewerInvitationStatus
+import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.InstitutionRepository
+import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.repositories.UserRepository
 import com.example.researchreview.repositories.TrackRepository
 import com.example.researchreview.repositories.UserConferenceMembershipRepository
+import com.example.researchreview.services.NotificationService
 import com.example.researchreview.services.ReviewerInviteService
 import com.example.researchreview.services.UsersService
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -34,7 +37,10 @@ class UsersServiceImpl(
     private val trackRepository: TrackRepository,
     private val editorRepository: EditorRepository,
     private val reviewerRepository: ReviewerRepository,
+    private val reviewerArticleRepository: ReviewerArticleRepository,
+    private val articleAuthorRepository: ArticleAuthorRepository,
     private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
+    private val notificationService: NotificationService,
     private val reviewerInviteService: ReviewerInviteService
 ): UsersService {
 
@@ -50,25 +56,19 @@ class UsersServiceImpl(
             throw IllegalArgumentException("users.emailAlreadyExists")
         }
 
-        val role = try {
-            Role.valueOf(dto.role.trim())
+        val globalRole = try {
+            GlobalRole.valueOf(dto.role.trim())
         } catch (_: Exception) {
             throw IllegalArgumentException("users.invalidRole")
-        }
-
-        val trackId = dto.trackId?.trim().orEmpty()
-        if (role == Role.EDITOR && trackId.isBlank()) {
-            throw IllegalArgumentException("users.trackRequiredForEditor")
         }
 
         val user = com.example.researchreview.entities.User().apply {
             name = dto.name.trim()
             this.email = email
-            this.role = role
+            this.globalRole = globalRole
             avatarId = dto.avatarId
             status = AccountStatus.ACTIVE
         }
-        applyRoles(user, listOf(role))
 
         val institutionId = dto.institutionId?.trim().orEmpty()
         if (institutionId.isNotBlank()) {
@@ -79,6 +79,7 @@ class UsersServiceImpl(
             user.institution = null
         }
 
+        val trackId = dto.trackId?.trim().orEmpty()
         val track = if (trackId.isNotBlank()) {
             trackRepository.findById(trackId)
                 .orElseThrow { IllegalArgumentException("users.trackNotFound") }
@@ -89,16 +90,13 @@ class UsersServiceImpl(
 
         val savedUser = userRepository.save(user)
 
-        if (role == Role.EDITOR) {
-            val ensuredTrack = track
-                ?: throw IllegalStateException("users.trackRequiredForEditor")
-
+        if (track != null) {
             val existingAssignment = editorRepository
-                .findByUserIdAndTrackIdAndDeletedFalse(savedUser.id, ensuredTrack.id)
+                .findByUserIdAndTrackIdAndDeletedFalse(savedUser.id, track.id)
             if (existingAssignment.isEmpty) {
                 val editor = Editor().apply {
                     this.user = savedUser
-                    this.track = ensuredTrack
+                    this.track = track
                 }
                 editorRepository.save(editor)
             }
@@ -108,9 +106,11 @@ class UsersServiceImpl(
     }
 
     @Transactional
-    override fun getAll(pageable: Pageable): Page<UserDto> {
+    override fun getAll(pageable: Pageable, conferenceId: String?): Page<UserDto> {
         val users = userRepository.findAll(pageable)
-        return users.map { user -> toDto(user) }
+        val content = users.map { user -> toDto(user) }.content
+        val filtered = applyReviewerCandidateFilters(content, conferenceId)
+        return PageImpl(filtered, pageable, filtered.size.toLong())
     }
 
     @Transactional
@@ -133,13 +133,14 @@ class UsersServiceImpl(
         institutionName: String?,
         role: String?,
         status: String?,
-        pageable: Pageable
+        pageable: Pageable,
+        conferenceId: String?
     ): Page<UserDto> {
         val normalizedRole = role?.trim()?.takeIf { it.isNotBlank() }
         val normalizedStatus = status?.trim()?.takeIf { it.isNotBlank() }
 
-        val roleOrdinal = try {
-            if (normalizedRole == null) null else Role.valueOf(normalizedRole).value.toInt()
+        val roleFilter = try {
+            if (normalizedRole == null) null else GlobalRole.valueOf(normalizedRole).name
         } catch (_: Exception) {
             null
         }
@@ -158,13 +159,32 @@ class UsersServiceImpl(
             emailQuery = emailQuery,
             nameQuery = nameQuery,
             institutionQuery = institutionQuery,
-            role = normalizedRole,
-            roleOrdinal = roleOrdinal,
+            role = roleFilter,
             status = normalizedStatus,
             statusOrdinal = statusOrdinal,
             pageable = pageable
         )
-        return users.map { user -> toDto(user) }
+        val content = users.map { user -> toDto(user) }.content
+        val filtered = applyReviewerCandidateFilters(content, conferenceId)
+        return PageImpl(filtered, pageable, filtered.size.toLong())
+    }
+
+    private fun applyReviewerCandidateFilters(users: List<UserDto>, conferenceId: String?): List<UserDto> {
+        val submittedUserIds = conferenceId
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { id ->
+                articleAuthorRepository.findAllByArticleConferenceIdAndDeletedFalse(id)
+                    .mapNotNull { it.author.user?.id }
+                    .toSet()
+            }
+            ?: emptySet()
+
+        return users.filter { user ->
+            val isAdmin = user.globalRole.equals(GlobalRole.ADMIN.name, ignoreCase = true)
+            val hasSubmittedInConference = submittedUserIds.contains(user.id)
+            !isAdmin && !hasSubmittedInConference
+        }
     }
 
     @Transactional
@@ -181,8 +201,13 @@ class UsersServiceImpl(
             addReviewerRole = true
         }
 
-        // Validate role - don't allow creating ADMIN or EDITOR via this endpoint
-        if (userDto.role.equals(Role.ADMIN.name) || userDto.role.equals(Role.EDITOR.name)) {
+        val requestedGlobalRole = try {
+            GlobalRole.valueOf(userDto.role.trim())
+        } catch (_: Exception) {
+            GlobalRole.USER
+        }
+
+        if (requestedGlobalRole == GlobalRole.ADMIN) {
             throw IllegalArgumentException("users.selfRegistrationRoleForbidden")
         }
 
@@ -194,13 +219,6 @@ class UsersServiceImpl(
 
         // Create user entity from DTO
         val user = toEntity(userDto)
-
-        // Persist multi-role set (always includes primary role)
-        val assignedRoles = buildList {
-            add(user.role)
-            if (addReviewerRole) add(Role.REVIEWER)
-        }
-        applyRoles(user, assignedRoles)
 
         // Set institution
         val institution = institutionRepository.findById(userDto.institutionId)
@@ -229,11 +247,12 @@ class UsersServiceImpl(
         val savedUser = userRepository.save(user)
 
         // If reviewer signed up through an invite, link the Reviewer entity (if exists) to this User.
-        if (savedUser.hasRole(Role.REVIEWER)) {
+        if (addReviewerRole) {
             val reviewer = reviewerRepository.findByEmail(userDto.email)
             if (reviewer != null && reviewer.user == null) {
                 reviewer.user = savedUser
                 reviewerRepository.save(reviewer)
+                backfillReviewerInviteNotifications(savedUser.id, reviewer.id, reviewer.email)
             }
         }
         return toDto(savedUser)
@@ -287,24 +306,21 @@ class UsersServiceImpl(
     }
 
     @Transactional
-    override fun updateRole(id: String, role: String, performedBy: Role): UserDto {
+    override fun updateRole(id: String, role: String, performedBy: GlobalRole): UserDto {
         val user = userRepository.findById(id)
             .orElseThrow { IllegalArgumentException("user.notFound") }
         
         val newRole = try {
-            Role.valueOf(role)
+            GlobalRole.valueOf(role)
         } catch (_: Exception) {
             throw IllegalArgumentException("users.invalidRole")
         }
-        
-        // Security check: Only allow ADMIN to assign ADMIN or EDITOR roles
-        if ((newRole == Role.ADMIN || newRole == Role.EDITOR) && performedBy != Role.ADMIN) {
+
+        if (newRole == GlobalRole.ADMIN && performedBy != GlobalRole.ADMIN) {
             throw IllegalArgumentException("users.onlyAdminCanAssignAdminEditor")
         }
-        
-        user.role = newRole
-        // Admin explicitly sets the user's role: reset roles to exactly that role.
-        applyRoles(user, listOf(newRole))
+
+        user.globalRole = newRole
         val savedUser = userRepository.save(user)
         return toDto(savedUser)
     }
@@ -330,8 +346,7 @@ class UsersServiceImpl(
         return UserDto(
             id = user.id,
             name = user.name,
-            role = user.role.name,
-            roles = user.effectiveRoles.map { it.name },
+            globalRole = user.globalRole.name,
             email = user.email,
             avatarId = user.avatarId,
             institution = user.institution?.let {
@@ -380,16 +395,6 @@ class UsersServiceImpl(
         )
     }
 
-    private fun applyRoles(user: com.example.researchreview.entities.User, roles: Collection<Role>) {
-        user.roles.clear()
-        roles.forEach { r ->
-            val ur = UserRole()
-            ur.user = user
-            ur.role = r
-            user.roles.add(ur)
-        }
-    }
-
     private fun toPrefixTsQuery(raw: String?): String? {
         if (raw.isNullOrBlank()) return null
         val normalized = raw
@@ -402,11 +407,35 @@ class UsersServiceImpl(
         return normalized.joinToString(" & ") { "$it:*" }
     }
 
+    private fun backfillReviewerInviteNotifications(userId: String, reviewerId: String, reviewerEmail: String) {
+        reviewerArticleRepository.findAllByReviewerIdAndDeletedFalse(reviewerId)
+            .asSequence()
+            .filter { it.status == ReviewerInvitationStatus.PENDING }
+            .forEach { relation ->
+                val token = reviewerInviteService.createInvite(reviewerEmail, relation.article.id)
+                notificationService.notifyUser(
+                    userId,
+                    NotificationType.REVIEWER_INVITED,
+                    payload = mapOf(
+                        "articleId" to relation.article.id,
+                        "title" to relation.article.title,
+                        "articleTitle" to relation.article.title,
+                        "displayIndex" to relation.displayIndex,
+                        "status" to relation.status.name,
+                        "inviteUrl" to "/reviewer-invite?token=$token",
+                        "token" to token
+                    ),
+                    contextId = relation.article.id,
+                    contextType = "ARTICLE"
+                )
+            }
+    }
+
     private fun toEntity(dto: UserRequestDto): com.example.researchreview.entities.User {
         return com.example.researchreview.entities.User().apply {
             name = dto.name
             email = dto.email
-            role = Role.valueOf(dto.role)
+            globalRole = GlobalRole.USER
             avatarId = dto.avatarId
             nationality = dto.nationality
             if (!dto.gender.isNullOrBlank()) gender = Gender.valueOf(dto.gender!!)

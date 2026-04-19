@@ -25,12 +25,16 @@ export const useAnonymizedStructuredReviews = (articleId?: string, enabled: bool
   })
 }
 
-export const useChairStructuredReviews = (articleId?: string, enabled: boolean = true) => {
+export const useEditorStructuredReviews = (articleId?: string, enabled: boolean = true) => {
   return useQuery<BaseResponseDto<StructuredReviewDto[]>>({
-    queryKey: ['structuredReview', 'chair', articleId],
-    queryFn: () => structuredReviewService.getChairView(articleId as string),
+    queryKey: ['structuredReview', 'editor', articleId],
+    queryFn: () => structuredReviewService.getEditorView(articleId as string),
     enabled: enabled && !!articleId,
   })
+}
+
+export const useChairStructuredReviews = (articleId?: string, enabled: boolean = true) => {
+  return useEditorStructuredReviews(articleId, enabled)
 }
 
 export const useSubmitStructuredReview = (articleId: string) => {
@@ -46,6 +50,7 @@ export const useSubmitStructuredReview = (articleId: string) => {
       queryClient.invalidateQueries({ queryKey: ['articles'] })
       queryClient.invalidateQueries({ queryKey: ['structuredReview', 'me', articleId] })
       queryClient.invalidateQueries({ queryKey: ['structuredReview', 'anonymized', articleId] })
+      queryClient.invalidateQueries({ queryKey: ['structuredReview', 'editor', articleId] })
       queryClient.invalidateQueries({ queryKey: ['structuredReview', 'chair', articleId] })
     },
     onError: (err: AxiosError<BaseResponseDto<StructuredReviewDto>>) => {

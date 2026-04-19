@@ -44,4 +44,12 @@ export const commentService = {
     );
     return response.data;
   },
+  deleteComment: async (
+    commentId: string,
+  ): Promise<BaseResponseDto<CommentThreadDto>> => {
+    const response = await api.delete<BaseResponseDto<CommentThreadDto>>(
+      `/comments/${commentId}`,
+    );
+    return response.data;
+  },
 };

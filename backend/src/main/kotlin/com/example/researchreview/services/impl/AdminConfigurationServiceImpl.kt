@@ -1,6 +1,6 @@
 package com.example.researchreview.services.impl
 
-import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.dtos.AdminCreateUserRequestDto
 import com.example.researchreview.dtos.AdminTopicConfigCreateRequestDto
 import com.example.researchreview.dtos.AdminTopicConfigDto
@@ -15,13 +15,18 @@ import com.example.researchreview.dtos.ConferenceConfigDto
 import com.example.researchreview.dtos.ConferenceConfigSettingsPatchRequestDto
 import com.example.researchreview.dtos.ConferenceConfigUpdateRequestDto
 import com.example.researchreview.dtos.UserDto
+import com.example.researchreview.constants.ConferenceMembershipRole
 import com.example.researchreview.entities.Conference
 import com.example.researchreview.entities.Topic
 import com.example.researchreview.entities.Track
+import com.example.researchreview.entities.User
 import com.example.researchreview.entities.UserConferenceMembership
+import com.example.researchreview.repositories.ArticleAuthorRepository
+import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.exceptions.BusinessLogicException
 import com.example.researchreview.exceptions.ResourceNotFoundException
 import com.example.researchreview.repositories.ConferenceRepository
+import com.example.researchreview.repositories.EditorRepository
 import com.example.researchreview.repositories.TopicRepository
 import com.example.researchreview.repositories.TrackRepository
 import com.example.researchreview.repositories.UserConferenceMembershipRepository
@@ -38,6 +43,9 @@ class AdminConfigurationServiceImpl(
     private val conferenceRepository: ConferenceRepository,
     private val trackRepository: TrackRepository,
     private val topicRepository: TopicRepository,
+    private val articleRepository: ArticleRepository,
+    private val articleAuthorRepository: ArticleAuthorRepository,
+    private val editorRepository: EditorRepository,
     private val userRepository: UserRepository,
     private val userConferenceMembershipRepository: UserConferenceMembershipRepository,
     private val usersService: UsersService,
@@ -255,7 +263,7 @@ class AdminConfigurationServiceImpl(
     }
 
     @Transactional
-    override fun updateUserRole(userId: String, role: String, performedBy: Role): UserDto {
+    override fun updateUserRole(userId: String, role: String, performedBy: GlobalRole): UserDto {
         return usersService.updateRole(userId, role, performedBy)
     }
 
@@ -271,9 +279,74 @@ class AdminConfigurationServiceImpl(
 
     @Transactional(readOnly = true)
     override fun getConferenceMembers(conferenceId: String): List<ConferenceMembershipDto> {
-        findConferenceOrThrow(conferenceId)
-        return userConferenceMembershipRepository.findAllByConferenceIdAndDeletedFalse(conferenceId)
-            .map { toConferenceMembershipDto(it) }
+        val conference = findConferenceOrThrow(conferenceId)
+
+        val explicitMemberships = userConferenceMembershipRepository
+            .findAllByConferenceIdAndDeletedFalse(conferenceId)
+
+        val byUserId = linkedMapOf<String, ConferenceMembershipDto>()
+
+        explicitMemberships.forEach { membership ->
+            byUserId[membership.user.id] = toConferenceMembershipDto(membership)
+        }
+
+        val trackIds = trackRepository.findAllByConferenceIdAndDeletedFalse(conferenceId).map { it.id }
+        if (trackIds.isNotEmpty()) {
+            trackIds
+                .flatMap { editorRepository.findAllByTrackIdAndDeletedFalse(it) }
+                .map { it.user }
+                .distinctBy { it.id }
+                .forEach { user ->
+                    if (!byUserId.containsKey(user.id)) {
+                        byUserId[user.id] = toDerivedConferenceMembershipDto(
+                            user = user,
+                            conferenceId = conferenceId,
+                            conferenceName = explicitMemberships.firstOrNull()?.conference?.name
+                                ?: conference.name,
+                            membershipRole = ConferenceMembershipRole.EDITOR,
+                        )
+                    }
+                }
+        }
+
+        val articles = articleRepository.findAllByConferenceIdAndDeletedFalse(conferenceId)
+
+        articleAuthorRepository.findAllByArticleConferenceIdAndDeletedFalse(conferenceId)
+            .mapNotNull { it.author.user }
+            .distinctBy { it.id }
+            .forEach { user ->
+                if (!byUserId.containsKey(user.id)) {
+                    byUserId[user.id] = toDerivedConferenceMembershipDto(
+                        user = user,
+                        conferenceId = conferenceId,
+                        conferenceName = explicitMemberships.firstOrNull()?.conference?.name
+                            ?: conference.name,
+                        membershipRole = ConferenceMembershipRole.RESEARCHER,
+                    )
+                }
+            }
+
+        articles
+            .mapNotNull { article ->
+                article.createdBy.takeIf { it.isNotBlank() }
+            }
+            .distinct()
+            .forEach { creatorId ->
+                if (!byUserId.containsKey(creatorId)) {
+                    val creator = userRepository.findByIdAndDeletedFalse(creatorId).orElse(null)
+                    if (creator != null) {
+                        byUserId[creator.id] = toDerivedConferenceMembershipDto(
+                            user = creator,
+                            conferenceId = conferenceId,
+                            conferenceName = explicitMemberships.firstOrNull()?.conference?.name
+                                ?: conference.name,
+                            membershipRole = ConferenceMembershipRole.RESEARCHER,
+                        )
+                    }
+                }
+            }
+
+        return byUserId.values.toList()
     }
 
     @Transactional
@@ -411,6 +484,25 @@ class AdminConfigurationServiceImpl(
             membershipRole = membership.membershipRole,
             createdAt = membership.createdAt,
             updatedAt = membership.updatedAt,
+        )
+    }
+
+    private fun toDerivedConferenceMembershipDto(
+        user: User,
+        conferenceId: String,
+        conferenceName: String,
+        membershipRole: ConferenceMembershipRole,
+    ): ConferenceMembershipDto {
+        return ConferenceMembershipDto(
+            id = "derived-$conferenceId-${user.id}",
+            userId = user.id,
+            userName = user.name,
+            userEmail = user.email,
+            conferenceId = conferenceId,
+            conferenceName = conferenceName,
+            membershipRole = membershipRole,
+            createdAt = user.createdAt,
+            updatedAt = user.updatedAt,
         )
     }
 }

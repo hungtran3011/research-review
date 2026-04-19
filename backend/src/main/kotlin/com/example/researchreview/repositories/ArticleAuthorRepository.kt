@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ArticleAuthorRepository: JpaRepository<ArticleAuthor, String> {
     fun findAllByArticleIdAndDeletedFalse(articleId: String): List<ArticleAuthor>
+    fun findAllByArticleConferenceIdAndDeletedFalse(conferenceId: String): List<ArticleAuthor>
 }

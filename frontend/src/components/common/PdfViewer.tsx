@@ -1,6 +1,7 @@
 import { Button, Typography, InputNumber, theme as antdTheme } from 'antd'
 import { useCallback, useState, useRef, useEffect } from 'react'
-import { ZoomInOutlined, ZoomOutOutlined, FileOutlined } from '@ant-design/icons'
+import type { ReactNode } from 'react'
+import { ZoomInOutlined, ZoomOutOutlined, FileOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +18,10 @@ interface PdfViewerProps {
     onDocumentLoadSuccess?: (pdf: unknown) => void
     jumpToPage?: number | null
     onPageChange?: (page: number) => void
+    tocPanel?: ReactNode
+    isTocVisible?: boolean
+    onToggleToc?: () => void
+    tocToggleLabel?: string
 }
 
 export function PdfViewer({ 
@@ -24,12 +29,17 @@ export function PdfViewer({
     emptyMessage,
     onDocumentLoadSuccess,
     jumpToPage,
-    onPageChange 
+    onPageChange,
+    tocPanel,
+    isTocVisible = false,
+    onToggleToc,
+    tocToggleLabel,
 }: PdfViewerProps) {
     const { t } = useTranslation('common')
     const { token } = antdTheme.useToken()
     const accessToken = useAuthStore((s) => s.accessToken)
     const resolvedEmptyMessage = emptyMessage ?? t('pdfViewer.emptyMessage')
+    const hasTocPanel = !!tocPanel
 
     const isBlobLikeUrl = !!fileUrl && (fileUrl.startsWith('blob:') || fileUrl.startsWith('data:'))
     const isProxyUrl = (() => {
@@ -372,6 +382,15 @@ export function PdfViewer({
                             alignItems: 'center',
                             gap: '8px',
                         }}>
+                            {hasTocPanel && onToggleToc ? (
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={isTocVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                                    onClick={onToggleToc}
+                                    title={tocToggleLabel ?? t('toc.title')}
+                                />
+                            ) : null}
                             <Button
                                 type="text"
                                 size="small"
@@ -407,78 +426,96 @@ export function PdfViewer({
                             </Button>
                         </div>
                     </div>
-                    <div ref={pdfViewerRef} style={{
+                    <div style={{
                         flex: 1,
-                        overflow: 'auto',
+                        minHeight: 0,
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '16px',
-                        padding: '16px',
+                        overflow: 'hidden',
                     }}>
-                        {loadError ? (
-                            <>
-                                <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>
-                                    {t('pdfViewer.errors.inlinePreviewFallback')}
-                                </Text>
-                                <div style={{ width: '100%', flex: 1, minHeight: '600px' }}>
-                                    <iframe
-                                        title="pdf-preview"
-                                        src={fileUrl}
-                                        style={{ width: '100%', height: '100%', border: 0 }}
-                                    />
-                                </div>
-                            </>
-                        ) : isProxyUrl && !blobUrl ? (
-                            <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>
-                                {isBlobLoading ? t('pdfViewer.loadingPdf') : t('pdfViewer.errors.cannotLoadFromServer') }
-                            </Text>
-                        ) : (
-                            <Document
-                                file={
-                                    isProxyUrl && blobUrl
-                                        ? blobUrl  // Use blob URL for proxy-fetched PDFs
-                                        : isBlobLikeUrl
-                                        ? fileUrl
-                                        : { url: fileUrl }
-                                }
-                                options={
-                                    isProxyUrl || isBlobLikeUrl
-                                        ? undefined
-                                        : {
-                                              httpHeaders: accessToken
-                                                  ? { Authorization: `Bearer ${accessToken}` }
-                                                  : undefined,
-                                              withCredentials: true,
-                                          }
-                                }
-                                onLoadSuccess={onDocumentLoadSuccessInternal}
-                                onLoadError={(err) => {
-                                    const message = err instanceof Error ? err.message : String(err)
-                                    setLoadError(message)
-                                }}
-                                loading={<Text>{t('pdfViewer.loadingPdf')}</Text>}
-                                error={<Text>{t('pdfViewer.errors.loadError')}</Text>}
-                            >
-                                {Array.from(new Array(numPages), (_, index) => (
-                                    <div
-                                        key={`page_${index + 1}`}
-                                        ref={(el) => { pageRefs.current[index + 1] = el }}
-                                        style={{
-                                            boxShadow: token.boxShadowSecondary,
-                                            marginBottom: '8px',
-                                        }}
-                                    >
-                                        <Page
-                                            pageNumber={index + 1}
-                                            renderTextLayer={true}
-                                            renderAnnotationLayer={true}
-                                            width={pdfWidth}
+                        {hasTocPanel && isTocVisible ? (
+                            <div style={{
+                                height: '100%',
+                                maxWidth: '70%',
+                                overflow: 'hidden',
+                                borderRight: `1px solid ${token.colorBorderSecondary}`,
+                            }}>
+                                {tocPanel}
+                            </div>
+                        ) : null}
+                        <div ref={pdfViewerRef} style={{
+                            flex: 1,
+                            minWidth: 0,
+                            overflow: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '16px',
+                            padding: '16px',
+                        }}>
+                            {loadError ? (
+                                <>
+                                    <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>
+                                        {t('pdfViewer.errors.inlinePreviewFallback')}
+                                    </Text>
+                                    <div style={{ width: '100%', flex: 1, minHeight: '600px' }}>
+                                        <iframe
+                                            title="pdf-preview"
+                                            src={fileUrl}
+                                            style={{ width: '100%', height: '100%', border: 0 }}
                                         />
                                     </div>
-                                ))}
-                            </Document>
-                        )}
+                                </>
+                            ) : isProxyUrl && !blobUrl ? (
+                                <Text style={{ fontSize: '12px', color: token.colorTextSecondary }}>
+                                    {isBlobLoading ? t('pdfViewer.loadingPdf') : t('pdfViewer.errors.cannotLoadFromServer') }
+                                </Text>
+                            ) : (
+                                <Document
+                                    file={
+                                        isProxyUrl && blobUrl
+                                            ? blobUrl  // Use blob URL for proxy-fetched PDFs
+                                            : isBlobLikeUrl
+                                            ? fileUrl
+                                            : { url: fileUrl }
+                                    }
+                                    options={
+                                        isProxyUrl || isBlobLikeUrl
+                                            ? undefined
+                                            : {
+                                                  httpHeaders: accessToken
+                                                      ? { Authorization: `Bearer ${accessToken}` }
+                                                      : undefined,
+                                                  withCredentials: true,
+                                              }
+                                    }
+                                    onLoadSuccess={onDocumentLoadSuccessInternal}
+                                    onLoadError={(err) => {
+                                        const message = err instanceof Error ? err.message : String(err)
+                                        setLoadError(message)
+                                    }}
+                                    loading={<Text>{t('pdfViewer.loadingPdf')}</Text>}
+                                    error={<Text>{t('pdfViewer.errors.loadError')}</Text>}
+                                >
+                                    {Array.from(new Array(numPages), (_, index) => (
+                                        <div
+                                            key={`page_${index + 1}`}
+                                            ref={(el) => { pageRefs.current[index + 1] = el }}
+                                            style={{
+                                                boxShadow: token.boxShadowSecondary,
+                                                marginBottom: '8px',
+                                            }}
+                                        >
+                                            <Page
+                                                pageNumber={index + 1}
+                                                renderTextLayer={true}
+                                                renderAnnotationLayer={true}
+                                                width={pdfWidth}
+                                            />
+                                        </div>
+                                    ))}
+                                </Document>
+                            )}
+                        </div>
                     </div>
                 </>
             ) : (

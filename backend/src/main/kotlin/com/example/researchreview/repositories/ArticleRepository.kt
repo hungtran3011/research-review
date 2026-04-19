@@ -11,6 +11,7 @@ import java.util.Optional
 
 interface ArticleRepository: JpaRepository<Article, String>, JpaSpecificationExecutor<Article> {
 	fun findAllByDeletedFalse(pageable: Pageable): Page<Article>
+	fun findAllByConferenceIdAndDeletedFalse(conferenceId: String): List<Article>
 	fun findByIdAndDeletedFalse(id: String): Optional<Article>
 	fun findAllByDeletedFalseAndTrackId(trackId: String, pageable: Pageable): Page<Article>
 	fun findAllByDeletedFalseAndTrackIdIn(trackIds: Collection<String>, pageable: Pageable): Page<Article>

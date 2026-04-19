@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Input, Select, Button, Form, Row, Col, Typography, DatePicker, theme as antdTheme } from 'antd'
 import { MailOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
@@ -30,7 +30,7 @@ function Info() {
     const [formData, setFormData] = useState<UserRequestDto>({
         email: email || '',
         name: '',
-        role: inviteToken ? Role.REVIEWER : Role.USER,
+        role: Role.USER,
         avatarId: '',
         institutionId: '',
         institutionName: '',
@@ -49,6 +49,14 @@ function Info() {
         dateOfBirth: '',
         researchField: '',
     })
+
+    useEffect(() => {
+        setFormData((prev) => ({
+            ...prev,
+            email: email || prev.email,
+            inviteToken,
+        }))
+    }, [email, inviteToken])
 
     const handleSubmit = () => {
         completeUserInfo.mutate(formData)
@@ -162,8 +170,6 @@ function Info() {
                                 disabled={!!inviteToken}
                                 options={[
                                     { label: t('info.roleOptions.user'), value: Role.USER },
-                                    { label: t('info.roleOptions.researcher'), value: Role.RESEARCHER },
-                                    { label: t('info.roleOptions.reviewer'), value: Role.REVIEWER },
                                 ]}
                             />
                         </Form.Item>

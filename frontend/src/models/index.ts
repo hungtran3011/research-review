@@ -14,6 +14,7 @@ export * from './basic-email.model';
 export * from './comment.model';
 export * from './comment-request.model';
 export * from './conference.model';
+export * from './conference-membership.model';
 export * from './conference-request.model';
 export * from './admin-create-user-request.model';
 export * from './editor.model';

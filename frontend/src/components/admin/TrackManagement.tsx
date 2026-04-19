@@ -248,7 +248,7 @@ const TrackManagement = () => {
 
   const availableEditorUsers = useMemo(() => {
     const users = usersQuery.data || [];
-    return users.filter((user: UserDto) => user.status === 'ACTIVE' && user.role !== 'ADMIN');
+    return users.filter((user: UserDto) => user.status === 'ACTIVE' && user.globalRole !== 'ADMIN');
   }, [usersQuery.data]);
 
   const assignmentsByTrackId = useMemo(() => {

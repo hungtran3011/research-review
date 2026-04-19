@@ -1,7 +1,7 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.ArticleStatus
-import com.example.researchreview.constants.Role
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
 import com.example.researchreview.dtos.ReviewerContactRequestDto
@@ -21,7 +21,6 @@ import com.example.researchreview.repositories.ReviewerArticleRepository
 import com.example.researchreview.repositories.ReviewerRepository
 import com.example.researchreview.entities.Reviewer
 import com.example.researchreview.entities.User
-import com.example.researchreview.entities.UserRole
 import com.example.researchreview.services.CurrentUserService
 import com.example.researchreview.services.EmailService
 import com.example.researchreview.services.NotificationService
@@ -57,7 +56,7 @@ class ReviewerServiceImpl(
     @Transactional
     override fun contactReviewers(articleId: String, request: ReviewerContactRequestDto): List<ReviewerDto> {
         val user = currentUserService.requireUser()
-        if (!user.hasRole(Role.EDITOR) && !user.hasRole(Role.CHAIR)) {
+        if (user.globalRole != GlobalRole.ADMIN) {
             throw AccessDeniedException("reviewer.onlyEditorOrChairCanContact")
         }
 
@@ -136,25 +135,13 @@ class ReviewerServiceImpl(
         reviewer.name = dto.name
         reviewer.email = dto.email
         reviewer.institution = institution
-        if (!dto.userId.isNullOrBlank()) {
-            val user = userRepository.findById(dto.userId!!).orElse(null)
-            if (user != null) {
-                ensureUserHasRole(user, Role.REVIEWER)
-                reviewer.user = user
-            }
+        val user = dto.userId?.takeIf { it.isNotBlank() }?.let { id ->
+            userRepository.findById(id).orElse(null)
+        } ?: userRepository.findByEmailIgnoreCase(dto.email).orElse(null)
+        if (user != null) {
+            reviewer.user = user
         }
         return reviewerRepository.save(reviewer)
-    }
-
-    private fun ensureUserHasRole(user: User, role: Role) {
-        if (user.hasRole(role)) return
-        if (user.roles.any { it.role == role }) return
-        val ur = UserRole().apply {
-            this.user = user
-            this.role = role
-        }
-        user.roles.add(ur)
-        userRepository.save(user)
     }
 
     private fun linkReviewer(article: Article, reviewer: Reviewer) {
@@ -179,11 +166,11 @@ class ReviewerServiceImpl(
     }
 
     private fun buildMessage(article: Article, baseMessage: String, inviteUrl: String?): String {
-        val inviteHtml = inviteUrl?.let { "<p><strong>Reviewer invite:</strong> <a href=\"${'$'}it\">${'$'}it</a></p>" } ?: ""
+        val inviteHtml = inviteUrl?.let { "<p><strong>Reviewer invite:</strong> <a href=\"$it\">$it</a></p>" } ?: ""
         return """
             <p>${'$'}{baseMessage.trim()}</p>
             <p><strong>Article:</strong> ${'$'}{article.title}</p>
-            <p><strong>Link:</strong> ${'$'}{article.link}</p>
+            <p><strong>Link:</strong> <a href="${'$'}{article.link}">${'$'}{article.link}</a></p>
             ${'$'}inviteHtml
         """.trimIndent()
     }
@@ -202,8 +189,7 @@ class ReviewerServiceImpl(
                 UserDto(
                     id = it.id,
                     name = it.name,
-                    role = it.role.name,
-                    roles = it.effectiveRoles.map { role -> role.name },
+                    globalRole = it.globalRole.name,
                     email = it.email,
                     institution = it.institution?.let { inst ->
                         InstitutionDto(

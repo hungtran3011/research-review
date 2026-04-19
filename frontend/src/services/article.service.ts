@@ -8,6 +8,7 @@ import type {
   InitialReviewRequestDto,
   PageResponseDto,
   ReviewerRequestDto,
+  UserDto,
 } from '../models';
 
 export const articleService = {
@@ -75,6 +76,19 @@ export const articleService = {
       `/articles/${id}/reviewers`,
       reviewer
     );
+    return response.data;
+  },
+  unassignReviewer: async (
+    id: string,
+    reviewerId: string
+  ): Promise<BaseResponseDto<ArticleDto>> => {
+    const response = await api.delete<BaseResponseDto<ArticleDto>>(
+      `/articles/${id}/reviewers/${reviewerId}`
+    );
+    return response.data;
+  },
+  getReviewerCandidates: async (id: string): Promise<BaseResponseDto<UserDto[]>> => {
+    const response = await api.get<BaseResponseDto<UserDto[]>>(`/articles/${id}/reviewer-candidates`);
     return response.data;
   },
   requestRevisions: async (id: string): Promise<BaseResponseDto<ArticleDto>> => {

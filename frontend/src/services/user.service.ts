@@ -33,7 +33,7 @@ export const userService = {
    * Get paginated list of users (admin only)
    */
   getUsers: async (
-    params: { page?: number; size?: number } = {}
+    params: { page?: number; size?: number; conferenceId?: string } = {}
   ): Promise<BaseResponseDto<PageResponseDto<UserDto>>> => {
     const response = await api.get<BaseResponseDto<PageResponseDto<UserDto>>>(`/users`, {
       params,
@@ -50,6 +50,7 @@ export const userService = {
       institutionName?: string;
       role?: string;
       status?: string;
+      conferenceId?: string;
     } = {}
   ): Promise<BaseResponseDto<PageResponseDto<UserDto>>> => {
     const response = await api.get<BaseResponseDto<PageResponseDto<UserDto>>>(`/users/search`, {

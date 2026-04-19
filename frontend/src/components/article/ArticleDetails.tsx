@@ -11,18 +11,19 @@ import {
     SendOutlined,
     CheckOutlined,
     CloseOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons'
-import { useArticle, useEditorApproveArticle, useEditorRejectArticle } from '../../hooks/useArticles'
+import { useArticle, useEditorApproveArticle, useEditorRejectArticle, useRequestRevisions } from '../../hooks/useArticles'
 import { useAuthStore } from '../../stores/authStore'
 import { useCurrentUser } from '../../hooks/useUser'
 import { ArticleStatus } from '../../constants'
 import type { ArticleStatusType } from '../../constants'
 import { PdfViewer } from '../common/PdfViewer'
-import { useArticleComments, useReplyComment } from '../../hooks/useComments'
+import { useArticleComments, useDeleteComment, useReplyComment } from '../../hooks/useComments'
 import { SubmitRevision } from './SubmitRevision'
 import { useStartRevisions } from '../../hooks/useArticles'
 import { InviteReviewersDialog } from './InviteReviewersDialog'
-import { useAnonymizedStructuredReviews, useChairStructuredReviews } from '../../hooks/useStructuredReviews'
+import { useAnonymizedStructuredReviews, useEditorStructuredReviews } from '../../hooks/useStructuredReviews'
 import type { ArticleVersionDto, CommentDto, CommentThreadDto, VersionSupplementDto } from '../../models'
 import { articleVersionService } from '../../services/article-version.service'
 import { useTranslation } from 'react-i18next'
@@ -50,6 +51,13 @@ const styles: Record<string, React.CSSProperties> = {
     },
     sidebarHidden: {
         transform: 'translateX(-100%)',
+    },
+    sidebarDesktopHidden: {
+        transform: 'translateX(-100%)',
+        width: 0,
+        minWidth: 0,
+        borderRight: 'none',
+        overflow: 'hidden',
     },
     sidebarHeader: {
         padding: 16,
@@ -96,6 +104,7 @@ const styles: Record<string, React.CSSProperties> = {
 function ArticleDetails() {
     const { t, i18n } = useTranslation('common')
     const { token } = antdTheme.useToken()
+    const [modal, modalContextHolder] = Modal.useModal()
     const articleThemeVars = React.useMemo(() => ({
         '--article-bg': token.colorBgLayout,
         '--article-panel-bg': token.colorBgContainer,
@@ -123,6 +132,7 @@ function ArticleDetails() {
     const [showSubmitRevision, setShowSubmitRevision] = useState(false)
     const [versions, setVersions] = useState<ArticleVersionDto[]>([])
     const [currentVersion, setCurrentVersion] = useState<number>(1)
+    const [materialsReloadToken, setMaterialsReloadToken] = useState(0)
     const [pdfUrl, setPdfUrl] = useState<string | null>(null)
     const [isLoadingMaterials, setIsLoadingMaterials] = useState(false)
     const [materialsError, setMaterialsError] = useState<string | null>(null)
@@ -139,6 +149,7 @@ function ArticleDetails() {
 
     const { mutate: approveArticle, isPending: isApproving } = useEditorApproveArticle(safeArticleId)
     const { mutate: rejectArticle, isPending: isRejecting } = useEditorRejectArticle(safeArticleId)
+    const { mutate: requestRevisions, isPending: isRequestingRevisions } = useRequestRevisions(safeArticleId)
 
     const {
         data: commentsResponse,
@@ -146,6 +157,7 @@ function ArticleDetails() {
     } = useArticleComments(articleId, !!articleId)
 
     const { mutate: replyToComment, isPending: isReplying } = useReplyComment(articleId ?? '')
+    const { mutate: deleteComment, isPending: isDeletingComment } = useDeleteComment(articleId ?? '')
 
     const [isMobile, setIsMobile] = useState(() => {
         if (typeof window === 'undefined') return false
@@ -215,7 +227,7 @@ function ArticleDetails() {
         return () => {
             cancelled = true
         }
-    }, [article?.id, t])
+    }, [article?.id, t, materialsReloadToken])
 
     useEffect(() => {
         if (!article?.id) return
@@ -311,22 +323,23 @@ function ArticleDetails() {
         return t('articleDetails.reviewer')
     }
 
-    const currentRoles: string[] = (() => {
-        const roles = (currentUser as { roles?: string[] } | undefined)?.roles
-        if (Array.isArray(roles) && roles.length > 0) return roles
-        const role = (currentUser as { role?: string } | undefined)?.role
-        return role ? [role] : []
+    const currentConferenceRoles = (() => {
+        if (!article?.conferenceId || !currentUser?.conferences) return [] as string[]
+        return currentUser.conferences
+            .filter((membership) => membership.conferenceId === article.conferenceId)
+            .map((membership) => membership.membershipRole)
     })()
 
-    const isChair = currentRoles.includes('CHAIR') || currentRoles.includes('ADMIN')
-    const canManageReviewers = currentRoles.includes('ADMIN') || currentRoles.includes('EDITOR') || currentRoles.includes('CHAIR')
+    const isAdmin = currentUser?.globalRole === 'ADMIN'
+    const isChair = isAdmin || currentConferenceRoles.includes('EDITOR')
+    const canManageReviewers = isAdmin || currentConferenceRoles.includes('EDITOR')
 
     const handleReply = (threadId: string) => {
         if (!replyText.trim()) return
-        
+
         replyToComment({
             threadId,
-            data: { 
+            data: {
                 content: replyText,
                 authorName: currentUser?.name ?? currentUserEmail ?? t('articleDetails.user'),
                 authorId: currentUser?.id,
@@ -336,6 +349,30 @@ function ArticleDetails() {
                 setReplyText('')
                 setReplyingTo(null)
             },
+        })
+    }
+
+    const canDeleteComment = (comment?: CommentDto | null): boolean => {
+        if (!comment) return false
+        if (canManageReviewers) return true
+        return isMyComment(comment)
+    }
+
+    const handleDeleteComment = (commentId: string) => {
+        modal.confirm({
+            title: t('articleDetails.confirmDeleteComment'),
+            okText: t('articleDetails.deleteComment'),
+            cancelText: t('articleDetails.cancel'),
+            okButtonProps: { danger: true, loading: isDeletingComment },
+            onOk: () => new Promise<void>((resolve, reject) => {
+                deleteComment(
+                    { commentId },
+                    {
+                        onSuccess: () => resolve(),
+                        onError: () => reject(),
+                    },
+                )
+            }),
         })
     }
 
@@ -353,9 +390,9 @@ function ArticleDetails() {
         (author) => (author.email ?? '').trim().toLowerCase() === normalizedCurrentEmail
     )
 
-    const { data: chairStructuredReviewsResponse } = useChairStructuredReviews(articleId, !!articleId && isChair)
+    const { data: editorStructuredReviewsResponse } = useEditorStructuredReviews(articleId, !!articleId && isChair)
     const { data: anonymizedStructuredReviewsResponse } = useAnonymizedStructuredReviews(articleId, !!articleId && !!isAuthor)
-    const chairStructuredReviews = chairStructuredReviewsResponse?.data ?? []
+    const editorStructuredReviews = editorStructuredReviewsResponse?.data ?? []
     const anonymizedStructuredReviews = anonymizedStructuredReviewsResponse?.data ?? []
 
     const canReplyToComments = !!isAuthor || canManageReviewers
@@ -367,6 +404,7 @@ function ArticleDetails() {
 
     // Check if current user is an editor and article is awaiting initial review
     const canDoInitialReview = canManageReviewers && article?.status === ArticleStatus.SUBMITTED
+    const canDoEditorDecision = canManageReviewers && article?.status === ArticleStatus.REVIEWS_COMPLETED
 
     const statusLabelMap: Record<ArticleStatusType, { label: string; color: 'brand' | 'informative' | 'important' | 'success' | 'warning' | 'danger' }> = {
         [ArticleStatus.SUBMITTED]: { label: t('notifications.articleStatus.submitted'), color: 'informative' },
@@ -409,14 +447,34 @@ function ArticleDetails() {
 
     const statusInfo = statusLabelMap[article.status] || { label: article.status, color: 'informative' as const }
 
-    const reviewSubmissionCount = chairStructuredReviews.length
+    const reviewSubmissionCount = editorStructuredReviews.length
     const assignedReviewerCount = article.reviewers?.length ?? 0
-    const recommendationDistribution = chairStructuredReviews.reduce<Record<string, number>>((accumulator, review) => {
+    const recommendationDistribution = editorStructuredReviews.reduce<Record<string, number>>((accumulator, review) => {
         accumulator[review.recommendation] = (accumulator[review.recommendation] ?? 0) + 1
         return accumulator
     }, {})
 
-    const overallScores = chairStructuredReviews
+    const getStructuredRecommendationLabel = (recommendation: string): string => {
+        const key = `reviewArticle.structured.recommendations.${recommendation}`
+        const translated = t(key)
+        return translated === key ? recommendation : translated
+    }
+
+    const getStructuredCriterionLabel = (criterion: string): string => {
+        const criterionMap: Record<string, string> = {
+            originality: 'reviewArticle.structured.criteria.originality',
+            technical_quality: 'reviewArticle.structured.criteria.technicalQuality',
+            clarity: 'reviewArticle.structured.criteria.clarity',
+            relevance: 'reviewArticle.structured.criteria.relevance',
+            overall: 'reviewArticle.structured.criteria.overall',
+        }
+        const key = criterionMap[criterion]
+        if (!key) return criterion
+        const translated = t(key)
+        return translated === key ? criterion : translated
+    }
+
+    const overallScores = editorStructuredReviews
         .flatMap((review) => review.scores)
         .filter((score) => score.criterion === 'overall')
         .map((score) => score.score)
@@ -425,7 +483,7 @@ function ArticleDetails() {
         : null
 
     const submittedReviewerDisplayIndices = new Set(
-        chairStructuredReviews.map((review) => review.reviewerDisplayIndex)
+        editorStructuredReviews.map((review) => review.reviewerDisplayIndex)
     )
 
     const trackName = article.track?.name ?? t('articleDetails.unassigned')
@@ -449,7 +507,7 @@ function ArticleDetails() {
                         </Typography.Text>
                         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {Object.entries(recommendationDistribution).length > 0 ? Object.entries(recommendationDistribution).map(([recommendation, count]) => (
-                                <Tag key={recommendation}>{recommendation}: {count}</Tag>
+                                <Tag key={recommendation}>{getStructuredRecommendationLabel(recommendation)}: {count}</Tag>
                             )) : <Typography.Text type="secondary">{t('articleDetails.noRecommendation')}</Typography.Text>}
                         </div>
                     </Card>
@@ -488,7 +546,7 @@ function ArticleDetails() {
                             </Typography.Paragraph>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                 {review.scores.map((score) => (
-                                    <Tag key={`${review.id}-${score.criterion}`}>{score.criterion}: {score.score}</Tag>
+                                    <Tag key={`${review.id}-${score.criterion}`}>{getStructuredCriterionLabel(score.criterion)}: {score.score}</Tag>
                                 ))}
                             </div>
                             {review.submittedAt && (
@@ -608,6 +666,20 @@ function ArticleDetails() {
                         {thread.comments.length > 0 && (
                             <>
                                 <div style={styles.commentContent}>
+                                    {canDeleteComment(thread.comments[0]) && (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                                            <Button
+                                                type="text"
+                                                danger
+                                                size="small"
+                                                icon={<DeleteOutlined />}
+                                                disabled={isDeletingComment}
+                                                onClick={() => handleDeleteComment(thread.comments[0].id)}
+                                            >
+                                                {t('articleDetails.deleteComment')}
+                                            </Button>
+                                        </div>
+                                    )}
                                     <Typography.Text>{thread.comments[0].content}</Typography.Text>
                                 </div>
 
@@ -615,12 +687,28 @@ function ArticleDetails() {
                                     <div style={styles.commentReplies}>
                                         {thread.comments.slice(1).map((reply) => (
                                             <div key={reply.id} style={styles.replyItem}>
-                                                <Typography.Text strong>{displayAuthorName(reply)}</Typography.Text>
-                                                {reply.createdAt && (
-                                                    <Typography.Text type='secondary' style={{ marginLeft: 8 }}>
-                                                        {new Date(reply.createdAt).toLocaleDateString(dateTimeLocale)}
-                                                    </Typography.Text>
-                                                )}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                                    <div>
+                                                        <Typography.Text strong>{displayAuthorName(reply)}</Typography.Text>
+                                                        {reply.createdAt && (
+                                                            <Typography.Text type='secondary' style={{ marginLeft: 8 }}>
+                                                                {new Date(reply.createdAt).toLocaleDateString(dateTimeLocale)}
+                                                            </Typography.Text>
+                                                        )}
+                                                    </div>
+                                                    {canDeleteComment(reply) && (
+                                                        <Button
+                                                            type="text"
+                                                            danger
+                                                            size="small"
+                                                            icon={<DeleteOutlined />}
+                                                            disabled={isDeletingComment}
+                                                            onClick={() => handleDeleteComment(reply.id)}
+                                                        >
+                                                            {t('articleDetails.deleteComment')}
+                                                        </Button>
+                                                    )}
+                                                </div>
                                                 <Typography.Text style={{ display: 'block', marginTop: 4 }}>{reply.content}</Typography.Text>
                                             </div>
                                         ))}
@@ -655,6 +743,7 @@ function ArticleDetails() {
 
     return (
         <div style={{ ...styles.root, ...articleThemeVars }}>
+            {modalContextHolder}
             {isMobile ? (
                 <Drawer
                     placement="left"
@@ -729,7 +818,7 @@ function ArticleDetails() {
                                                 {reviewer.name}
                                             </Tag>
                                         ))
-                                    ) : currentUser?.role === 'REVIEWER' ? (
+                                    ) : currentConferenceRoles.includes('REVIEWER') ? (
                                         // Reviewers should not see other reviewers; show only themselves.
                                         article.reviewers
                                             .filter((reviewer) => {
@@ -772,7 +861,7 @@ function ArticleDetails() {
                     </div>
                 </Drawer>
             ) : (
-                <div style={styles.sidebarSection}>
+                <div style={{ ...styles.sidebarSection, ...(isSidebarVisible ? {} : styles.sidebarDesktopHidden) }}>
                     <div style={styles.sidebarHeader}>
                         <Tag>{statusInfo.label}</Tag>
                     </div>
@@ -832,7 +921,7 @@ function ArticleDetails() {
                                                 {reviewer.name}
                                             </Tag>
                                         ))
-                                    ) : currentUser?.role === 'REVIEWER' ? (
+                                    ) : currentConferenceRoles.includes('REVIEWER') ? (
                                         article.reviewers
                                             .filter((reviewer) => {
                                                 const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
@@ -898,38 +987,68 @@ function ArticleDetails() {
                                 {t('articleDetails.download')}
                             </Button>
                         )}
-                        {canManageReviewers &&
-                            (article.status === ArticleStatus.ACCEPT_REQUESTED ||
-                                article.status === ArticleStatus.REJECT_REQUESTED) && (
-                                <>
-                                    <Button
-                                        type="primary"
-                                        icon={<CheckOutlined />}
-                                        size="small"
-                                        disabled={isApproving || isRejecting}
-                                        onClick={() => {
-                                            const ok = window.confirm(t('articleDetails.confirmApprove'))
-                                            if (!ok) return
-                                            approveArticle()
-                                        }}
-                                    >
-                                        {isApproving ? t('articleDetails.processing') : t('articleDetails.approve')}
-                                    </Button>
-                                    <Button
-                                        danger
-                                        icon={<CloseOutlined />}
-                                        size="small"
-                                        disabled={isApproving || isRejecting}
-                                        onClick={() => {
-                                            const ok = window.confirm(t('articleDetails.confirmReject'))
-                                            if (!ok) return
-                                            rejectArticle()
-                                        }}
-                                    >
-                                        {isRejecting ? t('articleDetails.processing') : t('articleDetails.reject')}
-                                    </Button>
-                                </>
-                            )}
+                        {canDoEditorDecision && (
+                            <>
+                                <Button
+                                    icon={<FilePdfOutlined />}
+                                    size="small"
+                                    disabled={isApproving || isRejecting || isRequestingRevisions}
+                                    onClick={() => {
+                                        modal.confirm({
+                                            title: t('articleDetails.confirmRequestRevisions'),
+                                            okText: t('articleDetails.requestRevisions'),
+                                            cancelText: t('articleDetails.cancel'),
+                                            onOk: () => requestRevisions(),
+                                        })
+                                    }}
+                                >
+                                    {isRequestingRevisions ? t('articleDetails.processing') : t('articleDetails.requestRevisions')}
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    icon={<CheckOutlined />}
+                                    size="small"
+                                    disabled={isApproving || isRejecting || isRequestingRevisions}
+                                    onClick={() => {
+                                        modal.confirm({
+                                            title: t('articleDetails.confirmApprove'),
+                                            okText: t('articleDetails.approve'),
+                                            cancelText: t('articleDetails.cancel'),
+                                            onOk: () => approveArticle(),
+                                        })
+                                    }}
+                                >
+                                    {isApproving ? t('articleDetails.processing') : t('articleDetails.approve')}
+                                </Button>
+                                <Button
+                                    danger
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                    disabled={isApproving || isRejecting || isRequestingRevisions}
+                                    onClick={() => {
+                                        modal.confirm({
+                                            title: t('articleDetails.confirmReject'),
+                                            okText: t('articleDetails.reject'),
+                                            cancelText: t('articleDetails.cancel'),
+                                            okButtonProps: { danger: true },
+                                            onOk: () => rejectArticle(),
+                                        })
+                                    }}
+                                >
+                                    {isRejecting ? t('articleDetails.processing') : t('articleDetails.reject')}
+                                </Button>
+                            </>
+                        )}
+                        {isAuthor && article.status === ArticleStatus.REVIEWS_COMPLETED && !canManageReviewers && (
+                            <Typography.Text type="secondary">
+                                {t('articleDetails.awaitingEditorDecision')}
+                            </Typography.Text>
+                        )}
+                        {isAuthor && article.status === ArticleStatus.IN_REVIEW && !isAssignedReviewer && !canManageReviewers && (
+                            <Typography.Text type="secondary">
+                                {t('articleDetails.awaitingReReview')}
+                            </Typography.Text>
+                        )}
                         {canDoInitialReview && (
                             <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=initialReview`)} size="small">{t('articleDetails.initialReview')}</Button>
                         )}
@@ -960,6 +1079,24 @@ function ArticleDetails() {
                                 {isStartingRevisions ? t('articleDetails.processing') : t('articleDetails.submitRevision')}
                             </Button>
                         )}
+                        {!isMobile && (
+                            <>
+                                <Button
+                                    size="small"
+                                    icon={<MenuOutlined />}
+                                    onClick={() => setIsSidebarVisible((prev) => !prev)}
+                                >
+                                    {isSidebarVisible ? t('articleDetails.hideInfo') : t('articleDetails.showInfo')}
+                                </Button>
+                                <Button
+                                    size="small"
+                                    icon={<CommentOutlined />}
+                                    onClick={() => setIsCommentsPanelVisible((prev) => !prev)}
+                                >
+                                    {isCommentsPanelVisible ? t('articleDetails.hideComments') : t('articleDetails.showComments')}
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -979,7 +1116,7 @@ function ArticleDetails() {
             />
 
             {/* Comments Section - Desktop */}
-            <div style={{ ...(styles.commentsSection as object), ...(isMobile ? { display: 'none' } : (!isCommentsPanelVisible ? styles.commentsSectionHidden : {})) }}>
+            {(!isMobile && !isCommentsPanelVisible) ? null : <div style={{ ...(styles.commentsSection as object), ...(isMobile ? { display: 'none' } : (!isCommentsPanelVisible ? styles.commentsSectionHidden : {})) }}>
                 <div style={styles.commentsHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <CommentOutlined style={{ fontSize: 18 }} />
@@ -987,11 +1124,19 @@ function ArticleDetails() {
                     </div>
 
                     {isCommentsPanelVisible ? (
-                        <Button icon={<CloseOutlined />} onClick={() => setIsCommentsPanelVisible(false)} />
+                        <Button
+                            icon={<CloseOutlined />}
+                            onClick={() => {
+                                setIsCommentsPanelVisible(false)
+                                if (!isMobile) {
+                                    setIsSidebarVisible(true)
+                                }
+                            }}
+                        />
                     ) : null}
                 </div>
                 {renderCommentsList()}
-            </div>
+            </div>}
 
             {/* Comments Dialog - Mobile */}
             {isMobile && (
@@ -1041,8 +1186,11 @@ function ArticleDetails() {
                 onClose={() => setShowSubmitRevision(false)}
                 onSuccess={() => {
                     setShowSubmitRevision(false)
-                    // Refetch article to show updated status
-                    if (refetch) refetch()
+                    // Refetch article status and force materials/version reload so new revision appears immediately.
+                    setMaterialsReloadToken((prev) => prev + 1)
+                    if (refetch) {
+                        void refetch()
+                    }
                 }}
             />
         </div>

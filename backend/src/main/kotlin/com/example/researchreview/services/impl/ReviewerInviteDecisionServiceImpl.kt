@@ -31,7 +31,7 @@ class ReviewerInviteDecisionServiceImpl(
     override fun decline(token: String): ReviewerInviteDecisionDto = decide(token, accept = false)
 
     private fun decide(token: String, accept: Boolean): ReviewerInviteDecisionDto {
-        val invite = reviewerInviteService.consume(token)
+        val invite = reviewerInviteService.resolve(token)
 
         val userId = SecurityUtils.currentUserId()
         val user = userRepository.findById(userId)
@@ -41,6 +41,9 @@ class ReviewerInviteDecisionServiceImpl(
         if (userEmail != invite.email.trim().lowercase()) {
             throw AccessDeniedException("reviewerInvite.notOwned")
         }
+
+        // Consume only after ownership check so invalid sessions cannot burn the token.
+        reviewerInviteService.consume(token)
 
         val reviewer = reviewerRepository.findByEmail(invite.email)
             ?: throw EntityNotFoundException("reviewerInvite.reviewerNotFound")

@@ -11,11 +11,14 @@ import com.example.researchreview.dtos.ReviewerContactRequestDto
 import com.example.researchreview.dtos.ReviewerDto
 import com.example.researchreview.dtos.ArticleLinkUpdateRequestDto
 import com.example.researchreview.dtos.ReviewerRequestDto
+import com.example.researchreview.dtos.UserDto
 import com.example.researchreview.services.ArticlesService
 import com.example.researchreview.services.ReviewerService
 import jakarta.persistence.EntityNotFoundException
 import jakarta.validation.Valid
+import lombok.extern.slf4j.Slf4j
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
+import org.yaml.snakeyaml.internal.Logger
 
 @RestController
 @RequestMapping("/api/v1/articles")
@@ -37,8 +41,12 @@ class ArticleController(
     private val reviewerService: ReviewerService
 ) {
 
+    companion object {
+        val logger = Logger.getLogger(ArticleController::class.java.name);
+    }
+
     @PostMapping
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun submit(@Valid @RequestBody request: ArticleRequestDto): ResponseEntity<BaseResponseDto<ArticleDto>> {
         return try {
             val created = articlesService.create(request)
@@ -49,7 +57,22 @@ class ArticleController(
                     data = created
                 )
             )
+        } catch (ex: AccessDeniedException) {
+            ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                BaseResponseDto(
+                    code = 403,
+                    message = ex.message ?: "auth.accessDenied"
+                )
+            )
+        } catch (ex: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                BaseResponseDto(
+                    code = 400,
+                    message = ex.message ?: "error.badRequest"
+                )
+            )
         } catch (ex: Exception) {
+            logger.warn("Error submitting article: ${ex.message}")
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
@@ -114,7 +137,7 @@ class ArticleController(
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun update(@PathVariable id: String, @Valid @RequestBody request: ArticleRequestDto): ResponseEntity<BaseResponseDto<ArticleDto>> {
         return try {
             request.id = id
@@ -137,7 +160,7 @@ class ArticleController(
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun delete(@PathVariable id: String): ResponseEntity<BaseResponseDto<Unit>> {
         return try {
             articlesService.delete(id)
@@ -158,7 +181,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/initial-review")
-    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun initialReview(
         @PathVariable id: String,
         @Valid @RequestBody request: InitialReviewRequestDto
@@ -183,7 +206,7 @@ class ArticleController(
     }
 
     @PutMapping("/{id}/link")
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun updateLink(
         @PathVariable id: String,
         @Valid @RequestBody request: ArticleLinkUpdateRequestDto
@@ -199,7 +222,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/reviewers")
-    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun assignReviewer(
         @PathVariable id: String,
         @Valid @RequestBody reviewer: ReviewerRequestDto
@@ -231,7 +254,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/reviews/completed")
-    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun markReviewsCompleted(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<ArticleDto>> {
@@ -255,7 +278,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/decision/revisions")
-    @PreAuthorize("hasRole('CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun requestRevisions(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<ArticleDto>> {
@@ -279,7 +302,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/decision/approve")
-    @PreAuthorize("hasRole('CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun approve(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
@@ -302,7 +325,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/decision/reject")
-    @PreAuthorize("hasRole('CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun reject(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
@@ -325,7 +348,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/reviewers/contact")
-    @PreAuthorize("hasAnyRole('EDITOR','CHAIR')")
+    @PreAuthorize("isAuthenticated()")
     fun contactReviewers(
         @PathVariable id: String,
         @Valid @RequestBody request: ReviewerContactRequestDto
@@ -350,6 +373,7 @@ class ArticleController(
     }
 
     @GetMapping("/{id}/reviewers")
+    @PreAuthorize("isAuthenticated()")
     fun getReviewers(@PathVariable id: String): ResponseEntity<BaseResponseDto<List<ReviewerDto>>> {
         val reviewers = articlesService.getReviewers(id)
         return ResponseEntity.ok(
@@ -361,8 +385,60 @@ class ArticleController(
         )
     }
 
+    @GetMapping("/{id}/reviewer-candidates")
+    @PreAuthorize("isAuthenticated()")
+    fun getReviewerCandidates(@PathVariable id: String): ResponseEntity<BaseResponseDto<List<UserDto>>> {
+        val users = articlesService.getReviewerCandidates(id)
+        return ResponseEntity.ok(
+            BaseResponseDto(
+                code = 200,
+                message = "Reviewer candidates retrieved",
+                data = users
+            )
+        )
+    }
+
+    @DeleteMapping("/{id}/reviewers/{reviewerId}")
+    @PreAuthorize("isAuthenticated()")
+    fun unassignReviewer(
+        @PathVariable id: String,
+        @PathVariable reviewerId: String
+    ): ResponseEntity<BaseResponseDto<ArticleDto>> {
+        return try {
+            val article = articlesService.unassignReviewer(id, reviewerId)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "Reviewer unassigned successfully",
+                    data = article
+                )
+            )
+        } catch (ex: EntityNotFoundException) {
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                BaseResponseDto(
+                    code = 404,
+                    message = ex.message ?: "error.not.found"
+                )
+            )
+        } catch (ex: AccessDeniedException) {
+            ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                BaseResponseDto(
+                    code = 403,
+                    message = ex.message ?: "error.forbidden"
+                )
+            )
+        } catch (ex: Exception) {
+            ResponseEntity.badRequest().body(
+                BaseResponseDto(
+                    code = 400,
+                    message = ex.message ?: "error.invalid.request"
+                )
+            )
+        }
+    }
+
     @PostMapping("/{id}/revisions")
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun submitRevision(
         @PathVariable id: String,
         @RequestParam file: MultipartFile,
@@ -388,7 +464,7 @@ class ArticleController(
     }
 
     @PostMapping("/{id}/revisions/start")
-    @PreAuthorize("hasRole('RESEARCHER')")
+    @PreAuthorize("isAuthenticated()")
     fun startRevisions(
         @PathVariable id: String,
     ): ResponseEntity<BaseResponseDto<ArticleDto>> {

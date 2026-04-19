@@ -14,7 +14,7 @@ Related docs:
 ## Roles
 
 - **Author / Researcher**: submits article, views reviewer comments, replies, uploads revisions.
-- **Chair**: owns conference configuration, review policy, and final decision authority.
+- **Editor**: owns conference configuration, review policy, and final decision authority.
 - **Editor**: delegated operator inside a conference/track, performs screening, invites reviewers, and manages review progress.
 - **Reviewer**: accepts/declines invitations, reviews assigned articles, adds comments/threads.
 - **Admin** (if enabled): manages users/roles/conferences/tracks/topics.
@@ -35,7 +35,7 @@ Related docs:
 - **Comment threads**: anchored feedback on a specific PDF version (reviewer comments, author replies).
 - **Structured review**: per-reviewer submission containing scores, summary notes, confidential remarks, and a recommendation. This is the formal "review completion" artifact.
 - **Reviewer invitations**: an invite must be **accepted** before the article moves into active review.
-- **Review policy**: stores minimum completed reviews required before a chair decision can be made, normally `3`. Also stores the scoring criteria configuration.
+- **Review policy**: stores minimum completed reviews required before an editor decision can be made, normally `3`. Also stores the scoring criteria configuration.
 - **Notifications**: email + in-app notifications are used to keep actors informed (invites, status changes, comment activity, revision submission, etc.).
 
 ---
@@ -47,17 +47,17 @@ Backend enum (and mirrored in frontend constants):
 - `SUBMITTED`: new submission, waiting for editor initial handling.
 - `PENDING_REVIEW`: ready to invite reviewers / waiting for reviewer acceptance.
 - `IN_REVIEW`: active review in progress.
-- `REVIEWS_COMPLETED`: minimum required reviews completed; waiting for chair decision.
-- `REJECTED`: chair/editor rejected.
+- `REVIEWS_COMPLETED`: minimum required reviews completed; waiting for editor decision.
+- `REJECTED`: editor rejected.
 - `REVISIONS_REQUESTED`: revisions requested (author needs to fix).
 - `REVISIONS`: author is actively revising.
-- `ACCEPTED`: chair accepted.
+- `ACCEPTED`: editor accepted.
 
 Notes:
 
 - `REVIEWS_COMPLETED` is the preferred workflow state for an EasyChair-style process.
 - Reviewer recommendations should not directly change the article to `ACCEPT_REQUESTED` or `REJECT_REQUESTED`.
-- The final author-facing decision is produced only by the chair.
+- The final author-facing decision is produced only by the editor.
 
 ---
 
@@ -66,25 +66,13 @@ Notes:
 ### Main path
 
 1. **Submit before deadline**: `SUBMITTED`
-2. **Initial review (Chair/Editor)**:
-   - reject → `REJECTED`
-   - request changes early → `REVISIONS_REQUESTED`
-   - send to reviewers → `PENDING_REVIEW`
-3. **Invite reviewers (Editor)**: stays `PENDING_REVIEW` until acceptance
-4. **Reviewer accepts invitation**: `PENDING_REVIEW → IN_REVIEW`
-5. **Review + comments (Reviewer)**: remains `IN_REVIEW` until the minimum number of reviews are completed
-6. **Minimum completed review threshold reached**: `IN_REVIEW → REVIEWS_COMPLETED`
-7. **Chair decision / Revision loop**:
-
-- request revisions → `REVIEWS_COMPLETED → REVISIONS_REQUESTED`
-- accept → `REVIEWS_COMPLETED → ACCEPTED`
-- reject → `REVIEWS_COMPLETED → REJECTED`
-
-8. **Formal notification to authors (Chair action)**:
-   - accept → `ACCEPTED`
-   - reject → `REJECTED`
-
-- revisions required → `REVISIONS_REQUESTED`
+1. **Initial review (Editor)**: reject → `REJECTED`; request changes early → `REVISIONS_REQUESTED`; send to reviewers → `PENDING_REVIEW`.
+1. **Invite reviewers (Editor)**: stays `PENDING_REVIEW` until acceptance.
+1. **Reviewer accepts invitation**: `PENDING_REVIEW → IN_REVIEW` (article enters active review).
+1. **Review + comments (Reviewer)**: remains `IN_REVIEW` until the minimum number of reviews are completed.
+1. **Minimum completed review threshold reached**: `IN_REVIEW → REVIEWS_COMPLETED` (automatic, triggered when final structured review is submitted and threshold is met). The system counts only reviews with `submittedAt IS NOT NULL` and reviewer status = `ACCEPTED`; the editor is notified that the article is ready for decision.
+1. **Editor decision / Revision loop**: request revisions → `REVIEWS_COMPLETED → REVISIONS_REQUESTED`; accept → `REVIEWS_COMPLETED → ACCEPTED`; reject → `REVIEWS_COMPLETED → REJECTED`.
+1. **Formal notification to authors (Editor action)**: accept → `ACCEPTED`; reject → `REJECTED`; revisions required → `REVISIONS_REQUESTED`.
 
 ### Revision loop
 
@@ -105,7 +93,7 @@ Notes:
 - System creates an attachment for the PDF (submission version).
 - System notifies co-authors and/or relevant parties (email + in-app, depending on configuration).
 
-### 2) Initial review (Chair/Editor)
+### 2) Initial review (Editor)
 
 Editor performs screening and decides one of:
 
@@ -116,7 +104,7 @@ Editor performs screening and decides one of:
 ### 3) Contacting / inviting reviewers (Editor)
 
 - Editor can invite reviewers when article is `PENDING_REVIEW`.
-- The UI should show the selected topics to help the editor/chair pick suitable reviewers.
+- The UI should show the selected topics to help the editor pick suitable reviewers.
 - Each invitation:
   - sends **email** to the reviewer,
   - creates **in-app notification**,
@@ -125,7 +113,8 @@ Editor performs screening and decides one of:
 Important gating rule:
 
 - The article **must not** enter active review just because the editor invited someone.
-- The article transitions to `IN_REVIEW` only when a reviewer **accepts** the invitation.
+- The article transitions to `IN_REVIEW` **only** when a reviewer **accepts** the invitation.
+- Article remains in `PENDING_REVIEW` until at least one reviewer accepts.
 
 ### 4) Invitation decision (Reviewer)
 
@@ -157,12 +146,12 @@ The structured review consists of:
    - Clarity of presentation (1–10)
    - Relevance to conference/track topics (1–10)
    - Overall recommendation score (1–10)
-2. **Summary notes** — a free-text overall assessment visible to the chair and (anonymized) to authors. Should include:
+2. **Summary notes** — a free-text overall assessment visible to the editor and (anonymized) to authors. Should include:
    - Summary of the paper
    - Strengths
    - Weaknesses
    - Questions for the authors
-3. **Confidential remarks to the chair** — optional free-text visible only to the chair, never shown to authors.
+3. **Confidential remarks to the editor** — optional free-text visible only to the editor, never shown to authors.
 4. **Recommendation** — the reviewer's suggested decision, one of:
    - `STRONG_ACCEPT`
    - `ACCEPT`
@@ -175,9 +164,9 @@ The structured review consists of:
 Important rules:
 
 - A reviewer may save drafts of their structured review before final submission.
-- Once submitted, the review is locked for that review round unless the chair explicitly reopens it.
+- Once submitted, the review is locked for that review round unless the editor explicitly reopens it.
 - Each reviewer submission updates a review completion counter for the current round.
-- The recommendation is an input for the chair, **not** a binding decision.
+- The recommendation is an input for the editor, **not** a binding decision.
 
 Completion rule:
 
@@ -190,18 +179,18 @@ When the threshold is reached:
 
 - the article moves to `REVIEWS_COMPLETED`,
 - the system aggregates reviewer recommendations and summary data,
-- the system notifies the chair that the article is ready for decision.
+- the system notifies the editor that the article is ready for decision.
 
-### 6) Chair decision after reviews completed
+### 6) Editor decision after reviews completed
 
-- The chair reviews the inline annotations, structured review scores/summaries/recommendations, confidential remarks, and article history.
+- The editor reviews the inline annotations, structured review scores/summaries/recommendations, confidential remarks, and article history.
 - The dashboard should present an aggregated view: average scores per criterion, recommendation distribution, and all summary notes.
 - Allowed when the article is in `REVIEWS_COMPLETED`.
-- The chair can decide:
+- The editor can decide:
   - **Request revisions**: status becomes `REVISIONS_REQUESTED`
   - **Accept**: status becomes `ACCEPTED`
   - **Reject**: status becomes `REJECTED`
-- Only the chair action sends the formal decision email to the authors.
+- Only the editor action sends the formal decision email to the authors.
 
 ### 7) Start revisions (Author)
 
@@ -223,9 +212,9 @@ When the threshold is reached:
 
 ### 9) Final decision result handling
 
-- If the chair accepts, the article becomes `ACCEPTED` and authors are notified.
-- If the chair rejects, the article becomes `REJECTED` and authors are notified.
-- If the chair requests revisions, the article becomes `REVISIONS_REQUESTED` and authors are notified.
+- If the editor accepts, the article becomes `ACCEPTED` and authors are notified.
+- If the editor rejects, the article becomes `REJECTED` and authors are notified.
+- If the editor requests revisions, the article becomes `REVISIONS_REQUESTED` and authors are notified.
 
 ---
 

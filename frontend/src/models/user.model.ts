@@ -1,15 +1,16 @@
 import type { TrackDto } from "./track.model";
 import type { InstitutionDto } from "./institution.model";
+import type { ConferenceMembershipDto } from './conference-membership.model';
 
 export interface UserDto {
   id: string;
   name: string;
-  role: string;
-  roles?: string[];
+  globalRole: string;
   email: string;
   avatarId?: string | null;
   institution?: InstitutionDto | null;
   track?: TrackDto | null;
+  conferences?: ConferenceMembershipDto[];
   gender?: string | null;
   nationality?: string | null;
   academicStatus?: string | null;

@@ -9,7 +9,11 @@ import java.util.Optional
 
 interface ReviewerArticleRepository: JpaRepository<ReviewerArticle, String> {
     fun findAllByArticleIdAndDeletedFalse(articleId: String): List<ReviewerArticle>
+    fun findAllByReviewerIdAndDeletedFalse(reviewerId: String): List<ReviewerArticle>
+
+    @Query("SELECT ra FROM ReviewerArticle ra WHERE ra.article.id = :articleId AND ra.deleted = false")
     fun findByArticleIdAndReviewerId(articleId: String, reviewerId: String): ReviewerArticle?
+
     fun findAllByArticleIdAndStatusAndDeletedFalse(articleId: String, status: ReviewerInvitationStatus): List<ReviewerArticle>
 
     @Query(

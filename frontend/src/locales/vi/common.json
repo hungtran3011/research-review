@@ -2,6 +2,7 @@
   "nav": {
     "home": "Trang chủ",
     "help": "Trợ giúp",
+    "registerConference": "Đăng ký hội nghị",
     "submitArticle": "Nộp bài báo",
     "myProfile": "Hồ sơ của tôi",
     "admin": "Quản trị",
@@ -139,12 +140,18 @@
     "cancel": "Hủy",
     "send": "Gửi",
     "reply": "Trả lời",
+    "deleteComment": "Xoá nhận xét",
+    "confirmDeleteComment": "Bạn có chắc muốn xoá nhận xét này?",
     "download": "Tải xuống",
     "confirmApprove": "Chấp thuận bài báo này?",
     "confirmReject": "Từ chối bài báo này?",
+    "confirmRequestRevisions": "Yêu cầu tác giả sửa bài này?",
     "processing": "Đang xử lý...",
     "approve": "Chấp thuận",
     "reject": "Từ chối",
+    "requestRevisions": "Yêu cầu sửa chữa",
+    "awaitingEditorDecision": "Bài đã hoàn tất phản biện, đang chờ quyết định từ editor.",
+    "awaitingReReview": "Đã nộp bản sửa chữa, đang chờ reviewer phản biện lại.",
     "initialReview": "Đánh giá ban đầu",
     "manageReviewers": "Quản lý reviewer",
     "reviewArticle": "Phản biện bài báo",
@@ -156,7 +163,7 @@
     "commentsCount": "Nhận xét ({{count}})",
     "hideComments": "Ẩn nhận xét",
     "showComments": "Hiện nhận xét",
-    "structuredReviewChair": "Structured review (Chair)",
+    "structuredReviewChair": "Structured review (Editor)",
     "reviewProgress": "Hoàn tất phản biện: {{submitted}}/{{total}}",
     "avgOverallScore": "Điểm overall trung bình: {{score}}",
     "notAvailable": "Chưa có",
@@ -241,6 +248,12 @@
     "supplementalHint": "Tối đa 100MB mỗi tệp",
     "conferenceLabel": "Hội nghị",
     "conferencePlaceholder": "Chọn hội nghị",
+    "registration": {
+      "requiredMessage": "Yêu cầu đăng ký hội nghị",
+      "requiredDescription": "Bạn cần đăng ký vào hội nghị đã chọn trước khi nộp bài báo.",
+      "goToRegistrationPage": "Mở trang đăng ký",
+      "registeredMessage": "Bạn đã đăng ký vào hội nghị này"
+    },
     "deadlinePassed": "Đã quá hạn nộp bài cho hội nghị này",
     "deadline": "Hạn nộp bài",
     "trackLabel": "Track",
@@ -267,6 +280,7 @@
     },
     "errors": {
       "selectConference": "Vui lòng chọn hội nghị",
+      "registerConferenceRequired": "Vui lòng đăng ký hội nghị trước khi nộp bài",
       "deadlinePassed": "Đã quá hạn nộp bài",
       "selectTrack": "Vui lòng chọn track",
       "selectTopic": "Vui lòng chọn ít nhất một chủ đề",
@@ -277,6 +291,24 @@
       "versionCreateFailed": "Không thể tạo gói phiên bản",
       "supplementalUploadFailed": "Không thể tải lên tệp bổ sung: {{file}}",
       "submitFailed": "Nộp bài báo thất bại"
+    }
+  },
+  "conferenceRegistration": {
+    "title": "Đăng ký hội nghị",
+    "subtitle": "Bạn cần đăng ký ít nhất một hội nghị trước khi nộp bài báo.",
+    "flow": {
+      "message": "Luồng nộp bài mới",
+      "description": "Bước 1: đăng ký hội nghị. Bước 2: quay lại trang nộp bài với hội nghị đã chọn."
+    },
+    "deadline": "Hạn nộp bài",
+    "tags": {
+      "registered": "Đã đăng ký",
+      "notRegistered": "Chưa đăng ký",
+      "deadlinePassed": "Đã quá hạn"
+    },
+    "actions": {
+      "register": "Đăng ký",
+      "goToSubmit": "Đi tới nộp bài"
     }
   },
   "profile": {
@@ -481,6 +513,8 @@
       "addComment": "Thêm nhận xét",
       "submittedReview": "Đã nộp phản biện",
       "structuredReviewTemplate": "Phản biện tổng thể",
+      "hideHeader": "Ẩn đầu trang",
+      "showHeader": "Hiện đầu trang",
       "hideComments": "Ẩn nhận xét",
       "showComments": "Hiện nhận xét",
       "hideToc": "Ẩn mục lục",
@@ -526,11 +560,20 @@
     "structured": {
       "title": "Phản biện cấu trúc",
       "scoreHint": "Điểm từ 1 đến 10 cho từng tiêu chí.",
-      "recommendationLabel": "Khuyến nghị",
+      "recommendationLabel": "Khuyến nghị tổng thể",
+      "recommendations": {
+        "STRONG_ACCEPT": "Nhận (ứng viên báo cáo oral)",
+        "ACCEPT": "Nhận (sửa nhỏ)",
+        "WEAK_ACCEPT": "Nhận (sửa lớn)",
+        "BORDERLINE": "Cân nhắc / cần thảo luận",
+        "WEAK_REJECT": "Từ chối (khuyến khích nộp lại)",
+        "REJECT": "Từ chối",
+        "STRONG_REJECT": "Từ chối (lệch phạm vi hoặc chất lượng thấp)"
+      },
       "summaryLabel": "Tóm tắt phản biện",
       "summaryPlaceholder": "Nêu nhận định tổng quan về bài báo",
-      "confidentialLabel": "Ghi chú bảo mật (chỉ chair thấy)",
-      "confidentialPlaceholder": "Nhận xét nội bộ cho chair (tùy chọn)",
+      "confidentialLabel": "Ghi chú bảo mật (chỉ editor thấy)",
+      "confidentialPlaceholder": "Nhận xét nội bộ cho editor (tùy chọn)",
       "saveDraft": "Lưu nháp",
       "submitReview": "Nộp phản biện",
       "criteria": {
@@ -540,6 +583,7 @@
         "relevance": "Mức độ liên quan",
         "overall": "Tổng thể"
       }
+      ,"submittedAtTooltip": "Đã nộp phản biện cấu trúc lúc {{date}}"
     }
   },
   "editorInitialReview": {
@@ -642,7 +686,8 @@
     "title": "Quản lý reviewer",
     "actions": {
       "cancel": "Hủy",
-      "confirm": "Xác nhận"
+      "confirm": "Xác nhận",
+      "remove": "Gỡ reviewer"
     },
     "invitedReviewersLabel": "Phản biện đã được mời:",
     "noInvitedReviewers": "Chưa có phản biện nào",
@@ -664,6 +709,8 @@
     "messages": {
       "inviteSuccess": "Đã mời phản biện viên thành công.",
       "inviteFailedPrefix": "Không thể mời phản biện viên. ",
+      "removeSuccess": "Đã gỡ phản biện viên thành công.",
+      "removeFailedPrefix": "Không thể gỡ phản biện viên. ",
       "tryAgain": "Vui lòng thử lại."
     },
     "errors": {
@@ -714,12 +761,15 @@
       "close": "Đóng",
       "id": "ID",
       "name": "Họ tên",
-      "email": "Email",
-      "primaryRole": "Vai trò chính",
-      "allRoles": "Tất cả vai trò",
-      "status": "Trạng thái",
       "institution": "Nơi công tác",
       "track": "Track",
+      "conferenceMemberships": "Vai trò theo hội nghị",
+      "noConferenceMemberships": "Không có membership hội nghị",
+      "membershipRoles": {
+        "RESEARCHER": "Nghiên cứu viên",
+        "EDITOR": "Biên tập",
+        "REVIEWER": "Phản biện"
+      },
       "gender": "Giới tính",
       "nationality": "Quốc tịch",
       "academicStatus": "Học hàm/Học vị",
@@ -856,7 +906,23 @@
       "update": "Cập nhật",
       "edit": "Sửa",
       "delete": "Xóa",
-      "cancel": "Hủy"
+      "cancel": "Hủy",
+      "members": "Thành viên"
+    },
+    "membership": {
+      "title": "Thành viên hội nghị",
+      "memberListTitle": "Danh sách thành viên",
+      "empty": "Hội nghị này chưa có thành viên",
+      "roles": {
+        "RESEARCHER": "Nghiên cứu viên",
+        "EDITOR": "Biên tập",
+        "REVIEWER": "Phản biện"
+      },
+      "columns": {
+        "name": "Tên",
+        "email": "Email",
+        "role": "Vai trò"
+      }
     },
     "modal": {
       "createTitle": "Tạo hội nghị mới",

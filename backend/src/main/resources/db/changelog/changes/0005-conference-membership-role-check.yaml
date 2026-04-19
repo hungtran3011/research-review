@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0005-1-normalize-user-conference-membership-role-check
+      author: copilot
+      comment: Align membership_role check constraint with conference role enum (RESEARCHER/EDITOR/REVIEWER)
+      preConditions:
+        onFail: MARK_RAN
+        tableExists:
+          tableName: user_conference_membership
+      changes:
+        - sql:
+            splitStatements: true
+            stripComments: true
+            sql: |
+              ALTER TABLE user_conference_membership
+              DROP CONSTRAINT IF EXISTS user_conference_membership_membership_role_check;
+
+              ALTER TABLE user_conference_membership
+              ADD CONSTRAINT user_conference_membership_membership_role_check
+              CHECK (membership_role IN ('RESEARCHER', 'EDITOR', 'REVIEWER'));

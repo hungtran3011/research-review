@@ -152,8 +152,9 @@ function EditorInitialReview() {
     const article = articleResponse?.data
     const { mutate: submitInitialReview, isPending: isSubmittingDecision } = useInitialReview(safeArticleId)
     
-    // Fetch users with REVIEWER role
-    const { data: usersResponse } = useUsers(0, 100, { role: 'REVIEWER' })
+    // Fetch reviewer candidates for the same conference only.
+    const conferenceId = article?.conferenceId
+    const { data: usersResponse } = useUsers(0, 100, { role: 'REVIEWER', conferenceId: conferenceId ?? '' }, !!conferenceId)
     const reviewerUsers = useMemo(() => usersResponse?.data?.content ?? [], [usersResponse])
     
     // Fetch institutions for manual reviewer entry
@@ -501,6 +502,7 @@ function EditorInitialReview() {
             )}
 
             {/* Table of Contents Section */}
+            {(!isTocVisible) ? null : (
             <div
                 style={{
                     ...styles.tocSection,
@@ -592,7 +594,7 @@ function EditorInitialReview() {
                     />
                 </div>
             </div>
-
+            )}
             {/* PDF Viewer Section */}
             <div style={styles.viewerSection}>
                 {/* Header with Decision Buttons */}

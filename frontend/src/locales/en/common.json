@@ -2,6 +2,7 @@
   "nav": {
     "home": "Home",
     "help": "Help",
+    "registerConference": "Register Conference",
     "submitArticle": "Submit Article",
     "myProfile": "My Profile",
     "admin": "Admin",
@@ -139,12 +140,18 @@
     "cancel": "Cancel",
     "send": "Send",
     "reply": "Reply",
+    "deleteComment": "Delete comment",
+    "confirmDeleteComment": "Delete this comment?",
     "download": "Download",
     "confirmApprove": "Approve this article?",
     "confirmReject": "Reject this article?",
+    "confirmRequestRevisions": "Request revisions for this article?",
     "processing": "Processing...",
     "approve": "Approve",
     "reject": "Reject",
+    "requestRevisions": "Request revisions",
+    "awaitingEditorDecision": "Reviews are complete and this article is waiting for editor decision.",
+    "awaitingReReview": "Revision submitted. Waiting for reviewers to review again.",
     "initialReview": "Initial review",
     "manageReviewers": "Manage reviewers",
     "reviewArticle": "Review article",
@@ -156,7 +163,7 @@
     "commentsCount": "Comments ({{count}})",
     "hideComments": "Hide comments",
     "showComments": "Show comments",
-    "structuredReviewChair": "Structured review (Chair)",
+    "structuredReviewChair": "Structured review (Editor)",
     "reviewProgress": "Review completion: {{submitted}}/{{total}}",
     "avgOverallScore": "Average overall score: {{score}}",
     "notAvailable": "N/A",
@@ -241,6 +248,12 @@
     "supplementalHint": "Up to 100MB per file",
     "conferenceLabel": "Conference",
     "conferencePlaceholder": "Select conference",
+    "registration": {
+      "requiredMessage": "Conference registration required",
+      "requiredDescription": "You must register to the selected conference before submitting an article.",
+      "goToRegistrationPage": "Open registration page",
+      "registeredMessage": "You are registered to this conference"
+    },
     "deadlinePassed": "Submission deadline for this conference has passed",
     "deadline": "Submission deadline",
     "trackLabel": "Track",
@@ -267,6 +280,7 @@
     },
     "errors": {
       "selectConference": "Please select a conference",
+      "registerConferenceRequired": "Please register to this conference before submitting",
       "deadlinePassed": "Submission deadline has passed",
       "selectTrack": "Please select a track",
       "selectTopic": "Please select at least one topic",
@@ -277,6 +291,24 @@
       "versionCreateFailed": "Failed to create version package",
       "supplementalUploadFailed": "Failed to upload supplemental file: {{file}}",
       "submitFailed": "Article submission failed"
+    }
+  },
+  "conferenceRegistration": {
+    "title": "Conference Registration",
+    "subtitle": "Register to at least one conference before submitting your article.",
+    "flow": {
+      "message": "New submission flow",
+      "description": "Step 1: register conference. Step 2: return to submit article with your selected conference."
+    },
+    "deadline": "Submission deadline",
+    "tags": {
+      "registered": "Registered",
+      "notRegistered": "Not registered",
+      "deadlinePassed": "Deadline passed"
+    },
+    "actions": {
+      "register": "Register",
+      "goToSubmit": "Go to submit"
     }
   },
   "profile": {
@@ -481,6 +513,8 @@
       "addComment": "Add comment",
       "submittedReview": "Review submitted",
       "structuredReviewTemplate": "Structured review template",
+      "hideHeader": "Hide header",
+      "showHeader": "Show header",
       "hideComments": "Hide comments",
       "showComments": "Show comments",
       "hideToc": "Hide table of contents",
@@ -526,11 +560,20 @@
     "structured": {
       "title": "Structured review",
       "scoreHint": "Score each criterion from 1 to 10.",
-      "recommendationLabel": "Recommendation",
+      "recommendationLabel": "Overall recommendation",
+      "recommendations": {
+        "STRONG_ACCEPT": "Accept (oral candidate)",
+        "ACCEPT": "Accept (minor revisions)",
+        "WEAK_ACCEPT": "Accept (major revisions)",
+        "BORDERLINE": "Borderline / discuss",
+        "WEAK_REJECT": "Reject (encourage resubmission)",
+        "REJECT": "Reject",
+        "STRONG_REJECT": "Reject (out of scope or low quality)"
+      },
       "summaryLabel": "Review summary",
       "summaryPlaceholder": "Provide an overall assessment of the article",
-      "confidentialLabel": "Confidential remarks (chair only)",
-      "confidentialPlaceholder": "Internal notes for the chair (optional)",
+      "confidentialLabel": "Confidential remarks (editor only)",
+      "confidentialPlaceholder": "Internal notes for the editor (optional)",
       "saveDraft": "Save draft",
       "submitReview": "Submit review",
       "criteria": {
@@ -540,6 +583,7 @@
         "relevance": "Relevance",
         "overall": "Overall"
       }
+      ,"submittedAtTooltip": "Structured review submitted at {{date}}"
     }
   },
   "editorInitialReview": {
@@ -642,7 +686,8 @@
     "title": "Manage reviewers",
     "actions": {
       "cancel": "Cancel",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "remove": "Remove reviewer"
     },
     "invitedReviewersLabel": "Invited reviewers:",
     "noInvitedReviewers": "No reviewers invited yet",
@@ -664,6 +709,8 @@
     "messages": {
       "inviteSuccess": "Reviewer invited successfully.",
       "inviteFailedPrefix": "Unable to invite reviewer. ",
+      "removeSuccess": "Reviewer removed successfully.",
+      "removeFailedPrefix": "Unable to remove reviewer. ",
       "tryAgain": "Please try again."
     },
     "errors": {
@@ -714,12 +761,15 @@
       "close": "Close",
       "id": "ID",
       "name": "Name",
-      "email": "Email",
-      "primaryRole": "Primary role",
-      "allRoles": "All roles",
-      "status": "Status",
       "institution": "Institution",
       "track": "Track",
+      "conferenceMemberships": "Conference memberships",
+      "noConferenceMemberships": "No conference memberships",
+      "membershipRoles": {
+        "RESEARCHER": "Researcher",
+        "EDITOR": "Editor",
+        "REVIEWER": "Reviewer"
+      },
       "gender": "Gender",
       "nationality": "Nationality",
       "academicStatus": "Academic status",
@@ -856,7 +906,23 @@
       "update": "Update",
       "edit": "Edit",
       "delete": "Delete",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "members": "Members"
+    },
+    "membership": {
+      "title": "Conference members",
+      "memberListTitle": "Member list",
+      "empty": "No members in this conference",
+      "roles": {
+        "RESEARCHER": "Researcher",
+        "EDITOR": "Editor",
+        "REVIEWER": "Reviewer"
+      },
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role"
+      }
     },
     "modal": {
       "createTitle": "Create new conference",

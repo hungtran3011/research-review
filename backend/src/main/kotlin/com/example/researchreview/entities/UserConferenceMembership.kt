@@ -17,5 +17,5 @@ class UserConferenceMembership : BaseEntity() {
     lateinit var conference: Conference
 
     @Enumerated(EnumType.STRING)
-    var membershipRole: ConferenceMembershipRole = ConferenceMembershipRole.PARTICIPANT
+    var membershipRole: ConferenceMembershipRole = ConferenceMembershipRole.RESEARCHER
 }

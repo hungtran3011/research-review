@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { FileOutlined, CloseOutlined } from '@ant-design/icons'
 import { PdfViewer } from '../common/PdfViewer'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { articleService } from '../../services/article.service'
 import { attachmentService } from '../../services/attachment.service'
 import { articleVersionService } from '../../services/article-version.service'
@@ -122,6 +122,7 @@ function SubmitArticle() {
     }), [dropzoneBaseStyle, token.colorPrimary])
 
     const [form] = Form.useForm()
+    const [searchParams] = useSearchParams()
     const [mainFile, setMainFile] = useState<File | null>(null)
     const [supplementalFiles, setSupplementalFiles] = useState<File[]>([])
     const [formData, setFormData] = useState({
@@ -144,6 +145,15 @@ function SubmitArticle() {
     const { data: submissionMetadataResponse } = useSubmissionMetadata()
     const { data: institutionsData } = useInstitutions(0, 100)
     const { error } = useBasicToast()
+
+    useEffect(() => {
+        const conferenceIdFromQuery = searchParams.get('conferenceId')
+        if (!conferenceIdFromQuery) return
+        setFormData((prev) => {
+            if (prev.conferenceId === conferenceIdFromQuery) return prev
+            return { ...prev, conferenceId: conferenceIdFromQuery, trackId: '', topicIds: [] }
+        })
+    }, [searchParams])
 
     useEffect(() => {
         if (!currentUser) return
@@ -182,6 +192,12 @@ function SubmitArticle() {
         () => tracks.find((track) => track.id === formData.trackId) ?? null,
         [tracks, formData.trackId]
     )
+    const isRegisteredToConference = useMemo(() => {
+        if (!formData.conferenceId) return false
+        return (currentUser?.conferences ?? []).some(
+            (membership) => membership.conferenceId === formData.conferenceId
+        )
+    }, [currentUser?.conferences, formData.conferenceId])
     const topics = useMemo(
         () => selectedTrack?.topics ?? [],
         [selectedTrack]
@@ -281,6 +297,11 @@ function SubmitArticle() {
 
         if (!formData.conferenceId) {
             error(t('submitArticle.errors.selectConference'))
+            return
+        }
+
+        if (!isRegisteredToConference) {
+            error(t('submitArticle.errors.registerConferenceRequired'))
             return
         }
 
@@ -421,6 +442,15 @@ function SubmitArticle() {
         })
     }
 
+    const goToConferenceRegistration = () => {
+        const params = new URLSearchParams()
+        params.set('returnTo', '/articles/submit')
+        if (formData.conferenceId) {
+            params.set('conferenceId', formData.conferenceId)
+        }
+        navigate(`/conferences/register?${params.toString()}`)
+    }
+
     return (
         <div style={{ ...styles.root, backgroundColor: token.colorBgLayout }}>
             <div style={styles.leftColumn}>
@@ -546,6 +576,30 @@ function SubmitArticle() {
                             }))}
                         />
                     </Form.Item>
+                    {formData.conferenceId && !isRegisteredToConference && (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            message={t('submitArticle.registration.requiredMessage')}
+                            description={t('submitArticle.registration.requiredDescription')}
+                            action={
+                                <Button
+                                    type="primary"
+                                    size="small"
+                                    onClick={goToConferenceRegistration}
+                                >
+                                    {t('submitArticle.registration.goToRegistrationPage')}
+                                </Button>
+                            }
+                        />
+                    )}
+                    {formData.conferenceId && isRegisteredToConference && (
+                        <Alert
+                            type="success"
+                            showIcon
+                            message={t('submitArticle.registration.registeredMessage')}
+                        />
+                    )}
                     {submissionDeadline && (
                         <Alert
                             type={isDeadlinePassed ? 'error' : 'info'}
@@ -633,7 +687,13 @@ function SubmitArticle() {
                         </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                        <Button type="primary" htmlType="submit" size="large" loading={uploading} disabled={isDeadlinePassed}>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            size="large"
+                            loading={uploading}
+                            disabled={isDeadlinePassed || !isRegisteredToConference}
+                        >
                             {uploading ? t('submitArticle.submitting') : t('submitArticle.submit')}
                         </Button>
                     </div>

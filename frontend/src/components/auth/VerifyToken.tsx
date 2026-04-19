@@ -14,6 +14,7 @@ function VerifyToken() {
   const [searchParams] = useSearchParams();
   const email = useAuthStore((state) => state.email);
   const isSignUp = useAuthStore((state) => state.isSignUp);
+  const setEmail = useAuthStore((state) => state.setEmail);
   const { mutate: verifyToken } = useVerifyToken();
   const [hasVerified, setHasVerified] = React.useState(false);
   const { fingerprint, isLoading: isFingerprintLoading, error: fingerprintError } = useDeviceFingerprint();
@@ -26,6 +27,10 @@ function VerifyToken() {
     const isSignUpParam = searchParams.get('isSignUp') !== 'false';
 
     const emailToUse = emailParam || email;
+
+    if (emailParam && emailParam !== email) {
+      setEmail(emailParam);
+    }
 
     // Wait for fingerprint to be ready or failed before verifying
     if (token && emailToUse && !hasVerified && !isFingerprintLoading) {
@@ -49,7 +54,7 @@ function VerifyToken() {
         });
       }
     }
-  }, [searchParams, email, isSignUp, verifyToken, hasVerified, fingerprint, isFingerprintLoading, fingerprintError]);
+  }, [searchParams, email, isSignUp, setEmail, verifyToken, hasVerified, fingerprint, isFingerprintLoading, fingerprintError]);
 
   // If no token in URL, redirect to auth
   if (!searchParams.get('token')) {

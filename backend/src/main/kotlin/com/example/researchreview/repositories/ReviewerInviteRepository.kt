@@ -11,9 +11,11 @@ import org.springframework.stereotype.Repository
 @Repository
 interface ReviewerInviteRepository : JpaRepository<ReviewerInvite, String> {
 
-    fun findByTokenHash(tokenHash: String): ReviewerInvite?
+    fun findByTokenHashAndDeletedFalse(tokenHash: String): ReviewerInvite?
+
+    fun findAllByArticleIdAndEmailAndUsedAtIsNullAndDeletedFalse(articleId: String, email: String): List<ReviewerInvite>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT ri FROM ReviewerInvite ri WHERE ri.tokenHash = :tokenHash")
+    @Query("SELECT ri FROM ReviewerInvite ri WHERE ri.tokenHash = :tokenHash AND ri.deleted = false")
     fun findByTokenHashForUpdate(@Param("tokenHash") tokenHash: String): ReviewerInvite?
 }

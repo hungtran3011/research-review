@@ -6,8 +6,8 @@ import com.example.researchreview.constants.ConferenceStatus
 import com.example.researchreview.constants.InitialReviewDecision
 import com.example.researchreview.constants.NotificationType
 import com.example.researchreview.constants.ReviewerInvitationStatus
-import com.example.researchreview.constants.Role
 import com.example.researchreview.constants.ConferenceMembershipRole
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.configs.FeatureFlagsProperties
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleDashboardStatsDto
@@ -20,16 +20,18 @@ import com.example.researchreview.dtos.TrackDto
 import com.example.researchreview.dtos.InstitutionDto
 import com.example.researchreview.entities.Article
 import com.example.researchreview.entities.ArticleAuthor
+import com.example.researchreview.entities.ArticleVersion
 import com.example.researchreview.entities.ArticleTopic
 import com.example.researchreview.entities.Author
 import com.example.researchreview.entities.Reviewer
 import com.example.researchreview.entities.ReviewerArticle
 import com.example.researchreview.entities.Topic
 import com.example.researchreview.entities.User
-import com.example.researchreview.entities.UserRole
+import com.example.researchreview.entities.UserConferenceMembership
 import com.example.researchreview.repositories.ArticleAuthorRepository
 import com.example.researchreview.repositories.ArticleRepository
 import com.example.researchreview.repositories.ArticleTopicRepository
+import com.example.researchreview.repositories.ArticleVersionRepository
 import com.example.researchreview.repositories.AuthorRepository
 import com.example.researchreview.repositories.AttachmentRepository
 import com.example.researchreview.repositories.ConferenceRepository
@@ -44,6 +46,7 @@ import com.example.researchreview.repositories.StructuredReviewRepository
 import com.example.researchreview.repositories.UserConferenceMembershipRepository
 import com.example.researchreview.services.ArticleAccessGuard
 import com.example.researchreview.services.ArticlesService
+import com.example.researchreview.services.ConferenceAuthorizationService
 import com.example.researchreview.services.CurrentUserService
 import com.example.researchreview.services.EmailService
 import com.example.researchreview.services.NotificationService
@@ -70,6 +73,7 @@ class ArticlesServiceImpl(
     private val trackRepository: TrackRepository,
     private val topicRepository: TopicRepository,
     private val articleTopicRepository: ArticleTopicRepository,
+    private val articleVersionRepository: ArticleVersionRepository,
     private val authorRepository: AuthorRepository,
     private val reviewerRepository: ReviewerRepository,
     private val articleAuthorRepository: ArticleAuthorRepository,
@@ -79,6 +83,7 @@ class ArticlesServiceImpl(
     private val editorRepository: EditorRepository,
     private val reviewerArticleManager: ReviewerArticleManager,
     private val articleAccessGuard: ArticleAccessGuard,
+    private val conferenceAuthorizationService: ConferenceAuthorizationService,
     private val notificationService: NotificationService,
     private val currentUserService: CurrentUserService,
     private val emailService: EmailService,
@@ -152,11 +157,9 @@ class ArticlesServiceImpl(
     @Transactional
     override fun create(articleDto: ArticleRequestDto): ArticleDto {
         val currentUser = currentUserService.requireUser()
-        if (!currentUser.hasRole(com.example.researchreview.constants.Role.RESEARCHER)) {
-            throw AccessDeniedException("articles.onlyResearcherCanSubmit")
-        }
         val conference = conferenceRepository.findByIdAndDeletedFalse(articleDto.conferenceId)
             .orElseThrow { EntityNotFoundException("conference.notFound") }
+        ensureSubmitterConferenceMembership(currentUser, conference.id)
         ensureConferenceOpenForSubmission(conference.status, conference.submissionDeadline)
 
         val track = trackRepository.findByIdAndConferenceIdAndDeletedFalse(articleDto.trackId, conference.id)
@@ -176,7 +179,17 @@ class ArticlesServiceImpl(
         syncAuthors(saved, articleDto.authors)
         syncTopics(saved, topics)
         notifyArticleSubmitted(saved)
+        sendSubmissionConfirmationEmail(saved)
         return toDto(saved)
+    }
+
+    private fun ensureSubmitterConferenceMembership(user: User, conferenceId: String) {
+        val existingMembership = userConferenceMembershipRepository
+            .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, user.id)
+            .orElse(null)
+        if (existingMembership == null) {
+            throw AccessDeniedException("conference.registration.required")
+        }
     }
 
     @Transactional
@@ -212,27 +225,46 @@ class ArticlesServiceImpl(
 
     @Transactional
     override fun assignReviewer(id: String, reviewer: ReviewerRequestDto): ArticleDto {
+        val currentUser = currentUserService.requireUser()
         val article = fetchArticle(id)
+        ensureReviewerManagementPermission(currentUser, article)
+        
+        // Only allow reviewer assignment in specific workflow states
+        if (article.status !in setOf(
+            ArticleStatus.PENDING_REVIEW,
+            ArticleStatus.IN_REVIEW,
+            ArticleStatus.REVIEWS_COMPLETED
+        )) {
+            throw IllegalStateException("articles.canOnlyAssignReviewersInReviewPhase")
+        }
+        
         val reviewerEntity = resolveReviewer(reviewer)
-        val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(article.id, reviewerEntity.id)
-            ?: ReviewerArticle().apply {
-                this.article = article
-                this.reviewer = reviewerEntity
-            }
+        val existingRelation = reviewerArticleRepository.findByArticleIdAndReviewerId(article.id, reviewerEntity.id)
+        val isNewAssignment = existingRelation == null || existingRelation.status == ReviewerInvitationStatus.REVOKED
+        
+        val relation = existingRelation ?: ReviewerArticle().apply {
+            this.article = article
+            this.reviewer = reviewerEntity
+        }
         reviewerArticleManager.ensureDisplayIndexFor(relation)
         relation.deleted = false
+        
         // Preserve acceptance; don't downgrade ACCEPTED to PENDING if already accepted.
         if (relation.status != ReviewerInvitationStatus.ACCEPTED) {
             relation.status = ReviewerInvitationStatus.PENDING
             relation.invitedAt = LocalDateTime.now()
         }
         val savedRelation = reviewerArticleRepository.save(relation)
-        notifyReviewerInvitation(savedRelation)
+        notifyReviewerInvitation(savedRelation, isNewAssignment)
         return toDto(article)
     }
 
     @Transactional
     override fun unassignReviewer(id: String, reviewerId: String): ArticleDto {
+        val currentUser = currentUserService.requireUser()
+        val article = fetchArticle(id)
+        ensureReviewerManagementPermission(currentUser, article)
+        
         val relation = reviewerArticleRepository.findByArticleIdAndReviewerId(id, reviewerId)
             ?: throw EntityNotFoundException("reviewer.relationNotFound")
         relation.deleted = true
@@ -269,7 +301,34 @@ class ArticlesServiceImpl(
 
     @Transactional(readOnly = true)
     override fun getReviewers(id: String): List<ReviewerDto> =
-        reviewerArticleRepository.findAllByArticleIdAndDeletedFalse(id).map { reviewerToDto(it.reviewer) }
+        run {
+            conferenceAuthorizationService.requireCanManageReview(id, "GET /api/v1/articles/{id}/reviewers")
+            reviewerArticleRepository.findAllByArticleIdAndDeletedFalse(id).map { reviewerToDto(it.reviewer) }
+        }
+
+    @Transactional(readOnly = true)
+    override fun getReviewerCandidates(id: String): List<com.example.researchreview.dtos.UserDto> {
+        val article = fetchArticle(id)
+        val conferenceId = article.conference?.id ?: throw EntityNotFoundException("conference.notFound")
+
+        val submittedUserIds = mutableSetOf<String>()
+
+        articleRepository.findAllByConferenceIdAndDeletedFalse(conferenceId)
+            .mapNotNull { it.createdBy.takeIf { userId -> userId.isNotBlank() } }
+            .forEach { submittedUserIds.add(it) }
+
+        articleAuthorRepository.findAllByArticleConferenceIdAndDeletedFalse(conferenceId)
+            .mapNotNull { it.author.user?.id?.takeIf { userId -> userId.isNotBlank() } }
+            .forEach { submittedUserIds.add(it) }
+
+        return userRepository.findAllByDeletedFalse()
+            .asSequence()
+            .filterNot { user -> user.globalRole == GlobalRole.ADMIN }
+            .filterNot { user -> submittedUserIds.contains(user.id) }
+            .sortedBy { user -> user.name.lowercase() }
+            .map { user -> userToDto(user) }
+            .toList()
+    }
 
     @Transactional
     override fun markReviewsCompleted(id: String): ArticleDto {
@@ -457,25 +516,43 @@ class ArticlesServiceImpl(
         reviewer.name = dto.name
         reviewer.email = dto.email
         reviewer.institution = institution
-        if (!dto.userId.isNullOrBlank()) {
-            val user = userRepository.findById(dto.userId!!).orElse(null)
-            if (user != null) {
-                ensureUserHasRole(user, Role.REVIEWER)
-                reviewer.user = user
+        val user = dto.userId?.takeIf { it.isNotBlank() }?.let { id ->
+            userRepository.findById(id).orElse(null)
+        } ?: userRepository.findByEmailIgnoreCase(dto.email).orElse(null)
+        if (user != null) {
+            val conferenceId = articleRepository.findByIdAndDeletedFalse(dto.articleId)
+                .orElse(null)
+                ?.conference?.id
+            if (conferenceId != null) {
+                ensureUserConferenceMembership(user, conferenceId, ConferenceMembershipRole.REVIEWER)
             }
+            reviewer.user = user
         }
         return reviewerRepository.save(reviewer)
     }
 
-    private fun ensureUserHasRole(user: User, role: Role) {
-        if (user.hasRole(role)) return
-        if (user.roles.any { it.role == role }) return
-        val ur = UserRole().apply {
-            this.user = user
-            this.role = role
+    private fun ensureUserConferenceMembership(user: User, conferenceId: String, role: ConferenceMembershipRole) {
+        val existing = userConferenceMembershipRepository
+            .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, user.id)
+            .orElse(null)
+        if (existing != null) {
+            if (existing.membershipRole != role) {
+                existing.membershipRole = role
+                userConferenceMembershipRepository.save(existing)
+            }
+            return
         }
-        user.roles.add(ur)
-        userRepository.save(user)
+
+        val conference = conferenceRepository.findByIdAndDeletedFalse(conferenceId)
+            .orElseThrow { EntityNotFoundException("conference.notFound") }
+
+        userConferenceMembershipRepository.save(
+            UserConferenceMembership().apply {
+                this.user = user
+                this.conference = conference
+                this.membershipRole = role
+            }
+        )
     }
 
     private fun notifyArticleSubmitted(article: Article) {
@@ -507,7 +584,12 @@ class ArticlesServiceImpl(
         )
     }
 
-    private fun notifyReviewerInvitation(relation: ReviewerArticle) {
+    private fun notifyReviewerInvitation(relation: ReviewerArticle, isNewAssignment: Boolean = true) {
+        // Only notify on first assignment or when status was revoked; don't re-notify if already ACCEPTED
+        if (!isNewAssignment) {
+            return
+        }
+
         val reviewerEmail = relation.reviewer.email
         val articleTitle = relation.article.title
         val articleId = relation.article.id
@@ -709,8 +791,7 @@ class ArticlesServiceImpl(
         return com.example.researchreview.dtos.UserDto(
             id = user.id,
             name = user.name,
-            role = user.role.name,
-            roles = user.effectiveRoles.map { it.name },
+            globalRole = user.globalRole.name,
             email = user.email,
             avatarId = user.avatarId,
             institution = user.institution?.let {
@@ -822,12 +903,34 @@ class ArticlesServiceImpl(
         val nextVersion = kotlin.math.max(1, maxExistingVersion) + 1
 
         // Upload file as attachment (stored as a revision, does not overwrite article.link)
-        attachmentService.uploadAttachment(
+        val uploadedRevision = attachmentService.uploadAttachment(
             articleId = id,
             file = file,
             version = nextVersion,
             kind = AttachmentKind.REVISION
         )
+
+        // Ensure article_version row exists and points to the uploaded main revision attachment.
+        val revisionAttachment = attachmentRepository.findById(uploadedRevision.id)
+            .orElseThrow { EntityNotFoundException("attachment.notFound") }
+
+        val revisionVersion = articleVersionRepository
+            .findByArticleIdAndVersionNumberAndDeletedFalse(id, nextVersion)
+            .orElseGet {
+                ArticleVersion().apply {
+                    this.article = article
+                    this.versionNumber = nextVersion
+                }
+            }
+            .apply {
+                this.mainAttachment = revisionAttachment
+                this.submittedBy = currentUser
+                this.submittedAt = LocalDateTime.now()
+            }
+
+        val savedRevisionVersion = articleVersionRepository.save(revisionVersion)
+        revisionAttachment.articleVersion = savedRevisionVersion
+        attachmentRepository.save(revisionAttachment)
 
         // After the author submits, review continues
         val previousStatus = article.status
@@ -860,6 +963,47 @@ class ArticlesServiceImpl(
         )
     }
 
+    private fun sendSubmissionConfirmationEmail(article: Article) {
+        val authorEmails = articleAuthorRepository.findAllByArticleIdAndDeletedFalse(article.id)
+            .map { it.author.email.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        if (authorEmails.isEmpty()) {
+            return
+        }
+
+        val subject = "[Research Review] Xác nhận nhận bài báo: ${article.title}"
+        val articleUrl = "$frontendUrl/articles/${article.id}"
+        val submissionDate = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
+        val message = """
+            <p>Xin chào tác giả,</p>
+            <p>Cảm ơn bạn đã nộp bài báo cho hội nghị của chúng tôi!</p>
+            <p>
+                <strong>Tiêu đề bài báo:</strong> ${article.title}<br/>
+                <strong>Hội nghị:</strong> ${article.conference?.name ?: "N/A"}<br/>
+                <strong>Track/Chuyên đề:</strong> ${article.track.name}<br/>
+                <strong>Thời gian nộp:</strong> $submissionDate<br/>
+                <strong>Mã bài báo:</strong> ${article.id}
+            </p>
+            <p>
+                Bạn có thể theo dõi trạng thái bài báo tại:<br/>
+                <a href="$articleUrl">$articleUrl</a>
+            </p>
+            <p>
+                Chúng tôi sẽ sớm kiểm soát bài báo của bạn. Nếu có bất kỳ câu hỏi nào, vui lòng liên hệ với ban tổ chức.
+            </p>
+            <p>Trân trọng,<br/>Research Review</p>
+        """.trimIndent()
+
+        emailService.sendEmail(
+            to = authorEmails,
+            subject = subject,
+            message = message,
+            template = "submission-confirmation"
+        )
+    }
+
     private fun sendChairDecisionEmailToAuthors(article: Article, decisionStatus: ArticleStatus) {
         val authorEmails = articleAuthorRepository.findAllByArticleIdAndDeletedFalse(article.id)
             .map { it.author.email.trim() }
@@ -880,18 +1024,17 @@ class ArticlesServiceImpl(
         val subject = "[Research Review] Kết quả quyết định cho bài báo: ${article.title}"
         val articleUrl = "$frontendUrl/articles/${article.id}"
         val message = """
-            Xin chào tác giả,
-
-            Chủ tịch hội nghị đã đưa ra quyết định chính thức cho bài báo của bạn.
-
-            Tiêu đề: ${article.title}
-            Quyết định: $decisionLabel
-
-            Bạn có thể xem chi tiết tại:
-            $articleUrl
-
-            Trân trọng,
-            Research Review
+            <p>Xin chào tác giả,</p>
+            <p>Đã có quyết định chính thức cho bài báo của bạn.</p>
+            <p>
+                <strong>Tiêu đề:</strong> ${article.title}<br/>
+                <strong>Quyết định:</strong> $decisionLabel
+            </p>
+            <p>
+                Bạn có thể xem chi tiết tại:<br/>
+                <a href="$articleUrl">$articleUrl</a>
+            </p>
+            <p>Trân trọng,<br/>Research Review</p>
         """.trimIndent()
 
         emailService.sendEmail(
@@ -910,9 +1053,29 @@ class ArticlesServiceImpl(
             .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, user.id)
             .orElse(null)
 
-        val hasChairMembership = conferenceMembership?.membershipRole == ConferenceMembershipRole.CHAIR
+        val hasChairMembership = conferenceMembership?.membershipRole == ConferenceMembershipRole.EDITOR
         if (!hasChairMembership) {
             throw AccessDeniedException("articles.onlyConferenceChairCanSendFinalDecisions")
+        }
+    }
+
+    private fun ensureReviewerManagementPermission(user: User, article: Article) {
+        val conferenceId = article.conference?.id
+            ?: throw IllegalStateException("articles.conferenceRequiredForReviewerManagement")
+
+        // Admins can always manage reviewers
+        if (user.globalRole == GlobalRole.ADMIN) {
+            return
+        }
+
+        // Conference editors (chairs) can manage reviewers
+        val conferenceMembership = userConferenceMembershipRepository
+            .findByConferenceIdAndUserIdAndDeletedFalse(conferenceId, user.id)
+            .orElse(null)
+
+        val hasEditorMembership = conferenceMembership?.membershipRole == ConferenceMembershipRole.EDITOR
+        if (!hasEditorMembership) {
+            throw AccessDeniedException("articles.onlyEditorCanManageReviewers")
         }
     }
 }

@@ -32,10 +32,14 @@ export const structuredReviewService = {
     return response.data
   },
 
-  getChairView: async (articleId: string): Promise<BaseResponseDto<StructuredReviewDto[]>> => {
+  getEditorView: async (articleId: string): Promise<BaseResponseDto<StructuredReviewDto[]>> => {
     const response = await api.get<BaseResponseDto<StructuredReviewDto[]>>(
-      `/articles/${articleId}/structured-reviews/chair-view`,
+      `/articles/${articleId}/structured-reviews/editor-view`,
     )
     return response.data
+  },
+
+  getChairView: async (articleId: string): Promise<BaseResponseDto<StructuredReviewDto[]>> => {
+    return structuredReviewService.getEditorView(articleId)
   },
 }

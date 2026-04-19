@@ -40,11 +40,7 @@ const ProtectedRoute = ({ allowedRoles = [], children, redirectTo = '/signin' }:
     return <Navigate to={redirectTo} replace />;
   }
 
-  const currentRoles = data?.data?.roles?.length
-    ? data.data.roles
-    : data?.data?.role
-      ? [data.data.role]
-      : [];
+  const currentRoles = data?.data?.globalRole ? [data.data.globalRole] : [];
   if (allowedRoles.length > 0 && !allowedRoles.some((r) => currentRoles.includes(r))) {
     return <Navigate to="/unauthorized" replace />;
   }

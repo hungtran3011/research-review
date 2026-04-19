@@ -1,8 +1,8 @@
 package com.example.researchreview.services.impl
 
 import com.example.researchreview.constants.AttachmentKind
+import com.example.researchreview.constants.GlobalRole
 import com.example.researchreview.constants.NotificationType
-import com.example.researchreview.constants.Role
 import com.example.researchreview.dtos.AttachmentDownloadDto
 import com.example.researchreview.dtos.AttachmentDto
 import com.example.researchreview.dtos.AttachmentFinalizeRequestDto
@@ -182,8 +182,8 @@ class AttachmentServiceImpl(
         val user = currentUserService.currentUser()
             ?: throw AccessDeniedException("user.notFound")
         when {
-            user.hasRole(Role.ADMIN) -> return
-            user.hasRole(Role.EDITOR) -> {
+            user.globalRole == GlobalRole.ADMIN -> return
+            editorRepository.findAllByUserIdAndDeletedFalse(user.id).isNotEmpty() -> {
                 val editorTrackIds = editorRepository.findAllByUserIdAndDeletedFalse(user.id)
                     .map { it.track.id }
                     .toSet()

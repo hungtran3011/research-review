@@ -8,24 +8,25 @@ import org.springframework.data.jpa.repository.Query
 import java.util.Optional
 
 interface UserRepository: JpaRepository<User, String> {
+    @Query("SELECT u FROM User u WHERE u.deleted = false")
+    fun findAllByDeletedFalse(): List<User>
+
     @Query(value = "SELECT DISTINCT u.* FROM users u " +
             "left join institution i on i.id = u.institution_id " +
-            "left join user_roles ur on ur.user_id = u.id " +
             "WHERE u.deleted = false " +
             "and (:emailQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.email), '')) @@ to_tsquery('simple', :emailQuery)) " +
             "and (:nameQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.name), '')) @@ to_tsquery('simple', :nameQuery)) " +
             "and (:institutionQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(i.name), '')) @@ to_tsquery('simple', :institutionQuery)) " +
-            "and (:role IS NULL OR ( ( :roleOrdinal IS NOT NULL AND u.role = CAST(:roleOrdinal AS smallint) ) OR (ur.roles = :role) )) " +
+            "and (:role IS NULL OR LOWER(u.global_role) = LOWER(:role)) " +
             "and (:status IS NULL OR ( :statusOrdinal IS NOT NULL AND u.status = CAST(:statusOrdinal AS smallint) )) " +
             "limit :#{#pageable.pageSize} offset :#{#pageable.offset}",
         countQuery = "SELECT count(DISTINCT u.id) FROM users u " +
                 "left join institution i on i.id = u.institution_id " +
-                "left join user_roles ur on ur.user_id = u.id " +
                 "WHERE u.deleted = false " +
                 "and (:emailQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.email), '')) @@ to_tsquery('simple', :emailQuery)) " +
                 "and (:nameQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(u.name), '')) @@ to_tsquery('simple', :nameQuery)) " +
                 "and (:institutionQuery IS NULL OR to_tsvector('simple', COALESCE(LOWER(i.name), '')) @@ to_tsquery('simple', :institutionQuery)) " +
-                "and (:role IS NULL OR ( ( :roleOrdinal IS NOT NULL AND u.role = CAST(:roleOrdinal AS smallint) ) OR (ur.roles = :role) )) " +
+            "and (:role IS NULL OR LOWER(u.global_role) = LOWER(:role)) " +
                 "and (:status IS NULL OR ( :statusOrdinal IS NOT NULL AND u.status = CAST(:statusOrdinal AS smallint) ))",
         nativeQuery = true)
     fun search(
@@ -33,7 +34,6 @@ interface UserRepository: JpaRepository<User, String> {
         nameQuery: String?,
         institutionQuery: String?,
         role: String?,
-        roleOrdinal: Int?,
         status: String?,
         statusOrdinal: Int?,
         pageable: Pageable

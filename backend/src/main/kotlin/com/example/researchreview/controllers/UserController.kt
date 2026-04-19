@@ -21,10 +21,10 @@ class UserController(
 ) {
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     fun getUsers(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) conferenceId: String?
     ): ResponseEntity<BaseResponseDto<PageResponseDto<UserDto>>> {
         val safePage = if (page < 0) 0 else page
         val safeSize = when {
@@ -34,7 +34,7 @@ class UserController(
         }
         return try {
             val pageable = PageRequest.of(safePage, safeSize)
-            val users = usersService.getAll(pageable)
+            val users = usersService.getAll(pageable, conferenceId)
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
@@ -54,7 +54,6 @@ class UserController(
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     fun searchUsers(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
@@ -62,7 +61,8 @@ class UserController(
         @RequestParam(required = false) email: String?,
         @RequestParam(required = false) institutionName: String?,
         @RequestParam(required = false) role: String?,
-        @RequestParam(required = false) status: String?
+        @RequestParam(required = false) status: String?,
+        @RequestParam(required = false) conferenceId: String?
     ): ResponseEntity<BaseResponseDto<PageResponseDto<UserDto>>> {
         val safePage = if (page < 0) 0 else page
         val safeSize = when {
@@ -72,7 +72,7 @@ class UserController(
         }
         return try {
             val pageable = PageRequest.of(safePage, safeSize)
-            val users = usersService.search(name, email, institutionName, role, status, pageable)
+            val users = usersService.search(name, email, institutionName, role, status, pageable, conferenceId)
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,

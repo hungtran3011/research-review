@@ -21,6 +21,7 @@ import HelpCenter from './components/common/HelpCenter.tsx'
 import { ThemeProvider } from './providers/ThemeProvider.tsx'
 import AuthBootstrap from './providers/AuthBootstrap.tsx'
 import SubmitArticle from './components/article/SubmitArticle.tsx'
+import ConferenceRegistration from './components/article/ConferenceRegistration.tsx'
 import ArticleWorkspace from './components/article/ArticleWorkspace.tsx'
 import ProtectedRoute from './components/common/ProtectedRoute.tsx'
 import Unauthorized from './components/common/Unauthorized.tsx'
@@ -70,8 +71,16 @@ createRoot(document.getElementById('root')!).render(
           <Route
             path='/articles/submit'
             element={
-              <ProtectedRoute allowedRoles={['RESEARCHER']}>
+              <ProtectedRoute>
                 <SubmitArticle />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/conferences/register'
+            element={
+              <ProtectedRoute>
+                <ConferenceRegistration />
               </ProtectedRoute>
             }
           />

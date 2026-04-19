@@ -67,3 +67,19 @@ export const useUpdateCommentStatus = (articleId: string) => {
     },
   });
 };
+
+export const useDeleteComment = (articleId: string) => {
+  const queryClient = useQueryClient();
+  const { success, error } = useBasicToast();
+
+  return useMutation({
+    mutationFn: ({ commentId }: { commentId: string }) => commentService.deleteComment(commentId),
+    onSuccess: (response) => {
+      success(getApiSuccessMessage(response, 'Đã xoá nhận xét.'));
+      queryClient.invalidateQueries({ queryKey: ['article-comments', articleId] });
+    },
+    onError: (err: AxiosError<BaseResponseDto<CommentThreadDto>>) => {
+      error(getApiErrorMessage(err, 'Không thể xoá nhận xét.'));
+    },
+  });
+};

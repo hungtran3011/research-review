@@ -6,7 +6,7 @@ import { getWorldData } from '../../services/country.service'
 import { useQuery } from '@tanstack/react-query'
 import type { UserRequestDto } from '../../models'
 import { useCurrentUser, useUpdateUser } from '../../hooks/useUser'
-import { Gender, AcademicStatus, Role, RoleOptions, type RoleType } from '../../constants'
+import { Gender, AcademicStatus, Role } from '../../constants'
 import { useInstitutions, useTracks } from '../../hooks/useInstitutionTrack'
 import { Navigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -61,15 +61,9 @@ function Profile() {
     const tracks = tracksResponse?.data || []
     const currentUser = currentUserResponse?.data
 
-    const effectiveRoles = (currentUser?.roles?.length ? currentUser.roles : [currentUser?.role]).filter(Boolean)
+    const effectiveRoles = [currentUser?.globalRole].filter(Boolean)
     const isAdmin = effectiveRoles.includes(Role.ADMIN)
-    const roleOptions = RoleOptions
-        .filter(({ value }) => isAdmin || value !== Role.ADMIN)
-        .map(({ value }) => ({
-            value,
-            label: t(`profile.roleOptions.${value.toLowerCase()}`),
-        }))
-    
+
     const [formData, setFormData] = useState<UserRequestDto>({
         email: email || '',
         name: '',
@@ -96,12 +90,10 @@ function Profile() {
             const firstName = nameParts.pop() || ''
             const lastName = nameParts.join(' ')
 
-            const primaryRole = (currentUser.roles && currentUser.roles[0]) || currentUser.role
-
             setFormData({
                 email: currentUser.email,
                 name: currentUser.name,
-                role: (primaryRole as RoleType) || Role.USER,
+                role: currentUser.globalRole || Role.USER,
                 avatarId: currentUser.avatarId || '',
                 institutionId: currentUser.institution?.id || '',
                 institutionName: currentUser.institution?.name || '',
@@ -122,7 +114,14 @@ function Profile() {
 
     const handleSubmit = () => {
         if (currentUser?.id) {
-            updateUser.mutate({ id: currentUser.id, data: formData })
+            const safeRole = currentUser.globalRole || Role.USER
+            updateUser.mutate({
+                id: currentUser.id,
+                data: {
+                    ...formData,
+                    role: safeRole,
+                }
+            })
         }
     }
 
@@ -226,18 +225,7 @@ function Profile() {
                     </Col>
                 </Row>
                 <Row gutter={16}>
-                    <Col xs={24} sm={8}>
-                        <Form.Item label={t('profile.fields.role.label')} required tooltip={t('profile.fields.role.tooltip')}>
-                            <Select
-                                placeholder={t('profile.fields.role.placeholder')}
-                                value={formData.role || undefined}
-                                onChange={(value) => setFormData({ ...formData, role: value as RoleType })}
-                                disabled={!isAdmin}
-                                options={roleOptions}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12}>
                         <Form.Item label={t('profile.fields.gender.label')} required tooltip={t('profile.fields.gender.tooltip')}>
                             <Select
                                 placeholder={t('profile.fields.gender.placeholder')}
@@ -251,7 +239,7 @@ function Profile() {
                             />
                         </Form.Item>
                     </Col>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12}>
                         <Form.Item label={t('profile.fields.nationality.label')} required tooltip={t('profile.fields.nationality.tooltip')}>
                             <Select
                                 placeholder={t('profile.fields.nationality.placeholder')}

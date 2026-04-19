@@ -79,6 +79,8 @@ const UserManagement = () => {
   const users = data?.data?.content ?? [];
   const pageMeta = data?.data;
 
+
+
   const handleRoleChange = (userId: string, currentRole: string, nextRole?: string) => {
     if (!nextRole || nextRole === currentRole) return;
     updateRole.mutate({ id: userId, data: { role: nextRole } });
@@ -111,8 +113,6 @@ const UserManagement = () => {
     const trackId = newTrackId.trim();
 
     if (!name || !email || !role) return;
-    if (role === 'EDITOR' && !trackId) return;
-
     createUser.mutate(
       {
         name,
@@ -173,9 +173,9 @@ const UserManagement = () => {
       render: (_, record) => (
         <Select
           size="small"
-          value={record.role}
+          value={record.globalRole}
           disabled={updateRole.isPending}
-          onChange={(value) => handleRoleChange(record.id, record.role, value)}
+          onChange={(value) => handleRoleChange(record.id, record.globalRole, value)}
           options={RoleOptions.map((role) => ({ value: role.value, label: role.label }))}
           style={{ width: '140px' }}
         />
@@ -280,9 +280,7 @@ const UserManagement = () => {
           </div>
           <div style={styles.field}>
             <Text>
-              {newRole === 'EDITOR'
-                ? t('userManagement.create.trackRequiredLabel')
-                : t('userManagement.create.trackOptionalLabel')}
+              {t('userManagement.create.trackOptionalLabel')}
             </Text>
             <Select
               value={newTrackId || undefined}
@@ -307,8 +305,7 @@ const UserManagement = () => {
             disabled={
               isMutating ||
               !newName.trim() ||
-              !newEmail.trim() ||
-              (newRole === 'EDITOR' && !newTrackId.trim())
+              !newEmail.trim()
             }
           >
             {t('userManagement.actions.create')}
@@ -406,11 +403,17 @@ const UserManagement = () => {
           <Form.Item label={t('userManagement.detail.email')}>
             <Input value={selectedUser?.email ?? ''} />
           </Form.Item>
-          <Form.Item label={t('userManagement.detail.primaryRole')}>
-            <Input value={selectedUser?.role ?? ''} />
+          <Form.Item label="Global role">
+            <Input value={selectedUser?.globalRole ?? ''} />
           </Form.Item>
-          <Form.Item label={t('userManagement.detail.allRoles')}>
-            <Input value={(selectedUser?.roles ?? []).join(', ')} />
+          <Form.Item label={t('userManagement.detail.conferenceMemberships')}>
+            <Input
+              value={
+                selectedUser?.conferences?.length
+                  ? selectedUser.conferences.map((membership) => `${membership.conferenceName}: ${membership.membershipRole}`).join(', ')
+                  : t('userManagement.detail.noConferenceMemberships')
+              }
+            />
           </Form.Item>
           <Form.Item label={t('userManagement.detail.status')}>
             <Input value={selectedUser?.status ?? ''} />
