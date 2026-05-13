@@ -27,6 +27,7 @@ import { useAnonymizedStructuredReviews, useEditorStructuredReviews } from '../.
 import type { ArticleVersionDto, CommentDto, CommentThreadDto, VersionSupplementDto } from '../../models'
 import { articleVersionService } from '../../services/article-version.service'
 import { useTranslation } from 'react-i18next'
+import './ArticleWorkspace.css'
 
 const styles: Record<string, React.CSSProperties> = {
     root: {
@@ -79,14 +80,21 @@ const styles: Record<string, React.CSSProperties> = {
     authorsList: { display: 'flex', flexDirection: 'column', gap: 8 },
     authorItem: { padding: 8, borderRadius: 6, fontSize: 13, background: 'var(--article-muted-bg, transparent)' },
     reviewersList: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-    viewerSection: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' },
+    viewerSection: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', background: 'var(--article-bg, transparent)' },
     viewerHeader: { padding: 16, borderBottom: '1px solid var(--article-border-color, #f0f0f0)', background: 'var(--article-panel-bg, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
     viewerTitle: { fontSize: 20, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     overlay: { position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, zIndex: 1000, background: 'var(--article-overlay-bg, rgba(0,0,0,0.45))' },
     sidebarToggle: { position: 'fixed', bottom: 24, left: 24, zIndex: 1003 },
     centerContent: { minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, padding: 24, textAlign: 'center' },
     commentsSection: { width: 400, flexShrink: 0, borderLeft: '1px solid var(--article-border-color, #f0f0f0)', background: 'var(--article-panel-bg, transparent)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'transform 0.3s ease-in-out' },
-    commentsSectionHidden: { transform: 'translateX(100%)' },
+    commentsSectionHidden: {
+        transform: 'translateX(100%)',
+        width: 0,
+        minWidth: 0,
+        borderLeft: 'none',
+        overflow: 'hidden',
+        opacity: 0,
+    },
     commentsDialogSurface: { maxWidth: '90vw', width: 520, maxHeight: '90vh' },
     commentsDialogBody: { display: 'flex', flexDirection: 'column', maxHeight: 'calc(90vh - 100px)', overflow: 'hidden' },
     commentsHeader: { padding: 16, borderBottom: '1px solid var(--article-border-color, #f0f0f0)', background: 'var(--article-panel-bg, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
@@ -99,6 +107,11 @@ const styles: Record<string, React.CSSProperties> = {
     replyItem: { padding: 8, borderRadius: 6, background: 'var(--article-muted-bg, transparent)' },
     replyForm: { marginTop: 8, padding: 12, borderRadius: 6, background: 'var(--article-muted-bg, transparent)', display: 'flex', flexDirection: 'column', gap: 8 },
     commentsToggle: { position: 'fixed', bottom: 24, right: 24, zIndex: 1003 },
+    reviewDetailCard: { borderRadius: 10 },
+    reviewDetailSection: { display: 'flex', flexDirection: 'column' as const, gap: 4, marginTop: 10 },
+    reviewDetailLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--article-text-secondary, inherit)' },
+    reviewDetailValue: { whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const },
+    scoreTagWrap: { display: 'flex', flexWrap: 'wrap' as const, gap: 6 },
 }
 
 function ArticleDetails() {
@@ -114,6 +127,12 @@ function ArticleDetails() {
         '--article-text': token.colorText,
         '--article-text-secondary': token.colorTextSecondary,
         '--article-warning-border': token.colorWarningBorder,
+        '--workspace-panel-bg': token.colorBgContainer,
+        '--workspace-border': token.colorBorderSecondary,
+        '--workspace-shadow': token.boxShadowSecondary,
+        '--workspace-accent': token.colorPrimary,
+        '--workspace-accent-soft': token.colorPrimaryBgHover,
+        '--workspace-text-subtle': token.colorTextSecondary,
     }) as React.CSSProperties, [token])
 
     const params = useParams<{ articleId: string }>()
@@ -137,6 +156,7 @@ function ArticleDetails() {
     const [isLoadingMaterials, setIsLoadingMaterials] = useState(false)
     const [materialsError, setMaterialsError] = useState<string | null>(null)
     const [downloadingSupplementId, setDownloadingSupplementId] = useState<string | null>(null)
+    const [isPdfPreviewVisible, setIsPdfPreviewVisible] = useState(true)
     const { mutate: startRevisions, isPending: isStartingRevisions } = useStartRevisions(safeArticleId)
     const [isInviteReviewersOpen, setIsInviteReviewersOpen] = useState(false)
 
@@ -191,6 +211,12 @@ function ArticleDetails() {
             setIsCommentsDialogOpen(false)
         }
     }, [isMobile])
+
+    useEffect(() => {
+        if (isMobile && !isPdfPreviewVisible) {
+            setIsSidebarVisible(false)
+        }
+    }, [isMobile, isPdfPreviewVisible])
 
     const article = articleResponse?.data
     const commentThreads = commentsResponse?.data ?? []
@@ -354,7 +380,6 @@ function ArticleDetails() {
 
     const canDeleteComment = (comment?: CommentDto | null): boolean => {
         if (!comment) return false
-        if (canManageReviewers) return true
         return isMyComment(comment)
     }
 
@@ -401,6 +426,7 @@ function ArticleDetails() {
     const canSubmitRevision =
         !!isAuthor &&
         (article?.status === ArticleStatus.REVISIONS_REQUESTED || article?.status === ArticleStatus.REVISIONS)
+    const isEditorFocusLayout = !isMobile && canManageReviewers && !isPdfPreviewVisible
 
     // Check if current user is an editor and article is awaiting initial review
     const canDoInitialReview = canManageReviewers && article?.status === ArticleStatus.SUBMITTED
@@ -494,6 +520,61 @@ function ArticleDetails() {
     const renderStructuredReviewPanel = () => {
         if (!isChair && !isAuthor) return null
 
+        const renderScoreTags = (scores: { criterion: string; score: number }[]) => (
+            <div style={styles.scoreTagWrap}>
+                {scores.map((score) => (
+                    <Tag key={`${score.criterion}-${score.score}`}>{getStructuredCriterionLabel(score.criterion)}: {score.score}</Tag>
+                ))}
+            </div>
+        )
+
+        const renderReviewDetails = (review: {
+            id: string
+            recommendation?: string
+            summaryNotes: string
+            confidentialRemarks?: string | null
+            scores: { criterion: string; score: number }[]
+            submittedAt?: string | null
+        }, reviewerLabel: string, showConfidential: boolean) => (
+            <Card key={review.id} size="small" style={styles.reviewDetailCard}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                    <Typography.Text strong>{reviewerLabel}</Typography.Text>
+                    {review.recommendation && (
+                        <Typography.Text type="secondary">
+                            {t('reviewArticle.structured.recommendationLabel')}: {getStructuredRecommendationLabel(review.recommendation)}
+                        </Typography.Text>
+                    )}
+                </div>
+
+                <div style={styles.reviewDetailSection}>
+                    <Typography.Text style={styles.reviewDetailLabel}>{t('reviewArticle.structured.summaryLabel')}</Typography.Text>
+                    <Typography.Paragraph style={{ marginTop: 0, marginBottom: 0, ...styles.reviewDetailValue }}>
+                        {review.summaryNotes}
+                    </Typography.Paragraph>
+                </div>
+
+                {showConfidential && review.confidentialRemarks && (
+                    <div style={styles.reviewDetailSection}>
+                        <Typography.Text style={styles.reviewDetailLabel}>{t('reviewArticle.structured.confidentialLabel')}</Typography.Text>
+                        <Typography.Paragraph style={{ marginTop: 0, marginBottom: 0, ...styles.reviewDetailValue }}>
+                            {review.confidentialRemarks}
+                        </Typography.Paragraph>
+                    </div>
+                )}
+
+                <div style={styles.reviewDetailSection}>
+                    <Typography.Text style={styles.reviewDetailLabel}>{t('articleDetails.scores')}</Typography.Text>
+                    {renderScoreTags(review.scores)}
+                </div>
+
+                {review.submittedAt && (
+                    <Typography.Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                        {t('articleDetails.submittedAt')}: {new Date(review.submittedAt).toLocaleString(dateTimeLocale)}
+                    </Typography.Text>
+                )}
+            </Card>
+        )
+
         if (isChair) {
             return (
                 <div style={styles.sectionBlock}>
@@ -528,6 +609,21 @@ function ArticleDetails() {
                             )
                         })}
                     </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                        {editorStructuredReviews.length === 0 ? (
+                            <Typography.Text type="secondary">{t('articleDetails.noStructuredReviewsSubmitted')}</Typography.Text>
+                        ) : editorStructuredReviews
+                            .slice()
+                            .sort((first, second) => first.reviewerDisplayIndex - second.reviewerDisplayIndex)
+                            .map((review) => (
+                                renderReviewDetails(
+                                    review,
+                                    t('articleDetails.reviewerLabel', { index: review.reviewerDisplayIndex }),
+                                    true,
+                                )
+                            ))}
+                    </div>
                 </div>
             )
         }
@@ -539,22 +635,7 @@ function ArticleDetails() {
                     {anonymizedStructuredReviews.length === 0 ? (
                         <Typography.Text type="secondary">{t('articleDetails.noAnonymousReviews')}</Typography.Text>
                     ) : anonymizedStructuredReviews.map((review) => (
-                        <Card key={review.id} size="small">
-                            <Typography.Text strong>{review.reviewerLabel}</Typography.Text>
-                            <Typography.Paragraph style={{ marginTop: 8, marginBottom: 8 }}>
-                                {review.summaryNotes}
-                            </Typography.Paragraph>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {review.scores.map((score) => (
-                                    <Tag key={`${review.id}-${score.criterion}`}>{getStructuredCriterionLabel(score.criterion)}: {score.score}</Tag>
-                                ))}
-                            </div>
-                            {review.submittedAt && (
-                                <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                                    {t('articleDetails.submittedAt')}: {new Date(review.submittedAt).toLocaleString(dateTimeLocale)}
-                                </Typography.Text>
-                            )}
-                        </Card>
+                        renderReviewDetails(review, review.reviewerLabel, false)
                     ))}
                 </div>
             </div>
@@ -741,10 +822,105 @@ function ArticleDetails() {
         </div>
     )
 
+    const renderSidebarContent = () => (
+        <>
+            <div style={styles.sectionBlock}>
+                <div style={styles.sectionLabel}>{t('articleDetails.submittedDate')}</div>
+                <div style={styles.metadataRow}>
+                    <CalendarOutlined />
+                    <Typography.Text>{submittedDate}</Typography.Text>
+                </div>
+            </div>
+
+            <div style={styles.sectionBlock}>
+                <div style={styles.sectionLabel}>{t('articleDetails.track')}</div>
+                <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
+            </div>
+
+            <div style={styles.sectionBlock}>
+                <div style={styles.sectionLabel}>{t('articleDetails.abstract')}</div>
+                <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
+            </div>
+
+            {article.conclusion && (
+                <div style={styles.sectionBlock}>
+                    <div style={styles.sectionLabel}>{t('articleDetails.conclusion')}</div>
+                    <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
+                </div>
+            )}
+
+            <div style={styles.sectionBlock}>
+                <div style={styles.sectionLabel}>{t('articleDetails.authors')}</div>
+                <div style={styles.authorsList}>
+                    {article.authors.map((author, index) => (
+                        <div key={author.id || index} style={styles.authorItem}>
+                            <div>
+                                <Typography.Text strong>{author.name}</Typography.Text>
+                                <div>
+                                    <Typography.Text type="secondary">{author.email}</Typography.Text>
+                                </div>
+                                <div>
+                                    <Typography.Text type="secondary">{author.institution.name}</Typography.Text>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {article.reviewers && article.reviewers.length > 0 && (
+                <div style={styles.sectionBlock}>
+                    <div style={styles.sectionLabel}>{t('articleDetails.reviewers')}</div>
+                    <div style={styles.reviewersList}>
+                        {canManageReviewers ? (
+                            article.reviewers.map((reviewer) => (
+                                <Tag key={reviewer.id} icon={<UserOutlined />}>
+                                    {reviewer.name}
+                                </Tag>
+                            ))
+                        ) : currentConferenceRoles.includes('REVIEWER') ? (
+                            article.reviewers
+                                .filter((reviewer) => {
+                                    const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
+                                    const matchesEmail = reviewer.email?.toLowerCase() === (currentUserEmail ?? '').toLowerCase()
+                                    return !!(matchesUserId || matchesEmail)
+                                })
+                                .map((reviewer) => (
+                                    <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.you')}</Tag>
+                                ))
+                        ) : (
+                            article.reviewers.map((reviewer, index) => (
+                                <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.reviewerLabel', { index: reviewer.displayIndex ?? index + 1 })}</Tag>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {renderStructuredReviewPanel()}
+
+            {renderMaterialsSection()}
+
+            {article.initialReviewNote && (
+                <div style={styles.sectionBlock}>
+                    <div style={styles.sectionLabel}>{t('articleDetails.initialReviewNote')}</div>
+                    <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
+                </div>
+            )}
+
+            {article.initialReviewNextSteps && (
+                <div style={styles.sectionBlock}>
+                    <div style={styles.sectionLabel}>{t('articleDetails.nextSteps')}</div>
+                    <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
+                </div>
+            )}
+        </>
+    )
+
     return (
-        <div style={{ ...styles.root, ...articleThemeVars }}>
+        <div className='workspace-root' style={{ ...styles.root, ...articleThemeVars }}>
             {modalContextHolder}
-            {isMobile ? (
+            {isMobile && isPdfPreviewVisible && (
                 <Drawer
                     placement="left"
                     onClose={() => setIsSidebarVisible(false)}
@@ -759,213 +935,37 @@ function ArticleDetails() {
                     </div>
 
                     <div style={styles.sidebarScroll}>
-                        {/* Basic Info */}
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.submittedDate')}</div>
-                            <div style={styles.metadataRow}>
-                                <CalendarOutlined />
-                                <Typography.Text>{submittedDate}</Typography.Text>
-                            </div>
-                        </div>
-
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.track')}</div>
-                            <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
-                        </div>
-
-                        {/* Abstract */}
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.abstract')}</div>
-                            <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
-                        </div>
-
-                        {/* Conclusion */}
-                        {article.conclusion && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.conclusion')}</div>
-                                <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
-                            </div>
-                        )}
-
-                        {/* Authors */}
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.authors')}</div>
-                            <div style={styles.authorsList}>
-                                {article.authors.map((author, index) => (
-                                    <div key={author.id || index} style={styles.authorItem}>
-                                        <div>
-                                            <Typography.Text strong>{author.name}</Typography.Text>
-                                            <div>
-                                                <Typography.Text type="secondary">{author.email}</Typography.Text>
-                                            </div>
-                                            <div>
-                                                <Typography.Text type="secondary">{author.institution.name}</Typography.Text>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Reviewers */}
-                        {article.reviewers && article.reviewers.length > 0 && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.reviewers')}</div>
-                                <div style={styles.reviewersList}>
-                                    {canManageReviewers ? (
-                                        article.reviewers.map((reviewer) => (
-                                            <Tag key={reviewer.id} icon={<UserOutlined />}>
-                                                {reviewer.name}
-                                            </Tag>
-                                        ))
-                                    ) : currentConferenceRoles.includes('REVIEWER') ? (
-                                        // Reviewers should not see other reviewers; show only themselves.
-                                        article.reviewers
-                                            .filter((reviewer) => {
-                                                const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
-                                                const matchesEmail = reviewer.email?.toLowerCase() === (currentUserEmail ?? '').toLowerCase()
-                                                return !!(matchesUserId || matchesEmail)
-                                            })
-                                            .map((reviewer) => (
-                                                <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.you')}</Tag>
-                                            ))
-                                    ) : (
-                                        // Researchers see anonymized stable reviewer numbering.
-                                        article.reviewers.map((reviewer, index) => (
-                                            <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.reviewerLabel', { index: reviewer.displayIndex ?? index + 1 })}</Tag>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {renderStructuredReviewPanel()}
-
-                        {renderMaterialsSection()}
-
-                        {/* Initial Review Note */}
-                        {article.initialReviewNote && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.initialReviewNote')}</div>
-                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
-                            </div>
-                        )}
-
-                        {/* Initial Review Next Steps */}
-                        {article.initialReviewNextSteps && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.nextSteps')}</div>
-                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
-                            </div>
-                        )}
+                        {renderSidebarContent()}
                     </div>
                 </Drawer>
-            ) : (
-                <div style={{ ...styles.sidebarSection, ...(isSidebarVisible ? {} : styles.sidebarDesktopHidden) }}>
+            )}
+            {!isMobile && (
+                <div className='workspace-panel workspace-sidebar' style={{ ...styles.sidebarSection, ...(isEditorFocusLayout || isSidebarVisible ? {} : styles.sidebarDesktopHidden), ...(isEditorFocusLayout ? { display: 'none' } : {}) }}>
                     <div style={styles.sidebarHeader}>
                         <Tag>{statusInfo.label}</Tag>
                     </div>
 
                     <div style={styles.sidebarScroll}>
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.submittedDate')}</div>
-                            <div style={styles.metadataRow}>
-                                <CalendarOutlined />
-                                <Typography.Text>{submittedDate}</Typography.Text>
-                            </div>
-                        </div>
-
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.track')}</div>
-                            <Typography.Text style={styles.sectionContent}>{trackName}</Typography.Text>
-                        </div>
-
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.abstract')}</div>
-                            <Typography.Text style={styles.sectionContent}>{article.abstract}</Typography.Text>
-                        </div>
-
-                        {article.conclusion && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.conclusion')}</div>
-                                <Typography.Text style={styles.sectionContent}>{article.conclusion}</Typography.Text>
-                            </div>
-                        )}
-
-                        <div style={styles.sectionBlock}>
-                            <div style={styles.sectionLabel}>{t('articleDetails.authors')}</div>
-                            <div style={styles.authorsList}>
-                                {article.authors.map((author, index) => (
-                                    <div key={author.id || index} style={styles.authorItem}>
-                                        <div>
-                                            <Typography.Text strong>{author.name}</Typography.Text>
-                                            <div>
-                                                <Typography.Text type="secondary">{author.email}</Typography.Text>
-                                            </div>
-                                            <div>
-                                                <Typography.Text type="secondary">{author.institution.name}</Typography.Text>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {article.reviewers && article.reviewers.length > 0 && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.reviewers')}</div>
-                                <div style={styles.reviewersList}>
-                                    {canManageReviewers ? (
-                                        article.reviewers.map((reviewer) => (
-                                            <Tag key={reviewer.id} icon={<UserOutlined />}>
-                                                {reviewer.name}
-                                            </Tag>
-                                        ))
-                                    ) : currentConferenceRoles.includes('REVIEWER') ? (
-                                        article.reviewers
-                                            .filter((reviewer) => {
-                                                const matchesUserId = reviewer.user?.id && currentUserId && reviewer.user.id === currentUserId
-                                                const matchesEmail = reviewer.email?.toLowerCase() === (currentUserEmail ?? '').toLowerCase()
-                                                return !!(matchesUserId || matchesEmail)
-                                            })
-                                            .map((reviewer) => (
-                                                <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.you')}</Tag>
-                                            ))
-                                    ) : (
-                                        article.reviewers.map((reviewer, index) => (
-                                            <Tag key={reviewer.id} icon={<UserOutlined />}>{t('articleDetails.reviewerLabel', { index: reviewer.displayIndex ?? index + 1 })}</Tag>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {renderStructuredReviewPanel()}
-
-                        {renderMaterialsSection()}
-
-                        {article.initialReviewNote && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.initialReviewNote')}</div>
-                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNote}</Typography.Text>
-                            </div>
-                        )}
-
-                        {article.initialReviewNextSteps && (
-                            <div style={styles.sectionBlock}>
-                                <div style={styles.sectionLabel}>{t('articleDetails.nextSteps')}</div>
-                                <Typography.Text style={styles.sectionContent}>{article.initialReviewNextSteps}</Typography.Text>
-                            </div>
-                        )}
+                        {renderSidebarContent()}
                     </div>
                 </div>
             )}
 
             {/* Viewer Section */}
-            <div style={styles.viewerSection}>
-                <div style={styles.viewerHeader}>
-                    <Typography.Text style={styles.viewerTitle}>{article.title}</Typography.Text>
-                    <div style={{ display: 'flex', gap: 8 }}>
+            <div className='workspace-viewer' style={styles.viewerSection}>
+                <div className='workspace-header' style={styles.viewerHeader}>
+                    <div className='workspace-hero'>
+                        <span className='workspace-kicker'>{statusInfo.label}</span>
+                        <Typography.Text style={styles.viewerTitle}>{article.title}</Typography.Text>
+                        <div className='workspace-meta'>
+                            <span>{t('articleDetails.track')}: {trackName}</span>
+                            <span>•</span>
+                            <span>{t('articleDetails.versionLabel', { version: currentVersion })}</span>
+                            <span>•</span>
+                            <span>{submittedDate}</span>
+                        </div>
+                    </div>
+                    <div className='workspace-actions'>
                         <Select
                             style={{ minWidth: 140 }}
                             value={currentVersion}
@@ -1044,16 +1044,25 @@ function ArticleDetails() {
                                 {t('articleDetails.awaitingEditorDecision')}
                             </Typography.Text>
                         )}
-                        {isAuthor && article.status === ArticleStatus.IN_REVIEW && !isAssignedReviewer && !canManageReviewers && (
+                        {/* {isAuthor && article.status === ArticleStatus.IN_REVIEW && !isAssignedReviewer && !canManageReviewers && (
                             <Typography.Text type="secondary">
                                 {t('articleDetails.awaitingReReview')}
                             </Typography.Text>
-                        )}
+                        )} */}
                         {canDoInitialReview && (
                             <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=initialReview`)} size="small">{t('articleDetails.initialReview')}</Button>
                         )}
                         {canManageReviewers && (
                             <Button onClick={() => setIsInviteReviewersOpen(true)} size="small">{t('articleDetails.manageReviewers')}</Button>
+                        )}
+                        {canManageReviewers && (
+                            <Button
+                                size="small"
+                                icon={<FilePdfOutlined />}
+                                onClick={() => setIsPdfPreviewVisible((previous) => !previous)}
+                            >
+                                {isPdfPreviewVisible ? t('articleDetails.hidePreview') : t('articleDetails.showPreview')}
+                            </Button>
                         )}
                         {isAssignedReviewer && (
                             <Button type="primary" onClick={() => navigate(`/articles/${articleId}?view=review`)} size="small">{t('articleDetails.reviewArticle')}</Button>
@@ -1079,7 +1088,7 @@ function ArticleDetails() {
                                 {isStartingRevisions ? t('articleDetails.processing') : t('articleDetails.submitRevision')}
                             </Button>
                         )}
-                        {!isMobile && (
+                        {!isMobile && !isEditorFocusLayout && (
                             <>
                                 <Button
                                     size="small"
@@ -1101,29 +1110,86 @@ function ArticleDetails() {
                 </div>
 
                 {/* PDF Viewer */}
-                <PdfViewer fileUrl={pdfUrl} emptyMessage={t('articleDetails.noPdf')} />
+                <div className='workspace-canvas' style={{ flex: 1, minHeight: 0 }}>
+                    {isEditorFocusLayout ? (
+                        <div style={{
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minHeight: 0,
+                            gap: 12,
+                            padding: 12,
+                        }}>
+                            <div className='workspace-panel' style={{ ...styles.sidebarSection, width: '100%', flex: 1, minHeight: 0, borderRight: 'none' }}>
+                                <div style={styles.sidebarHeader}>
+                                    <Tag>{t('articleDetails.previewHiddenHint')}</Tag>
+                                </div>
+                                <div style={styles.sidebarScroll}>
+                                    {renderSidebarContent()}
+                                </div>
+                            </div>
+                        </div>
+                    ) : isMobile && canManageReviewers && !isPdfPreviewVisible ? (
+                        <div style={{
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minHeight: 0,
+                            gap: 12,
+                            padding: 12,
+                        }}>
+                            <div className='workspace-panel workspace-sidebar' style={{ ...styles.sidebarSection, width: '100%', flex: 1, minHeight: 0, borderRight: 'none' }}>
+                                <div style={styles.sidebarHeader}>
+                                    <Tag>{statusInfo.label}</Tag>
+                                </div>
+                                <div style={styles.sidebarScroll}>
+                                    {renderSidebarContent()}
+                                </div>
+                            </div>
+                        </div>
+                    ) : canManageReviewers && !isPdfPreviewVisible ? (
+                        <div style={{
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexDirection: 'column',
+                            gap: 12,
+                            padding: 24,
+                        }}>
+                            <Typography.Text type="secondary">{t('articleDetails.previewHiddenHint')}</Typography.Text>
+                            <Button type="primary" icon={<FilePdfOutlined />} onClick={() => setIsPdfPreviewVisible(true)}>
+                                {t('articleDetails.showPreview')}
+                            </Button>
+                        </div>
+                    ) : (
+                        <PdfViewer fileUrl={pdfUrl} emptyMessage={t('articleDetails.noPdf')} />
+                    )}
+                </div>
             </div>
 
             {/* Mobile Sidebar Toggle */}
-            <Button
-                style={{ ...styles.sidebarToggle, display: isMobile ? 'block' : 'none' }}
-                type="primary"
-                shape="circle"
-                size="large"
-                icon={<MenuOutlined />}
-                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                title={isSidebarVisible ? t('articleDetails.hideInfo') : t('articleDetails.showInfo')}
-            />
+            {isMobile && isPdfPreviewVisible && (
+                <Button
+                    style={styles.sidebarToggle}
+                    type="primary"
+                    shape="circle"
+                    size="large"
+                    icon={<MenuOutlined />}
+                    onClick={() => setIsSidebarVisible((prev) => !prev)}
+                    title={isSidebarVisible ? t('articleDetails.hideInfo') : t('articleDetails.showInfo')}
+                />
+            )}
 
             {/* Comments Section - Desktop */}
-            {(!isMobile && !isCommentsPanelVisible) ? null : <div style={{ ...(styles.commentsSection as object), ...(isMobile ? { display: 'none' } : (!isCommentsPanelVisible ? styles.commentsSectionHidden : {})) }}>
+            {!isMobile && <div className='workspace-panel workspace-comments' style={{ ...(styles.commentsSection as object), ...(!(isEditorFocusLayout || isCommentsPanelVisible) ? styles.commentsSectionHidden : {}), ...(isEditorFocusLayout ? { width: 460 } : {}) }}>
                 <div style={styles.commentsHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <CommentOutlined style={{ fontSize: 18 }} />
                         <Typography.Text strong>{t('articleDetails.commentsCount', { count: commentThreads.length })}</Typography.Text>
                     </div>
 
-                    {isCommentsPanelVisible ? (
+                    {isCommentsPanelVisible && !isEditorFocusLayout ? (
                         <Button
                             icon={<CloseOutlined />}
                             onClick={() => {

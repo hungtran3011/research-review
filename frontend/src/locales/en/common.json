@@ -163,11 +163,15 @@
     "commentsCount": "Comments ({{count}})",
     "hideComments": "Hide comments",
     "showComments": "Show comments",
+    "hidePreview": "Hide manuscript preview",
+    "showPreview": "Show manuscript preview",
+    "previewHiddenHint": "Manuscript preview is hidden so you can focus on reviewer results.",
     "structuredReviewChair": "Structured review (Editor)",
     "reviewProgress": "Review completion: {{submitted}}/{{total}}",
     "avgOverallScore": "Average overall score: {{score}}",
     "notAvailable": "N/A",
     "noRecommendation": "No recommendations yet",
+    "noStructuredReviewsSubmitted": "No structured reviews submitted yet.",
     "reviewerStatus": "Reviewer {{index}}: {{status}}",
     "reviewerLabel": "Reviewer {{index}}",
     "submitted": "Submitted",
@@ -182,7 +186,8 @@
     "mainManuscript": "Main manuscript",
     "supplements": "Supplemental files",
     "noSupplements": "No supplemental files",
-    "loadMaterialsFailed": "Unable to load version materials"
+    "loadMaterialsFailed": "Unable to load version materials",
+    "scores": "Scores"
   },
   "articleWorkspace": {
     "pageTitle": "Article",
@@ -559,7 +564,7 @@
     },
     "structured": {
       "title": "Structured review",
-      "scoreHint": "Score each criterion from 1 to 10.",
+      "scoreHint": "Score each criterion from 1 to 5.",
       "recommendationLabel": "Overall recommendation",
       "recommendations": {
         "STRONG_ACCEPT": "Accept (oral candidate)",

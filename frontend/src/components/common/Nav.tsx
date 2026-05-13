@@ -11,7 +11,7 @@ import {
   MenuOutlined,
 } from '@ant-design/icons'
 import { NavLink, useNavigate } from 'react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useSignOut } from '../../hooks/useAuth'
@@ -26,6 +26,10 @@ const { Text } = Typography
 function Nav() {
   const screens = Grid.useBreakpoint()
   const [drawerVisible, setDrawerVisible] = useState(false)
+  const [isHorizontalNav, setIsHorizontalNav] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.innerWidth >= 1110
+  })
   const { t, i18n } = useTranslation('common')
   const { token } = antdTheme.useToken()
   const theme = useThemeStore((state) => state.theme)
@@ -71,6 +75,27 @@ function Nav() {
     [navigate, signOut, t],
   )
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const media = window.matchMedia('(min-width: 1110px)')
+    const update = (next: boolean) => {
+      setIsHorizontalNav(next)
+      if (next) setDrawerVisible(false)
+    }
+
+    update(media.matches)
+
+    const handler = (event: MediaQueryListEvent) => update(event.matches)
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', handler)
+      return () => media.removeEventListener('change', handler)
+    }
+
+    media.addListener(handler)
+    return () => media.removeListener(handler)
+  }, [])
+
   return (
     <Header
       style={{
@@ -86,7 +111,7 @@ function Nav() {
       }}
     >
       <Space size={8} style={{ minWidth: screens.lg ? 180 : 80, alignItems: 'center' }}>
-        {!screens.lg && (
+        {!isHorizontalNav && (
           <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerVisible(true)} />
         )}
         <NavLink to="/">
@@ -96,7 +121,7 @@ function Nav() {
         </NavLink>
       </Space>
 
-      {screens.lg ? (
+      {isHorizontalNav ? (
         <Space size={4} wrap>
           {links.map((link) => (
             <NavLink

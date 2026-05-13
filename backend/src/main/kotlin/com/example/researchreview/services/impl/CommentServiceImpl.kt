@@ -258,16 +258,6 @@ class CommentServiceImpl(
 
     private fun ensureDeleteCommentPermission(thread: CommentThread, comment: Comment) {
         val viewer = currentUserService.currentUser() ?: throw AccessDeniedException("comments.accessDenied")
-        if (viewer.globalRole == GlobalRole.ADMIN) {
-            return
-        }
-
-        val canManageAsEditor = editorRepository.findAllByUserIdAndDeletedFalse(viewer.id)
-            .any { editor -> editor.track.id == thread.article.track.id }
-        if (canManageAsEditor) {
-            return
-        }
-
         val isCommentOwner = comment.createdBy == viewer.id ||
             (comment.authorId.isNotBlank() && comment.authorId == viewer.id)
         if (!isCommentOwner) {

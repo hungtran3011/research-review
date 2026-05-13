@@ -163,16 +163,20 @@
     "commentsCount": "Nhận xét ({{count}})",
     "hideComments": "Ẩn nhận xét",
     "showComments": "Hiện nhận xét",
-    "structuredReviewChair": "Structured review (Editor)",
+    "hidePreview": "Ẩn xem trước bản thảo",
+    "showPreview": "Hiện xem trước bản thảo",
+    "previewHiddenHint": "Đã ẩn phần xem trước bản thảo để tập trung vào kết quả phản biện của reviewer.",
+    "structuredReviewChair": "Phản biện cấu trúc (Editor)",
     "reviewProgress": "Hoàn tất phản biện: {{submitted}}/{{total}}",
     "avgOverallScore": "Điểm overall trung bình: {{score}}",
     "notAvailable": "Chưa có",
     "noRecommendation": "Chưa có khuyến nghị",
+    "noStructuredReviewsSubmitted": "Chưa có structured review nào được nộp.",
     "reviewerStatus": "Reviewer {{index}}: {{status}}",
     "reviewerLabel": "Người phản biện {{index}}",
     "submitted": "Đã nộp",
     "notSubmitted": "Chưa nộp",
-    "structuredReviewAnonymous": "Structured review (Ẩn danh)",
+    "structuredReviewAnonymous": "Phản biện cấu trúc (Ẩn danh)",
     "noAnonymousReviews": "Chưa có phản biện ẩn danh.",
     "submittedAt": "Nộp lúc",
     "initialReviewNote": "Ghi chú ban đầu",
@@ -182,7 +186,8 @@
     "mainManuscript": "Bản thảo chính",
     "supplements": "Tệp bổ sung",
     "noSupplements": "Không có tệp bổ sung",
-    "loadMaterialsFailed": "Không thể tải tài liệu theo phiên bản"
+    "loadMaterialsFailed": "Không thể tải tài liệu theo phiên bản",
+    "scores": "Điểm"
   },
   "articleWorkspace": {
     "pageTitle": "Bài báo",
@@ -559,7 +564,7 @@
     },
     "structured": {
       "title": "Phản biện cấu trúc",
-      "scoreHint": "Điểm từ 1 đến 10 cho từng tiêu chí.",
+      "scoreHint": "Chấm điểm từng tiêu chí từ 1 đến 5.",
       "recommendationLabel": "Khuyến nghị tổng thể",
       "recommendations": {
         "STRONG_ACCEPT": "Nhận (ứng viên báo cáo oral)",

@@ -6,6 +6,7 @@ import {
     Card as AntCard,
     Tag,
     Select,
+    InputNumber,
     Tooltip,
     Modal,
     Spin,
@@ -360,11 +361,11 @@ function ReviewArticle() {
     const [structuredConfidentialRemarks, setStructuredConfidentialRemarks] = useState('')
     const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null)
     const [structuredScores, setStructuredScores] = useState<Record<string, number>>({
-        originality: 6,
-        technical_quality: 6,
-        clarity: 6,
-        relevance: 6,
-        overall: 6,
+        originality: 3,
+        technical_quality: 3,
+        clarity: 3,
+        relevance: 3,
+        overall: 3,
     })
 
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
@@ -405,20 +406,10 @@ function ReviewArticle() {
         return isMyComment(comment) ? t('reviewArticle.you') : comment.authorName
     }, [isMyComment, t])
 
-    const currentConferenceRoles = useMemo(() => {
-        if (!article?.conferenceId || !currentUserData?.data?.conferences) return [] as string[]
-        return currentUserData.data.conferences
-            .filter((membership) => membership.conferenceId === article.conferenceId)
-            .map((membership) => membership.membershipRole)
-    }, [article?.conferenceId, currentUserData?.data?.conferences])
-
-    const canManageComments = (currentUserData?.data?.globalRole === 'ADMIN') || currentConferenceRoles.includes('EDITOR')
-
     const canDeleteComment = useCallback((comment?: { createdBy?: string | null; authorId?: string | null } | null) => {
         if (!comment) return false
-        if (canManageComments) return true
         return isMyComment(comment)
-    }, [canManageComments, isMyComment])
+    }, [isMyComment])
 
     const handleDeleteComment = useCallback((commentId: string) => {
         Modal.confirm({
@@ -511,11 +502,11 @@ function ReviewArticle() {
         setStructuredSummary(myStructuredReview.summaryNotes ?? '')
         setStructuredConfidentialRemarks(myStructuredReview.confidentialRemarks ?? '')
         const nextScores: Record<string, number> = {
-            originality: 6,
-            technical_quality: 6,
-            clarity: 6,
-            relevance: 6,
-            overall: 6,
+            originality: 3,
+            technical_quality: 3,
+            clarity: 3,
+            relevance: 3,
+            overall: 3,
         }
         myStructuredReview.scores.forEach((item) => {
             nextScores[item.criterion] = item.score
@@ -524,7 +515,7 @@ function ReviewArticle() {
     }, [myStructuredReview])
 
     const setScore = useCallback((criterion: string, nextValue: number) => {
-        const bounded = Math.max(1, Math.min(10, nextValue))
+        const bounded = Math.max(1, Math.min(5, Number.isFinite(nextValue) ? nextValue : 1))
         setStructuredScores((prev) => ({ ...prev, [criterion]: bounded }))
     }, [])
 
@@ -1519,14 +1510,15 @@ function ReviewArticle() {
                                         ].map((criterion) => (
                                             <div key={criterion.key} className={classes.scoreRow}>
                                                 <Text>{criterion.label}</Text>
-                                                <input
+                                                <InputNumber
                                                     className={classes.numberInput}
-                                                    type="number"
                                                     min={1}
-                                                    max={10}
+                                                    max={5}
                                                     step={1}
-                                                    value={structuredScores[criterion.key] ?? 6}
-                                                    onChange={(event) => setScore(criterion.key, Number(event.target.value))}
+                                                    value={structuredScores[criterion.key] ?? 3}
+                                                    keyboard
+                                                    controls
+                                                    onChange={(value) => setScore(criterion.key, typeof value === 'number' ? value : structuredScores[criterion.key] ?? 3)}
                                                     disabled={isSubmittingStructuredReview || isStructuredReviewSubmitted}
                                                 />
                                             </div>

@@ -3,9 +3,7 @@ import { Button, Typography, Input, Modal, Radio, Select, Spin, Form, Grid, them
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
-    MenuOutlined,
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
+    FileTextOutlined,
 } from '@ant-design/icons'
 import { PdfViewer, TableOfContents } from '../common'
 import type { TocItem } from '../common'
@@ -22,6 +20,7 @@ import { AttachmentKind } from '../../constants/attachment-kind'
 import { AttachmentStatus } from '../../constants/attachment-status'
 import type { ArticleVersionDto, VersionSupplementDto } from '../../models'
 import { useTranslation } from 'react-i18next'
+import './ArticleWorkspace.css'
 
 const { Text } = Typography
 
@@ -34,42 +33,6 @@ const styles = {
         flexDirection: 'row' as const,
         position: 'relative' as const,
         background: 'var(--initial-review-bg, transparent)',
-    },
-    tocSection: {
-        width: '280px',
-        flexShrink: 0,
-        borderRight: '1px solid var(--initial-review-border, #f0f0f0)',
-        background: 'var(--initial-review-panel-bg, transparent)',
-        display: 'flex',
-        flexDirection: 'column' as const,
-        overflow: 'hidden',
-        transition: 'transform 0.3s ease-in-out',
-        zIndex: 1002,
-    },
-    tocSectionMobile: {
-        position: 'fixed' as const,
-        left: 0,
-        top: 64,
-        height: 'calc(100vh - 64px)',
-        boxShadow: 'var(--initial-review-mobile-shadow, 0 8px 24px rgba(0,0,0,0.15))',
-    },
-    tocSectionHidden: {
-        transform: 'translateX(-100%)',
-    },
-    articleInfo: {
-        padding: '16px',
-        borderBottom: '1px solid var(--initial-review-border, #f0f0f0)',
-        background: 'var(--initial-review-panel-bg, transparent)',
-        flexShrink: 0,
-    },
-    infoCol: {
-        marginBottom: '8px',
-        display: 'flex',
-        flexDirection: 'column' as const,
-    },
-    infoLabel: {
-        marginBottom: '4px',
-        color: 'var(--initial-review-text-secondary, inherit)',
     },
     viewerSection: {
         flex: 1,
@@ -85,24 +48,31 @@ const styles = {
         background: 'var(--initial-review-panel-bg, transparent)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
         gap: '12px',
         flexWrap: 'wrap' as const,
     },
-    tocToggleButton: {
-        position: 'fixed' as const,
-        bottom: '24px',
-        left: '24px',
-        zIndex: 1001,
+    viewerTitle: {
+        display: 'flex',
+        gap: '4px',
+        alignItems: 'center',
     },
-    overlay: {
-        position: 'fixed' as const,
-        top: '64px',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'var(--initial-review-overlay, rgba(0,0,0,0.45))',
-        zIndex: 1000,
+    supplementsList: {
+        display: 'flex',
+        flexDirection: 'column' as const,
+        gap: '8px',
+        maxHeight: '300px',
+        overflowY: 'auto' as const,
+        paddingRight: '4px',
+    },
+    supplementRow: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        border: '1px solid var(--initial-review-border, #f0f0f0)',
+        borderRadius: '8px',
+        padding: '10px 12px',
     },
 } as const
 
@@ -118,6 +88,12 @@ function EditorInitialReview() {
         '--initial-review-overlay': token.colorBgMask,
         '--initial-review-mobile-shadow': token.boxShadowSecondary,
         '--initial-review-text-secondary': token.colorTextSecondary,
+        '--workspace-panel-bg': token.colorBgContainer,
+        '--workspace-border': token.colorBorderSecondary,
+        '--workspace-shadow': token.boxShadowSecondary,
+        '--workspace-accent': token.colorPrimary,
+        '--workspace-accent-soft': token.colorPrimaryBgHover,
+        '--workspace-text-subtle': token.colorTextSecondary,
     }) as React.CSSProperties, [token])
 
     const navigate = useNavigate()
@@ -132,6 +108,7 @@ function EditorInitialReview() {
     const [acceptReason, setAcceptReason] = useState('')
     const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
     const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false)
+    const [isSupplementsModalOpen, setIsSupplementsModalOpen] = useState(false)
     const [isTocVisible, setIsTocVisible] = useState<boolean>(true)
     const [selectedReviewers, setSelectedReviewers] = useState<string[]>([])
     const [isAssigningReviewers, setIsAssigningReviewers] = useState(false)
@@ -376,13 +353,6 @@ function EditorInitialReview() {
         }
     }
 
-    // Handle overlay click to close TOC on mobile
-    const handleOverlayClick = () => {
-        if (isTocVisible) {
-            setIsTocVisible(false)
-        }
-    }
-
     const handleReject = () => {
         if (!rejectReason.trim() || !articleId) return
         submitInitialReview({
@@ -487,173 +457,89 @@ function EditorInitialReview() {
             anchor.click()
             anchor.remove()
             URL.revokeObjectURL(objectUrl)
-        } catch (error) {
-            showError(error instanceof Error ? error.message : t('articleDetails.loadMaterialsFailed'))
+        } catch (downloadError) {
+            showError(downloadError instanceof Error ? downloadError.message : t('articleDetails.loadMaterialsFailed'))
         } finally {
             setDownloadingSupplementId(null)
         }
     }
 
     return (
-        <div style={{ ...styles.root, ...reviewThemeVars }}>
-            {/* Overlay for mobile when TOC is visible */}
-            {isMobile && isTocVisible && (
-                <div style={styles.overlay} onClick={handleOverlayClick} />
-            )}
-
-            {/* Table of Contents Section */}
-            {(!isTocVisible) ? null : (
-            <div
-                style={{
-                    ...styles.tocSection,
-                    ...(isMobile ? styles.tocSectionMobile : {}),
-                    ...(!isTocVisible ? styles.tocSectionHidden : {}),
-                }}
-            >
-                {/* Article Info */}
-                <div style={styles.articleInfo}>
-                    <div style={styles.infoCol}>
-                        <Text type='secondary' style={styles.infoLabel}>
-                            {t('editorInitialReview.info.articleTitle')}
-                        </Text>
-                        <Text strong style={{ display: 'block' }}>
-                            {article.title}
-                        </Text>
-                    </div>
-                    <div style={styles.infoCol}>
-                        <Text type='secondary' style={styles.infoLabel}>
-                            {t('editorInitialReview.info.authors')}
-                        </Text>
-                        <Text>
-                            {authorNames}
-                        </Text>
-                    </div>
-                    <div style={styles.infoCol}>
-                        <Text type='secondary' style={styles.infoLabel}>
-                            {t('editorInitialReview.info.submittedDate')}
-                        </Text>
-                        <Text>
-                            {submittedDate}
-                        </Text>
-                    </div>
-                    <div style={styles.infoCol}>
-                        <Text type='secondary' style={styles.infoLabel}>
-                            {t('editorInitialReview.info.track')}
-                        </Text>
-                        <Text>{trackName}</Text>
-                    </div>
-                    <div style={styles.infoCol}>
-                        <Text type='secondary' style={styles.infoLabel}>
-                            {t('editorInitialReview.info.currentStatus')}
-                        </Text>
-                        <Text>
-                            {statusLabel}
-                        </Text>
-                    </div>
-                    <div style={styles.infoCol}>
-                        <Text type='secondary' style={styles.infoLabel}>
-                            {t('articleDetails.supplements')}
-                        </Text>
-                        {isLoadingMaterials ? (
-                            <Spin size='small' />
-                        ) : (selectedVersionData?.supplements?.length ?? 0) === 0 ? (
-                            <Text type='secondary'>{t('articleDetails.noSupplements')}</Text>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {selectedVersionData?.supplements.map((supplement) => (
-                                    <Button
-                                        key={supplement.id}
-                                        size='small'
-                                        style={{ textAlign: 'left' }}
-                                        onClick={() => {
-                                            void handleDownloadSupplement(supplement)
-                                        }}
-                                        disabled={downloadingSupplementId === supplement.id}
-                                    >
-                                        {supplement.fileName}
-                                    </Button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* TOC */}
-                <div style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    minHeight: 0,
-                    overflow: 'hidden'
-                }}>
-                    <TableOfContents 
-                        items={tocData}
-                        onItemClick={handleTocClick}
-                        onClose={isMobile ? () => setIsTocVisible(false) : undefined}
-                        emptyMessage={t('toc.empty')}
-                    />
-                </div>
-            </div>
-            )}
+        <div className='workspace-root' style={{ ...styles.root, ...reviewThemeVars }}>
             {/* PDF Viewer Section */}
-            <div style={styles.viewerSection}>
+            <div className='workspace-viewer' style={styles.viewerSection}>
                 {/* Header with Decision Buttons */}
-                <div style={styles.viewerHeader}>
-                    <Button
-                        type="text"
-                        icon={isTocVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                        onClick={() => setIsTocVisible(!isTocVisible)}
-                    >
-                        {isTocVisible ? t('editorInitialReview.actions.hideInfo') : t('editorInitialReview.actions.showInfo')}
-                    </Button>
-                    <Button
-                        type="text"
-                        icon={<CloseCircleOutlined />}
-                        danger
-                        onClick={() => setIsRejectDialogOpen(true)}
-                    >
-                        {t('editorInitialReview.actions.reject')}
-                    </Button>
+                <div className='workspace-header' style={styles.viewerHeader}>
+                    <div className='workspace-hero'>
+                        <div style={styles.viewerTitle}>
+                            <Text strong style={{ fontSize: 20, lineHeight: 1.25 }}>{article.title}</Text>
+                            <span className='workspace-kicker'>{statusLabel}</span>
+                        </div>
+                        <div className='workspace-meta'>
+                            <span>{t('editorInitialReview.info.track')}: {trackName}</span>
+                            <span>•</span>
+                            <span>{t('editorInitialReview.info.authors')}: {authorNames}</span>
+                            <span>•</span>
+                            <span>{submittedDate}</span>
+                        </div>
+                    </div>
+                    <div className='workspace-actions'>
+                        <Button
+                            type='default'
+                            icon={<FileTextOutlined />}
+                            onClick={() => setIsSupplementsModalOpen(true)}
+                        >
+                            {t('articleDetails.supplements')}
+                        </Button>
+                        <Button
+                            type='text'
+                            icon={<CloseCircleOutlined />}
+                            danger
+                            onClick={() => setIsRejectDialogOpen(true)}
+                        >
+                            {t('editorInitialReview.actions.reject')}
+                        </Button>
 
-                    <Button
-                        type="primary"
-                        icon={<CheckCircleOutlined />}
-                        disabled={isSubmittingDecision}
-                        onClick={() => setIsAcceptDialogOpen(true)}
-                    >
-                        {t('editorInitialReview.actions.acceptAndInvite')}
-                    </Button>
+                        <Button
+                            type='primary'
+                            icon={<CheckCircleOutlined />}
+                            disabled={isSubmittingDecision}
+                            onClick={() => setIsAcceptDialogOpen(true)}
+                        >
+                            {t('editorInitialReview.actions.acceptAndInvite')}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* PDF Viewer */}
-                <PdfViewer
-                    fileUrl={(() => {
-                        if (!article?.id) return null
-                        const proxyUrl = `${apiBaseUrl}/articles/${article.id}/pdf`
-                        const link = (article.link ?? '').trim()
-                        if (!link) return proxyUrl
-                        if (link.includes('X-Amz-') || link.includes('x-amz-')) return proxyUrl
-                        if (link.endsWith(`/articles/${article.id}/pdf`)) return link
-                        return link
-                    })()}
-                    emptyMessage={t('editorInitialReview.noPdf')}
-                    onDocumentLoadSuccess={handleDocumentLoadSuccess}
-                    jumpToPage={jumpToPage}
-                />
+                <div className='workspace-canvas' style={{ flex: 1, minHeight: 0 }}>
+                    <PdfViewer
+                        fileUrl={(() => {
+                            if (!article?.id) return null
+                            const proxyUrl = `${apiBaseUrl}/articles/${article.id}/pdf`
+                            const link = (article.link ?? '').trim()
+                            if (!link) return proxyUrl
+                            if (link.includes('X-Amz-') || link.includes('x-amz-')) return proxyUrl
+                            if (link.endsWith(`/articles/${article.id}/pdf`)) return link
+                            return link
+                        })()}
+                        emptyMessage={t('editorInitialReview.noPdf')}
+                        onDocumentLoadSuccess={handleDocumentLoadSuccess}
+                        jumpToPage={jumpToPage}
+                        tocPanel={(
+                            <TableOfContents
+                                items={tocData}
+                                onItemClick={handleTocClick}
+                                onClose={() => setIsTocVisible(false)}
+                                emptyMessage={t('toc.empty')}
+                            />
+                        )}
+                        isTocVisible={isTocVisible}
+                        onToggleToc={() => setIsTocVisible((previous) => !previous)}
+                        tocToggleLabel={isTocVisible ? t('editorInitialReview.actions.hideInfo') : t('editorInitialReview.actions.showInfo')}
+                    />
+                </div>
             </div>
-
-            {/* Floating Button for Mobile */}
-            {isMobile && (
-                <Button
-                    style={styles.tocToggleButton}
-                    type="primary"
-                    shape="circle"
-                    size="large"
-                    icon={<MenuOutlined />}
-                    onClick={() => setIsTocVisible(!isTocVisible)}
-                    title={isTocVisible ? t('editorInitialReview.actions.hideInfo') : t('editorInitialReview.actions.showInfo')}
-                />
-            )}
 
             {/* Reject Dialog */}
             <Modal
@@ -790,6 +676,42 @@ function EditorInitialReview() {
                     onChange={(e) => setAcceptReason(e.target.value)}
                     rows={4}
                 />
+            </Modal>
+
+            <Modal
+                title={t('articleDetails.supplements')}
+                open={isSupplementsModalOpen}
+                onCancel={() => setIsSupplementsModalOpen(false)}
+                footer={[
+                    <Button key='close' onClick={() => setIsSupplementsModalOpen(false)}>
+                        {t('editorInitialReview.common.backStep')}
+                    </Button>,
+                ]}
+            >
+                {isLoadingMaterials ? (
+                    <Spin size='small' />
+                ) : (selectedVersionData?.supplements?.length ?? 0) === 0 ? (
+                    <Text type='secondary'>{t('articleDetails.noSupplements')}</Text>
+                ) : (
+                    <div style={styles.supplementsList}>
+                        {selectedVersionData?.supplements.map((supplement) => (
+                            <div key={supplement.id} style={styles.supplementRow}>
+                                <Text ellipsis title={supplement.fileName} style={{ flex: 1 }}>
+                                    {supplement.fileName}
+                                </Text>
+                                <Button
+                                    size='small'
+                                    onClick={() => {
+                                        void handleDownloadSupplement(supplement)
+                                    }}
+                                    loading={downloadingSupplementId === supplement.id}
+                                >
+                                    {t('articleDetails.download')}
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </Modal>
         </div>
     )

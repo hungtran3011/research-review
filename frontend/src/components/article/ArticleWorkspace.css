@@ -1,0 +1,116 @@
+.workspace-root {
+  position: relative;
+  padding: 12px;
+  gap: 0;
+}
+
+.workspace-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.workspace-root > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-panel {
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, #d9d9d9) 78%, transparent);
+  background: color-mix(in srgb, var(--workspace-panel-bg, #fff) 92%, transparent);
+  box-shadow: var(--workspace-shadow, 0 12px 28px rgba(0, 0, 0, 0.12));
+  backdrop-filter: blur(14px);
+}
+
+.workspace-sidebar {
+  margin-right: 12px;
+}
+
+.workspace-viewer {
+  gap: 12px;
+  background-color: transparent;
+}
+
+.workspace-header {
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, #d9d9d9) 78%, transparent);
+  background: color-mix(in srgb, var(--workspace-panel-bg, #fff) 92%, transparent);
+  box-shadow: var(--workspace-shadow, 0 12px 28px rgba(0, 0, 0, 0.12));
+  padding: 14px 16px;
+  margin: 0;
+}
+
+.workspace-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workspace-kicker {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--workspace-accent, #1677ff);
+  background: color-mix(in srgb, var(--workspace-accent-soft, #dbeafe) 58%, transparent);
+}
+
+.workspace-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--workspace-text-subtle, #666);
+  font-size: 12px;
+}
+
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-canvas {
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, #d9d9d9) 78%, transparent);
+  background: color-mix(in srgb, var(--workspace-panel-bg, #fff) 96%, transparent);
+  box-shadow: var(--workspace-shadow, 0 12px 28px rgba(0, 0, 0, 0.12));
+}
+
+.workspace-comments {
+  margin-left: 12px;
+}
+
+@media (max-width: 1024px) {
+  .workspace-root {
+    padding: 0;
+  }
+
+  .workspace-sidebar,
+  .workspace-comments {
+    margin: 0;
+  }
+
+  .workspace-header {
+    border-radius: 0;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .workspace-canvas {
+    border-radius: 0;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
+  }
+}
