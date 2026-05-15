@@ -8,6 +8,8 @@ import { ArticleStatus } from './constants'
 import type { ArticleStatusType } from './constants'
 import type { ArticleDto } from './models'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
+
 
 const { Content, Footer } = Layout
 const { Title, Paragraph, Text } = Typography
@@ -91,15 +93,21 @@ function App() {
                   {t('appHome.landingDescription')}
                 </Paragraph>
                 <Space wrap>
-                  <Button type='primary' href='/signin'>
-                    {t('appHome.signIn')}
-                  </Button>
-                  <Button href='/signup'>
-                    {t('appHome.createAccount')}
-                  </Button>
-                  <Button type='link' href='/help' style={{ padding: 0 }}>
-                    {t('appHome.learnMore')}
-                  </Button>
+                  <Link to='/signin'>
+                    <Button type='primary'>
+                      {t('appHome.signIn')}
+                    </Button>
+                  </Link>
+                  <Link to='/signup'>
+                    <Button>
+                      {t('appHome.createAccount')}
+                    </Button>
+                  </Link>
+                  <Link to='/help'>
+                    <Button type='link' style={{ padding: 0 }}>
+                      {t('appHome.learnMore')}
+                    </Button>
+                  </Link>
                 </Space>
               </Space>
             </Card>
@@ -186,9 +194,11 @@ function App() {
                                 <Space key='status'>
                                   <Badge status={status.color} text={status.label} />
                                 </Space>,
-                                <Button key='view' type='primary' href={`/articles/${article.id}`}>
-                                  {t('appHome.viewDetails')}
-                                </Button>,
+                                <Link to={`/articles/${article.id}`}>
+                                  <Button key='view' type='primary'>
+                                    {t('appHome.viewDetails')}
+                                  </Button>
+                                </Link>,
                               ]}
                             >
                               <List.Item.Meta
@@ -217,12 +227,16 @@ function App() {
 
                   <Card title={t('appHome.quickActionsTitle')}>
                     <Space>
-                      <Button type='primary' href='/articles/submit' icon={<PlusOutlined />}>
-                        {t('appHome.submitNewArticle')}
-                      </Button>
-                      <Button href='/articles' icon={<FileSearchOutlined />}>
-                        {t('appHome.viewMyReviews')}
-                      </Button>
+                      <Link to='/articles/submit'>
+                        <Button type='primary' icon={<PlusOutlined />}>
+                          {t('appHome.submitNewArticle')}
+                        </Button>
+                      </Link>
+                      <Link to='/articles'>
+                        <Button icon={<FileSearchOutlined />}>
+                          {t('appHome.viewMyReviews')}
+                        </Button>
+                      </Link>
                     </Space>
                   </Card>
                 </Space>
@@ -267,9 +281,11 @@ function App() {
       <Footer style={{ textAlign: 'center' }}>
         <Space size={8}>
           <Text>{t('appHome.footerCopyright')}</Text>
-          <Button type='link' href='/help' style={{ padding: 0 }}>
-            {t('nav.help')}
-          </Button>
+          <Link to='/help'>
+            <Button type='link' style={{ padding: 0 }}>
+              {t('nav.help')}
+            </Button>
+          </Link>
         </Space>
       </Footer>
     </Layout>

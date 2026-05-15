@@ -10,7 +10,8 @@ import {
   UserOutlined,
   MenuOutlined,
 } from '@ant-design/icons'
-import { NavLink, useNavigate } from 'react-router'
+import { NavLink, useNavigate, Link } from 'react-router'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useThemeStore } from '../../stores/themeStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -156,9 +157,11 @@ function Nav() {
             </Avatar>
           </Dropdown>
         ) : (
-          <Button type='primary' href='/signin'>
-            {t('nav.signInSignUp')}
-          </Button>
+          <Link to='/signin'>
+            <Button type='primary'>
+              {t('nav.signInSignUp')}
+            </Button>
+          </Link>
         )}
 
         <Space size={4}>
