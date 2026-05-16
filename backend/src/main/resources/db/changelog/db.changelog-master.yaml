@@ -2,3 +2,5 @@ databaseChangeLog:
   - includeAll:
       path: db/changelog/changes
       errorIfMissingOrEmpty: false
+  - include:
+      file: db/changelog/2026/05/16-01-changelog.xml

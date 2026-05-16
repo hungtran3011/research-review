@@ -1,0 +1,989 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1778943339379-1" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><sequenceExists sequenceName="revinfo_seq"/></not></preConditions>
+        <createSequence incrementBy="50" sequenceName="revinfo_seq" startValue="1"/>
+    </changeSet>
+    <changeSet id="1778943339379-2" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="article"/></not></preConditions>
+        <createTable tableName="article">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="article_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="abstract" type="VARCHAR(255)"/>
+            <column name="conclusion" type="VARCHAR(255)"/>
+            <column name="initial_review_next_steps" type="VARCHAR(255)"/>
+            <column name="initial_review_note" type="VARCHAR(255)"/>
+            <column name="link" type="VARCHAR(2048)"/>
+            <column name="status" type="SMALLINT"/>
+            <column name="title" type="VARCHAR(255)"/>
+            <column name="track_id" type="VARCHAR(255)"/>
+            <column name="conference_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-3" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="article_aud"/></not></preConditions>
+        <createTable tableName="article_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="abstract" type="VARCHAR(255)"/>
+            <column name="conclusion" type="VARCHAR(255)"/>
+            <column name="initial_review_next_steps" type="VARCHAR(255)"/>
+            <column name="initial_review_note" type="VARCHAR(255)"/>
+            <column name="link" type="VARCHAR(2048)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-4" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="article_author"/></not></preConditions>
+        <createTable tableName="article_author">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="article_author_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="author_order" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="author_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-5" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="article_topic"/></not></preConditions>
+        <createTable tableName="article_topic">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="article_topic_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="topic_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-6" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="article_version"/></not></preConditions>
+        <createTable tableName="article_version">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="article_version_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="updated_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column defaultValueBoolean="false" name="deleted" type="BOOLEAN"/>
+            <column name="article_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="main_attachment_id" type="VARCHAR(255)"/>
+            <column name="submitted_by" type="VARCHAR(255)"/>
+            <column name="submitted_at" type="timestamp"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-7" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="article_version_aud"/></not></preConditions>
+        <createTable tableName="article_version_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="submitted_at" type="timestamp"/>
+            <column name="version_number" type="INT"/>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="main_attachment_id" type="VARCHAR(255)"/>
+            <column name="submitted_by" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-8" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="attachment"/></not></preConditions>
+        <createTable tableName="attachment">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="attachment_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="checksum" type="VARCHAR(255)"/>
+            <column name="file_name" type="VARCHAR(255)"/>
+            <column name="file_size" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="kind" type="VARCHAR(255)"/>
+            <column name="mime_type" type="VARCHAR(255)"/>
+            <column name="s3key" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="uploaded_by" type="VARCHAR(255)"/>
+            <column name="article_version_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-9" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="attachment_aud"/></not></preConditions>
+        <createTable tableName="attachment_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="uploaded_by" type="VARCHAR(255)"/>
+            <column name="article_version_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-10" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="author"/></not></preConditions>
+        <createTable tableName="author">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="author_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="institution_id" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-11" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="author_aud"/></not></preConditions>
+        <createTable tableName="author_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="institution_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-12" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="comment"/></not></preConditions>
+        <createTable tableName="comment">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="comment_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="author_id" type="VARCHAR(255)"/>
+            <column name="author_name" type="VARCHAR(255)"/>
+            <column name="content" type="CLOB"/>
+            <column name="thread_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-13" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="comment_thread"/></not></preConditions>
+        <createTable tableName="comment_thread">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="comment_thread_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="height" type="INT"/>
+            <column name="page_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="section" type="VARCHAR(255)"/>
+            <column name="selected_text" type="CLOB"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="width" type="INT"/>
+            <column name="x" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="y" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="reviewer_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-14" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="conference"/></not></preConditions>
+        <createTable tableName="conference">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="conference_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="minimum_completed_reviews" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="season" type="VARCHAR(255)"/>
+            <column name="short_name" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="submission_deadline" type="timestamp"/>
+            <column name="year" type="INT"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-15" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="editor"/></not></preConditions>
+        <createTable tableName="editor">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="editor_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="track_id" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-16" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="editor_aud"/></not></preConditions>
+        <createTable tableName="editor_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="track_id" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-17" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="institution"/></not></preConditions>
+        <createTable tableName="institution">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="institution_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="country" type="VARCHAR(255)"/>
+            <column name="logo" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="website" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-18" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="notification"/></not></preConditions>
+        <createTable tableName="notification">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="notification_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="context_id" type="VARCHAR(500)"/>
+            <column name="context_type" type="VARCHAR(100)"/>
+            <column name="payload" type="CLOB"/>
+            <column name="read_at" type="timestamp"/>
+            <column name="type" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-19" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="reviewer"/></not></preConditions>
+        <createTable tableName="reviewer">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="reviewer_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="institution_id" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-20" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="reviewer_article"/></not></preConditions>
+        <createTable tableName="reviewer_article">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="reviewer_article_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="display_index" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="invited_at" type="timestamp"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="reviewer_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-21" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="reviewer_aud"/></not></preConditions>
+        <createTable tableName="reviewer_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="institution_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-22" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="reviewer_invite"/></not></preConditions>
+        <createTable tableName="reviewer_invite">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="reviewer_invite_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="article_id" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="expires_at" type="timestamp"/>
+            <column name="token_hash" type="VARCHAR(255)"/>
+            <column name="used_at" type="timestamp"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-23" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="revinfo"/></not></preConditions>
+        <createTable tableName="revinfo">
+            <column name="id" type="INT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="revinfo_pkey"/>
+            </column>
+            <column name="timestamp" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-24" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="structured_review"/></not></preConditions>
+        <createTable tableName="structured_review">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="structured_review_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="confidential_remarks" type="VARCHAR(255)"/>
+            <column name="recommendation" type="VARCHAR(255)"/>
+            <column name="submitted_at" type="timestamp"/>
+            <column name="summary_notes" type="VARCHAR(255)"/>
+            <column name="reviewer_article_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-25" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="structured_review_score"/></not></preConditions>
+        <createTable tableName="structured_review_score">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="structured_review_score_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="criterion" type="VARCHAR(255)"/>
+            <column name="score" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="structured_review_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-26" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="templates"/></not></preConditions>
+        <createTable tableName="templates">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="templates_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="bucket_path" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="variables" type="CLOB"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-27" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="topic"/></not></preConditions>
+        <createTable tableName="topic">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="topic_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="is_active" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="order_index" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conference_id" type="VARCHAR(255)"/>
+            <column name="track_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-28" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="track"/></not></preConditions>
+        <createTable tableName="track">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="track_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="is_active" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="review_policy_min_completed_reviews" type="INT"/>
+            <column name="conference_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-29" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="user_conference_membership"/></not></preConditions>
+        <createTable tableName="user_conference_membership">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="user_conference_membership_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="membership_role" type="VARCHAR(255)"/>
+            <column name="conference_id" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-30" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="user_roles"/></not></preConditions>
+        <createTable tableName="user_roles">
+            <column name="user_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="roles" type="VARCHAR(255)"/>
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="user_roles_pk"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column defaultValueBoolean="false" name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-31" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="user_roles_aud"/></not></preConditions>
+        <createTable tableName="user_roles_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="roles" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-32" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="users"/></not></preConditions>
+        <createTable tableName="users">
+            <column defaultValueComputed="gen_random_uuid()" name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="users_pkey"/>
+            </column>
+            <column name="created_at" type="timestamp"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="deleted" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp"/>
+            <column name="updated_by" type="VARCHAR(255)"/>
+            <column name="academic_status" type="SMALLINT"/>
+            <column name="avatar_id" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="gender" type="SMALLINT"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="nationality" type="VARCHAR(255)"/>
+            <column name="role" type="SMALLINT"/>
+            <column name="status" type="SMALLINT"/>
+            <column name="institution_id" type="VARCHAR(255)"/>
+            <column name="track_id" type="VARCHAR(255)"/>
+            <column defaultValue="USER" name="global_role" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-33" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><tableExists tableName="users_aud"/></not></preConditions>
+        <createTable tableName="users_aud">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="SMALLINT"/>
+            <column name="academic_status" type="SMALLINT"/>
+            <column name="avatar_id" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="gender" type="SMALLINT"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="nationality" type="VARCHAR(255)"/>
+            <column name="role" type="SMALLINT"/>
+            <column name="status" type="SMALLINT"/>
+            <column name="institution_id" type="VARCHAR(255)"/>
+            <column name="track_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="1778943339379-34" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="article_aud_pkey" tableName="article_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="article_aud_pkey" tableName="article_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-35" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="article_version_aud_pkey" tableName="article_version_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="article_version_aud_pkey" tableName="article_version_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-36" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="attachment_aud_pkey" tableName="attachment_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="attachment_aud_pkey" tableName="attachment_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-37" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="author_aud_pkey" tableName="author_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="author_aud_pkey" tableName="author_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-38" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="editor_aud_pkey" tableName="editor_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="editor_aud_pkey" tableName="editor_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-39" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="reviewer_aud_pkey" tableName="reviewer_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="reviewer_aud_pkey" tableName="reviewer_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-40" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="user_roles_aud_pkey" tableName="user_roles_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="user_roles_aud_pkey" tableName="user_roles_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-41" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="users_aud_pkey" tableName="users_aud"/></not></preConditions>
+        <addPrimaryKey columnNames="rev, id" constraintName="users_aud_pkey" tableName="users_aud"/>
+    </changeSet>
+    <changeSet id="1778943339379-42" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukdpyjaivxjf1ms3d3e0uv1j8ty" tableName="author"/></not></preConditions>
+        <addUniqueConstraint columnNames="user_id" constraintName="ukdpyjaivxjf1ms3d3e0uv1j8ty" tableName="author"/>
+    </changeSet>
+    <changeSet id="1778943339379-43" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukgrm3merlhi91rac0mu26swyhf" tableName="author"/></not></preConditions>
+        <addUniqueConstraint columnNames="email" constraintName="ukgrm3merlhi91rac0mu26swyhf" tableName="author"/>
+    </changeSet>
+    <changeSet id="1778943339379-44" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukh8t15e4s3v8vv07tp9rrt3qy3" tableName="reviewer"/></not></preConditions>
+        <addUniqueConstraint columnNames="email" constraintName="ukh8t15e4s3v8vv07tp9rrt3qy3" tableName="reviewer"/>
+    </changeSet>
+    <changeSet id="1778943339379-45" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukjhrniu8kj891sx2i73mgtgc0v" tableName="editor"/></not></preConditions>
+        <addUniqueConstraint columnNames="user_id" constraintName="ukjhrniu8kj891sx2i73mgtgc0v" tableName="editor"/>
+    </changeSet>
+    <changeSet id="1778943339379-46" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukmahgp7nisohrremaa2hh0lljr" tableName="reviewer_invite"/></not></preConditions>
+        <addUniqueConstraint columnNames="token_hash" constraintName="ukmahgp7nisohrremaa2hh0lljr"
+                             tableName="reviewer_invite"/>
+    </changeSet>
+    <changeSet id="1778943339379-47" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukmddqbnwebyrfciyki2mwlkgyh" tableName="reviewer"/></not></preConditions>
+        <addUniqueConstraint columnNames="user_id" constraintName="ukmddqbnwebyrfciyki2mwlkgyh" tableName="reviewer"/>
+    </changeSet>
+    <changeSet id="1778943339379-48" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukn79isk0mt3i3yd7lpuyrjnxtp" tableName="editor"/></not></preConditions>
+        <addUniqueConstraint columnNames="track_id" constraintName="ukn79isk0mt3i3yd7lpuyrjnxtp" tableName="editor"/>
+    </changeSet>
+    <changeSet id="1778943339379-49" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="uktf9p7r6kl4cjw22y11nli3sxv" tableName="user_roles"/></not></preConditions>
+        <addUniqueConstraint columnNames="user_id, roles" constraintName="uktf9p7r6kl4cjw22y11nli3sxv"
+                             tableName="user_roles"/>
+    </changeSet>
+    <changeSet id="1778943339379-50" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="uq_article_version_article_version_deleted" tableName="article_version"/></not></preConditions>
+        <addUniqueConstraint columnNames="article_id, version_number, deleted"
+                             constraintName="uq_article_version_article_version_deleted" tableName="article_version"/>
+    </changeSet>
+    <changeSet id="1778943339379-51" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="uq_editor_user_track_deleted" tableName="editor"/></not></preConditions>
+        <addUniqueConstraint columnNames="user_id, track_id, deleted" constraintName="uq_editor_user_track_deleted" tableName="editor"/>
+    </changeSet>
+    <changeSet id="1778943339379-52" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><indexExists indexName="idx_article_version_article_version" tableName="article_version"/></not></preConditions>
+        <createIndex indexName="idx_article_version_article_version" tableName="article_version">
+            <column name="article_id"/>
+            <column name="version_number"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1778943339379-54" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk1lgufvl70x9t8hlwr9xn5uni4" foreignKeyTableName="topic"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="track_id" baseTableName="topic"
+                                 constraintName="fk1lgufvl70x9t8hlwr9xn5uni4" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="track"/>
+    </changeSet>
+    <changeSet id="1778943339379-55" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk2dia9mgsrvy0lt9flxn1tssba" foreignKeyTableName="users"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="track_id" baseTableName="users"
+                                 constraintName="fk2dia9mgsrvy0lt9flxn1tssba" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="track"/>
+    </changeSet>
+    <changeSet id="1778943339379-56" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk2j8ntbkobi8sligq8dlaf0d6u" foreignKeyTableName="structured_review"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="reviewer_article_id" baseTableName="structured_review"
+                                 constraintName="fk2j8ntbkobi8sligq8dlaf0d6u" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="reviewer_article"/>
+    </changeSet>
+    <changeSet id="1778943339379-57" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk2mmm3iy9yujii9nllyfhi5m2y" foreignKeyTableName="author"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="institution_id" baseTableName="author"
+                                 constraintName="fk2mmm3iy9yujii9nllyfhi5m2y" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="institution"/>
+    </changeSet>
+    <changeSet id="1778943339379-58" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk30kv57jn4n3hkni2iq2adwl0h" foreignKeyTableName="article_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="article_aud"
+                                 constraintName="fk30kv57jn4n3hkni2iq2adwl0h" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-59" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk41luvy3xg0dw1uxdnhvpoqfnn" foreignKeyTableName="attachment"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_id" baseTableName="attachment"
+                                 constraintName="fk41luvy3xg0dw1uxdnhvpoqfnn" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article"/>
+    </changeSet>
+    <changeSet id="1778943339379-60" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk4gh4hava2an2qfcslwass6ds" foreignKeyTableName="author_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="author_aud"
+                                 constraintName="fk4gh4hava2an2qfcslwass6ds" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-61" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk57cg9v7cvam7lv6v4pkin8uo3" foreignKeyTableName="reviewer"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="institution_id" baseTableName="reviewer"
+                                 constraintName="fk57cg9v7cvam7lv6v4pkin8uo3" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="institution"/>
+    </changeSet>
+    <changeSet id="1778943339379-62" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk6d0n0wspd5755aanjrtcn1vts" foreignKeyTableName="comment_thread"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_id" baseTableName="comment_thread"
+                                 constraintName="fk6d0n0wspd5755aanjrtcn1vts" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article"/>
+    </changeSet>
+    <changeSet id="1778943339379-63" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk6w2p3a9lvtqrxfp4p1vhbsnb" foreignKeyTableName="reviewer"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="reviewer"
+                                 constraintName="fk6w2p3a9lvtqrxfp4p1vhbsnb" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-64" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk7n3ushem1af1p055mfka8rh7h" foreignKeyTableName="reviewer_article"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="reviewer_id" baseTableName="reviewer_article"
+                                 constraintName="fk7n3ushem1af1p055mfka8rh7h" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="reviewer"/>
+    </changeSet>
+    <changeSet id="1778943339379-65" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk9ah4s5xtoan2x6w0yofx6x8qe" foreignKeyTableName="editor"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="editor"
+                                 constraintName="fk9ah4s5xtoan2x6w0yofx6x8qe" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-66" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk_article_version_article" foreignKeyTableName="article_version"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_id" baseTableName="article_version"
+                                 constraintName="fk_article_version_article" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article"/>
+    </changeSet>
+    <changeSet id="1778943339379-67" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk_article_version_main_attachment" foreignKeyTableName="article_version"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="main_attachment_id" baseTableName="article_version"
+                                 constraintName="fk_article_version_main_attachment" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="attachment"/>
+    </changeSet>
+    <changeSet id="1778943339379-68" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk_article_version_submitted_by" foreignKeyTableName="article_version"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="submitted_by" baseTableName="article_version"
+                                 constraintName="fk_article_version_submitted_by" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-69" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fk_attachment_article_version" foreignKeyTableName="attachment"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_version_id" baseTableName="attachment"
+                                 constraintName="fk_attachment_article_version" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article_version"/>
+
+        <createIndex indexName="idx_attachment_article_version_id" tableName="attachment">
+            <column name="article_version_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="1778943339379-70" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fka8c24dxad2utn3021054iqpo9" foreignKeyTableName="attachment"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="uploaded_by" baseTableName="attachment"
+                                 constraintName="fka8c24dxad2utn3021054iqpo9" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-71" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkabuj6t0fxjxbkakqq4yvtiiq4" foreignKeyTableName="editor_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="editor_aud"
+                                 constraintName="fkabuj6t0fxjxbkakqq4yvtiiq4" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-72" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkbyi1oqcyg0l6rpmpqkoc77cbd" foreignKeyTableName="article_author"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_id" baseTableName="article_author"
+                                 constraintName="fkbyi1oqcyg0l6rpmpqkoc77cbd" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article"/>
+    </changeSet>
+    <changeSet id="1778943339379-73" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkc4vk4tui2la36415jpgm9leoq" foreignKeyTableName="users_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="users_aud"
+                                 constraintName="fkc4vk4tui2la36415jpgm9leoq" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-74" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkc8u4pf4tk9k304oxwwv9l1lye" foreignKeyTableName="editor"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="track_id" baseTableName="editor"
+                                 constraintName="fkc8u4pf4tk9k304oxwwv9l1lye" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="track"/>
+    </changeSet>
+    <changeSet id="1778943339379-75" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkcwdwytwkxg5cgyxv20us0be2b" foreignKeyTableName="article"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="track_id" baseTableName="article"
+                                 constraintName="fkcwdwytwkxg5cgyxv20us0be2b" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="track"/>
+    </changeSet>
+    <changeSet id="1778943339379-76" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkdj1of358jd4aw4birq72oo65f" foreignKeyTableName="article"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="conference_id" baseTableName="article"
+                                 constraintName="fkdj1of358jd4aw4birq72oo65f" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="conference"/>
+    </changeSet>
+    <changeSet id="1778943339379-77" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkes3l5tviwmnu2d0gy350kdfht" foreignKeyTableName="users"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="institution_id" baseTableName="users"
+                                 constraintName="fkes3l5tviwmnu2d0gy350kdfht" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="institution"/>
+    </changeSet>
+    <changeSet id="1778943339379-78" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkg5d9474r1oeaw1mus6wno60p1" foreignKeyTableName="attachment_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="attachment_aud"
+                                 constraintName="fkg5d9474r1oeaw1mus6wno60p1" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-79" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkgyjedmlfb0ra9nn4m5mvu192q" foreignKeyTableName="article_author"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="author_id" baseTableName="article_author"
+                                 constraintName="fkgyjedmlfb0ra9nn4m5mvu192q" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="author"/>
+    </changeSet>
+    <changeSet id="1778943339379-80" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkh274qm7ckq2klxyexsn1awf4" foreignKeyTableName="article_topic"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_id" baseTableName="article_topic"
+                                 constraintName="fkh274qm7ckq2klxyexsn1awf4" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article"/>
+    </changeSet>
+    <changeSet id="1778943339379-81" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkhfh9dx7w3ubf1co1vdev94g3f" foreignKeyTableName="user_roles"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="user_roles"
+                                 constraintName="fkhfh9dx7w3ubf1co1vdev94g3f" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-82" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fknk4ftb5am9ubmkv1661h15ds9" foreignKeyTableName="notification"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="notification"
+                                 constraintName="fknk4ftb5am9ubmkv1661h15ds9" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-83" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fko6w1n5rmdd6f325rk1ifkun21" foreignKeyTableName="comment_thread"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="reviewer_id" baseTableName="comment_thread"
+                                 constraintName="fko6w1n5rmdd6f325rk1ifkun21" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="reviewer"/>
+    </changeSet>
+    <changeSet id="1778943339379-84" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkoek9kqj6jhs4fcxslbxbwga0j" foreignKeyTableName="reviewer_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="reviewer_aud"
+                                 constraintName="fkoek9kqj6jhs4fcxslbxbwga0j" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-85" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkox6xyy64fyq0y3dvv5ve53a0h" foreignKeyTableName="user_roles_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="user_roles_aud"
+                                 constraintName="fkox6xyy64fyq0y3dvv5ve53a0h" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-86" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkp1r5hvde57iga1d8swbd302xt" foreignKeyTableName="topic"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="conference_id" baseTableName="topic"
+                                 constraintName="fkp1r5hvde57iga1d8swbd302xt" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="conference"/>
+    </changeSet>
+    <changeSet id="1778943339379-87" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkp8hu5jmolkbr7rifpesi71gu0" foreignKeyTableName="user_conference_membership"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="user_conference_membership"
+                                 constraintName="fkp8hu5jmolkbr7rifpesi71gu0" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-88" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkpeii3eutw32g1p5fhj2cy3v7r" foreignKeyTableName="structured_review_score"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="structured_review_id" baseTableName="structured_review_score"
+                                 constraintName="fkpeii3eutw32g1p5fhj2cy3v7r" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="structured_review"/>
+    </changeSet>
+    <changeSet id="1778943339379-89" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkqhtybqur3lfhup9k7vnyo2g82" foreignKeyTableName="author"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="author"
+                                 constraintName="fkqhtybqur3lfhup9k7vnyo2g82" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1778943339379-90" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fkrq9ymyesbum37d7ltidmc7lo0" foreignKeyTableName="article_topic"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="topic_id" baseTableName="article_topic"
+                                 constraintName="fkrq9ymyesbum37d7ltidmc7lo0" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="topic"/>
+    </changeSet>
+    <changeSet id="1778943339379-91" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fksiwywg88b1umvbp3rbyg3evls" foreignKeyTableName="comment"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="thread_id" baseTableName="comment"
+                                 constraintName="fksiwywg88b1umvbp3rbyg3evls" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="comment_thread"/>
+    </changeSet>
+    <changeSet id="1778943339379-92" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fktf6uaje3anthyxpnccxxj2xg3" foreignKeyTableName="article_version_aud"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="rev" baseTableName="article_version_aud"
+                                 constraintName="fktf6uaje3anthyxpnccxxj2xg3" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="revinfo"/>
+    </changeSet>
+    <changeSet id="1778943339379-93" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fktftmh4esh3ey5s83ycc2ew0ps" foreignKeyTableName="reviewer_article"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="article_id" baseTableName="reviewer_article"
+                                 constraintName="fktftmh4esh3ey5s83ycc2ew0ps" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="article"/>
+    </changeSet>
+    <changeSet id="1778943339379-94" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fktl09w4kgq67natey90ya19kqs" foreignKeyTableName="track"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="conference_id" baseTableName="track"
+                                 constraintName="fktl09w4kgq67natey90ya19kqs" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="conference"/>
+    </changeSet>
+    <changeSet id="1778943339379-95" author="T14s 2th">
+        <preConditions onFail="MARK_RAN"><not><foreignKeyConstraintExists foreignKeyName="fktl0enx520posfmbyh24h27ory" foreignKeyTableName="user_conference_membership"/></not></preConditions>
+        <addForeignKeyConstraint baseColumnNames="conference_id" baseTableName="user_conference_membership"
+                                 constraintName="fktl0enx520posfmbyh24h27ory" onDelete="NO ACTION"
+                                 referencedColumnNames="id" referencedTableName="conference"/>
+    </changeSet>
+
+</databaseChangeLog>
