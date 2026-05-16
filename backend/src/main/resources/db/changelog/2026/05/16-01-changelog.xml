@@ -648,35 +648,35 @@
         </createTable>
     </changeSet>
     <changeSet id="1778943339379-34" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="article_aud_pkey" tableName="article_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="article_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="article_aud_pkey" tableName="article_aud"/>
     </changeSet>
     <changeSet id="1778943339379-35" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="article_version_aud_pkey" tableName="article_version_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="article_version_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="article_version_aud_pkey" tableName="article_version_aud"/>
     </changeSet>
     <changeSet id="1778943339379-36" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="attachment_aud_pkey" tableName="attachment_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="attachment_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="attachment_aud_pkey" tableName="attachment_aud"/>
     </changeSet>
     <changeSet id="1778943339379-37" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="author_aud_pkey" tableName="author_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="author_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="author_aud_pkey" tableName="author_aud"/>
     </changeSet>
     <changeSet id="1778943339379-38" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="editor_aud_pkey" tableName="editor_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="editor_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="editor_aud_pkey" tableName="editor_aud"/>
     </changeSet>
     <changeSet id="1778943339379-39" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="reviewer_aud_pkey" tableName="reviewer_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="reviewer_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="reviewer_aud_pkey" tableName="reviewer_aud"/>
     </changeSet>
     <changeSet id="1778943339379-40" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="user_roles_aud_pkey" tableName="user_roles_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="user_roles_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="user_roles_aud_pkey" tableName="user_roles_aud"/>
     </changeSet>
     <changeSet id="1778943339379-41" author="T14s 2th">
-        <preConditions onFail="MARK_RAN"><not><primaryKeyExists constraintName="users_aud_pkey" tableName="users_aud"/></not></preConditions>
+        <preConditions onFail="MARK_RAN"><not><primaryKeyExists tableName="users_aud"/></not></preConditions>
         <addPrimaryKey columnNames="rev, id" constraintName="users_aud_pkey" tableName="users_aud"/>
     </changeSet>
     <changeSet id="1778943339379-42" author="T14s 2th">
@@ -691,10 +691,13 @@
         <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukh8t15e4s3v8vv07tp9rrt3qy3" tableName="reviewer"/></not></preConditions>
         <addUniqueConstraint columnNames="email" constraintName="ukh8t15e4s3v8vv07tp9rrt3qy3" tableName="reviewer"/>
     </changeSet>
+    <!-- Commented out due to duplicate user_id entries in editor table. 
+         The composite constraint in changeSet 51 is more appropriate.
     <changeSet id="1778943339379-45" author="T14s 2th">
         <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukjhrniu8kj891sx2i73mgtgc0v" tableName="editor"/></not></preConditions>
         <addUniqueConstraint columnNames="user_id" constraintName="ukjhrniu8kj891sx2i73mgtgc0v" tableName="editor"/>
     </changeSet>
+    -->
     <changeSet id="1778943339379-46" author="T14s 2th">
         <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukmahgp7nisohrremaa2hh0lljr" tableName="reviewer_invite"/></not></preConditions>
         <addUniqueConstraint columnNames="token_hash" constraintName="ukmahgp7nisohrremaa2hh0lljr"
@@ -704,10 +707,12 @@
         <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukmddqbnwebyrfciyki2mwlkgyh" tableName="reviewer"/></not></preConditions>
         <addUniqueConstraint columnNames="user_id" constraintName="ukmddqbnwebyrfciyki2mwlkgyh" tableName="reviewer"/>
     </changeSet>
+    <!-- Commented out as multiple editors can belong to the same track.
     <changeSet id="1778943339379-48" author="T14s 2th">
         <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="ukn79isk0mt3i3yd7lpuyrjnxtp" tableName="editor"/></not></preConditions>
         <addUniqueConstraint columnNames="track_id" constraintName="ukn79isk0mt3i3yd7lpuyrjnxtp" tableName="editor"/>
     </changeSet>
+    -->
     <changeSet id="1778943339379-49" author="T14s 2th">
         <preConditions onFail="MARK_RAN"><not><uniqueConstraintExists constraintName="uktf9p7r6kl4cjw22y11nli3sxv" tableName="user_roles"/></not></preConditions>
         <addUniqueConstraint columnNames="user_id, roles" constraintName="uktf9p7r6kl4cjw22y11nli3sxv"
