@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 set -e
 
-APP_JAR=/app/app.jar
+# (Not used when running extracted layered JARs)
+# APP_JAR=/app/app.jar
 PK_FILE=/run/secrets/private_key.pem
 PUB_FILE=/run/secrets/public_key.pem
 
@@ -17,7 +18,7 @@ start_with_pems() {
     -Dcustom.jwt-public-pem-key="$PUBLIC_PEM" \
     -DJWT_PRIVATE_PEM_KEY="$PRIVATE_PEM" \
     -DJWT_PUBLIC_PEM_KEY="$PUBLIC_PEM" \
-    -jar "$APP_JAR"
+    org.springframework.boot.loader.launch.JarLauncher
 }
 
 # Prefer mounted secret files (K8s / docker secrets / bind mounts)
@@ -42,4 +43,4 @@ fi
 
 # Last fallback: run jar without passing keys (will fail if JwtConfig requires PEMs)
 echo "[entrypoint] No keys provided via files or env vars, starting without jwt properties"
-exec java -jar "$APP_JAR"
+exec java org.springframework.boot.loader.launch.JarLauncher
