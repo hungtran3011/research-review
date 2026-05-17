@@ -13,11 +13,13 @@ import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.slf4j.LoggerFactory
 
 @RestControllerAdvice
 class ApiExceptionHandler(
     private val messageSource: MessageSource,
 ) {
+    private val log = LoggerFactory.getLogger(ApiExceptionHandler::class.java)
 
     private fun msg(code: String): String = messageSource.getMessage(code, null, LocaleContextHolder.getLocale()) ?: code
     private fun resolveMessage(message: String?, fallbackCode: String): String {
@@ -50,7 +52,8 @@ class ApiExceptionHandler(
     }
 
     @ExceptionHandler(IllegalArgumentException::class)
-    fun handleIllegalArgument(e: IllegalArgumentException, _request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
+    fun handleIllegalArgument(e: IllegalArgumentException, request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
+        log.error("Illegal argument exception at ${request.requestURI}", e)
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             BaseResponseDto(
                 code = 400,
@@ -83,7 +86,8 @@ class ApiExceptionHandler(
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneric(e: Exception, _request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
+    fun handleGeneric(e: Exception, request: HttpServletRequest): ResponseEntity<BaseResponseDto<Any>> {
+        log.error("Unhandled server exception at ${request.requestURI}", e)
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             BaseResponseDto(
                 code = 500,
