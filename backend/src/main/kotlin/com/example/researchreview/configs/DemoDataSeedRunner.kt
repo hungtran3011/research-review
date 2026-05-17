@@ -98,21 +98,20 @@ class DemoDataSeedRunner(
             }
         )
 
-        val trackNlp = Track().apply {
+        val trackNlp = trackRepository.save(Track().apply {
             name = "Natural Language Processing"
             description = "NLP track"
             isActive = true
             reviewPolicyMinCompletedReviews = 3
             this.conference = conference
-        }
-        val trackIr = Track().apply {
+        })
+        val trackIr = trackRepository.save(Track().apply {
             name = "Information Retrieval"
             description = "IR track"
             isActive = true
             reviewPolicyMinCompletedReviews = 3
             this.conference = conference
-        }
-        trackRepository.saveAll(listOf(trackNlp, trackIr))
+        })
 
         val topicLlmEval = createTopic("LLM Evaluation", conference, trackNlp, 1)
         val topicPeerReview = createTopic("Peer Review Automation", conference, trackNlp, 2)
@@ -174,7 +173,7 @@ class DemoDataSeedRunner(
         val reviewer2 = findOrCreateReviewer(reviewer2User.name, reviewer2User.email, institutionB, reviewer2User)
         val reviewer3 = findOrCreateReviewer(reviewer3User.name, reviewer3User.email, institutionA, reviewer3User)
 
-        val article = Article().apply {
+        val article = articleRepository.save(Article().apply {
             title = "Seed Article: Conference-Centered Peer Review"
             abstract = "Seed article for testing conference/track/topic and structured review flows"
             conclusion = "This is seeded local data to speed up testing"
@@ -184,8 +183,7 @@ class DemoDataSeedRunner(
             this.track = trackNlp
             initialReviewNote = "Scope and format checks passed"
             initialReviewNextSteps = "Proceed with assigned reviewers"
-        }
-        articleRepository.save(article)
+        })
 
         articleAuthorRepository.save(ArticleAuthor().apply {
             this.article = article
@@ -265,7 +263,7 @@ class DemoDataSeedRunner(
         }
 
         // Additional article to test chair-decision-ready state.
-        val readyArticle = Article().apply {
+        val readyArticle = articleRepository.save(Article().apply {
             title = "Seed Article: Ready For Chair Decision"
             abstract = "Seeded article with completed structured reviews"
             conclusion = "Ready state for chair decision tests"
@@ -275,8 +273,7 @@ class DemoDataSeedRunner(
             this.track = trackIr
             initialReviewNote = "Passed screening"
             initialReviewNextSteps = "Chair can decide"
-        }
-        articleRepository.save(readyArticle)
+        })
 
         articleAuthorRepository.save(ArticleAuthor().apply {
             this.article = readyArticle
