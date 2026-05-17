@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.CommentCreateRequestDto
 import com.example.researchreview.dtos.CommentReplyRequestDto
@@ -11,8 +12,8 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -29,14 +30,24 @@ class CommentController(
 
     @GetMapping("/articles/{articleId}/comments")
     fun list(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<CommentThreadDto>>> {
-        val threads = commentService.listThreads(articleId)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Comments retrieved",
-                data = threads
+        return try {
+            val threads = commentService.listThreads(articleId)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "Comments retrieved",
+                    data = threads
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @PostMapping("/articles/{articleId}/comments")
@@ -44,14 +55,24 @@ class CommentController(
         @PathVariable articleId: String,
         @Valid @RequestBody request: CommentCreateRequestDto
     ): ResponseEntity<BaseResponseDto<CommentThreadDto>> {
-        val created = commentService.createThread(articleId, request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-            BaseResponseDto(
-                code = 201,
-                message = "Comment added",
-                data = created
+        return try {
+            val created = commentService.createThread(articleId, request)
+            ResponseEntity.status(HttpStatus.CREATED).body(
+                BaseResponseDto(
+                    code = 201,
+                    message = "Comment added",
+                    data = created
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @PostMapping("/comments/{threadId}/replies")
@@ -69,6 +90,7 @@ class CommentController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
@@ -93,6 +115,7 @@ class CommentController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
@@ -116,6 +139,7 @@ class CommentController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,

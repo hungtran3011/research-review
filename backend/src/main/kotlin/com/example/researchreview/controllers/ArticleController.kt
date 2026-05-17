@@ -1,6 +1,7 @@
 package com.example.researchreview.controllers
 
 import com.example.researchreview.constants.ArticleStatus
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.ArticleDto
 import com.example.researchreview.dtos.ArticleDashboardStatsDto
 import com.example.researchreview.dtos.ArticleRequestDto
@@ -16,7 +17,6 @@ import com.example.researchreview.services.ArticlesService
 import com.example.researchreview.services.ReviewerService
 import jakarta.persistence.EntityNotFoundException
 import jakarta.validation.Valid
-import lombok.extern.slf4j.Slf4j
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.data.domain.Pageable
@@ -32,7 +32,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import org.yaml.snakeyaml.internal.Logger
 
 @RestController
 @RequestMapping("/api/v1/articles")
@@ -40,10 +39,6 @@ class ArticleController(
     private val articlesService: ArticlesService,
     private val reviewerService: ReviewerService
 ) {
-
-    companion object {
-        val logger = Logger.getLogger(ArticleController::class.java.name);
-    }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -53,11 +48,12 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.CREATED).body(
                 BaseResponseDto(
                     code = 201,
-                    message = "Article submitted successfully",
+                    message = "article.submitted",
                     data = created
                 )
             )
         } catch (ex: AccessDeniedException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 BaseResponseDto(
                     code = 403,
@@ -65,6 +61,7 @@ class ArticleController(
                 )
             )
         } catch (ex: IllegalStateException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 BaseResponseDto(
                     code = 400,
@@ -72,11 +69,11 @@ class ArticleController(
                 )
             )
         } catch (ex: Exception) {
-            logger.warn("Error submitting article: ${ex.message}")
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -89,14 +86,24 @@ class ArticleController(
         @RequestParam(required = false) author: String?,
         @RequestParam(required = false) status: ArticleStatus?,
     ): ResponseEntity<BaseResponseDto<PageResponseDto<ArticleDto>>> {
-        val articles = articlesService.getAll(pageable, title, author, status)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Articles retrieved successfully",
-                data = PageResponseDto.from(articles)
+        return try {
+            val articles = articlesService.getAll(pageable, title, author, status)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "article.list.retrieved",
+                    data = PageResponseDto.from(articles)
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @GetMapping("/dashboard/stats")
@@ -105,14 +112,24 @@ class ArticleController(
         @RequestParam(required = false) author: String?,
         @RequestParam(required = false) status: ArticleStatus?,
     ): ResponseEntity<BaseResponseDto<ArticleDashboardStatsDto>> {
-        val stats = articlesService.getDashboardStats(title, author, status)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "article.dashboard.stats.retrieved",
-                data = stats,
+        return try {
+            val stats = articlesService.getDashboardStats(title, author, status)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "article.dashboard.stats.retrieved",
+                    data = stats,
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @GetMapping("/{id}")
@@ -122,15 +139,16 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Article retrieved",
+                    message = "article.retrieved",
                     data = article
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "article.notFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_NOT_FOUND.key
                 )
             )
         }
@@ -145,7 +163,7 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Article updated",
+                    message = "article.updated",
                     data = updated
                 )
             )
@@ -153,7 +171,7 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -167,14 +185,14 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Article deleted"
+                    message = "article.deleted"
                 )
             )
         } catch (ex: EntityNotFoundException) {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "article.notFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_NOT_FOUND.key
                 )
             )
         }
@@ -191,7 +209,7 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Initial review recorded",
+                    message = "article.initialReview.recorded",
                     data = reviewed
                 )
             )
@@ -199,7 +217,15 @@ class ArticleController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "article.notFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_NOT_FOUND.key
+                )
+            )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -211,14 +237,31 @@ class ArticleController(
         @PathVariable id: String,
         @Valid @RequestBody request: ArticleLinkUpdateRequestDto
     ): ResponseEntity<BaseResponseDto<ArticleDto>> {
-        val updated = articlesService.updateLink(id, request.link)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Article link updated",
-                data = updated
+        return try {
+            val updated = articlesService.updateLink(id, request.link)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "article.link.updated",
+                    data = updated
+                )
             )
-        )
+        } catch (ex: EntityNotFoundException) {
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                BaseResponseDto(
+                    code = 404,
+                    message = ex.message ?: ErrorCode.ARTICLE_NOT_FOUND.key
+                )
+            )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @PostMapping("/{id}/reviewers")
@@ -232,7 +275,7 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Reviewer assigned successfully",
+                    message = "article.reviewer.assigned",
                     data = article
                 )
             )
@@ -263,15 +306,16 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Article moved to REVIEWS_COMPLETED",
+                    message = "article.reviews.completed",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -287,15 +331,16 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Revisions requested",
+                    message = "article.revisions.requested",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -311,14 +356,15 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Article approved"
+                    message = "article.approved"
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -334,14 +380,15 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Article rejected"
+                    message = "article.rejected"
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -358,15 +405,16 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Reviewers contacted successfully",
+                    message = "article.reviewers.contacted",
                     data = reviewers
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.badRequest().body(
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = 400,
-                    message = ex.message ?: "error.invalid.request"
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -375,27 +423,47 @@ class ArticleController(
     @GetMapping("/{id}/reviewers")
     @PreAuthorize("isAuthenticated()")
     fun getReviewers(@PathVariable id: String): ResponseEntity<BaseResponseDto<List<ReviewerDto>>> {
-        val reviewers = articlesService.getReviewers(id)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Reviewers retrieved",
-                data = reviewers
+        return try {
+            val reviewers = articlesService.getReviewers(id)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "article.reviewers.retrieved",
+                    data = reviewers
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @GetMapping("/{id}/reviewer-candidates")
     @PreAuthorize("isAuthenticated()")
     fun getReviewerCandidates(@PathVariable id: String): ResponseEntity<BaseResponseDto<List<UserDto>>> {
-        val users = articlesService.getReviewerCandidates(id)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Reviewer candidates retrieved",
-                data = users
+        return try {
+            val users = articlesService.getReviewerCandidates(id)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "article.reviewerCandidates.retrieved",
+                    data = users
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 
     @DeleteMapping("/{id}/reviewers/{reviewerId}")
@@ -409,11 +477,12 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Reviewer unassigned successfully",
+                    message = "article.reviewer.unassigned",
                     data = article
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
@@ -421,6 +490,7 @@ class ArticleController(
                 )
             )
         } catch (ex: AccessDeniedException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 BaseResponseDto(
                     code = 403,
@@ -428,10 +498,11 @@ class ArticleController(
                 )
             )
         } catch (ex: Exception) {
-            ResponseEntity.badRequest().body(
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
-                    code = 400,
-                    message = ex.message ?: "error.invalid.request"
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -449,15 +520,16 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Revision submitted successfully",
+                    message = "article.revision.submitted",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -473,15 +545,16 @@ class ArticleController(
             ResponseEntity.ok(
                 BaseResponseDto(
                     code = 200,
-                    message = "Revisions started",
+                    message = "article.revisions.started",
                     data = updated
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }

@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.ConferenceMembershipDto
 import com.example.researchreview.exceptions.BusinessLogicException
@@ -36,6 +37,7 @@ class ConferenceRegistrationController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
@@ -43,6 +45,7 @@ class ConferenceRegistrationController(
                 )
             )
         } catch (ex: AccessDeniedException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 BaseResponseDto(
                     code = 403,
@@ -50,10 +53,19 @@ class ConferenceRegistrationController(
                 )
             )
         } catch (ex: BusinessLogicException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 BaseResponseDto(
                     code = 400,
                     message = ex.message ?: "error.badRequest",
+                )
+            )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key,
                 )
             )
         }

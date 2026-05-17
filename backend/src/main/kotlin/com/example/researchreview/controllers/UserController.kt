@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.UserDto
@@ -43,10 +44,11 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = null
                 )
             )
@@ -81,10 +83,11 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = null
                 )
             )
@@ -103,6 +106,7 @@ class UserController(
                 )
             )
         } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
@@ -111,10 +115,11 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = null
                 )
             )
@@ -134,6 +139,7 @@ class UserController(
                 )
             )
         } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
@@ -142,10 +148,11 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = null
                 )
             )
@@ -168,6 +175,7 @@ class UserController(
                 )
             )
         } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400, //
@@ -176,10 +184,11 @@ class UserController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = null
                 )
             )

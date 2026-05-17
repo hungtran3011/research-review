@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.ReviewerInviteDecisionDto
 import com.example.researchreview.dtos.ReviewerInviteResolveDto
@@ -42,6 +43,7 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
@@ -50,10 +52,11 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = msg("error.internal.server"),
+                    message = msg(ErrorCode.INTERNAL_SERVER.key),
                     data = null
                 )
             )
@@ -73,6 +76,7 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
@@ -96,6 +100,7 @@ class ReviewerInviteController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,

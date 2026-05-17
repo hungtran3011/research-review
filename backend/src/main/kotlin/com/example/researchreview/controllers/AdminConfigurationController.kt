@@ -48,23 +48,53 @@ class AdminConfigurationController(
 
     @GetMapping("/conferences")
     fun getConferences(): ResponseEntity<BaseResponseDto<List<ConferenceConfigDto>>> {
-        val data = adminConfigurationService.getConferences()
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conferences retrieved", data = data))
+        try {
+            val data = adminConfigurationService.getConferences()
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conferences retrieved", data = data))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @GetMapping("/conferences/{conferenceId}")
     fun getConferenceById(@PathVariable conferenceId: String): ResponseEntity<BaseResponseDto<ConferenceConfigDto>> {
-        val data = adminConfigurationService.getConferenceById(conferenceId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference retrieved", data = data))
+        try {
+            val data = adminConfigurationService.getConferenceById(conferenceId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference retrieved", data = data))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PostMapping("/conferences")
     fun createConference(
         @Valid @RequestBody request: ConferenceConfigCreateRequestDto,
     ): ResponseEntity<BaseResponseDto<ConferenceConfigDto>> {
-        val created = adminConfigurationService.createConference(request)
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(BaseResponseDto(code = 201, message = "Conference created", data = created))
+        try {
+            val created = adminConfigurationService.createConference(request)
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponseDto(code = 201, message = "Conference created", data = created))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PutMapping("/conferences/{conferenceId}")
@@ -72,8 +102,18 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @Valid @RequestBody request: ConferenceConfigUpdateRequestDto,
     ): ResponseEntity<BaseResponseDto<ConferenceConfigDto>> {
-        val updated = adminConfigurationService.updateConference(conferenceId, request)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference updated", data = updated))
+        try {
+            val updated = adminConfigurationService.updateConference(conferenceId, request)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference updated", data = updated))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PatchMapping("/conferences/{conferenceId}/settings")
@@ -81,22 +121,52 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @Valid @RequestBody request: ConferenceConfigSettingsPatchRequestDto,
     ): ResponseEntity<BaseResponseDto<ConferenceConfigDto>> {
-        val updated = adminConfigurationService.patchConferenceSettings(conferenceId, request)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference settings updated", data = updated))
+        try {
+            val updated = adminConfigurationService.patchConferenceSettings(conferenceId, request)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference settings updated", data = updated))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @DeleteMapping("/conferences/{conferenceId}")
     fun deleteConference(@PathVariable conferenceId: String): ResponseEntity<BaseResponseDto<Unit>> {
-        adminConfigurationService.deleteConference(conferenceId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference deleted", data = Unit))
+        try {
+            adminConfigurationService.deleteConference(conferenceId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference deleted", data = Unit))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @GetMapping("/conferences/{conferenceId}/members")
     fun getConferenceMembers(
         @PathVariable conferenceId: String,
     ): ResponseEntity<BaseResponseDto<List<ConferenceMembershipDto>>> {
-        val data = adminConfigurationService.getConferenceMembers(conferenceId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference members retrieved", data = data))
+        try {
+            val data = adminConfigurationService.getConferenceMembers(conferenceId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference members retrieved", data = data))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PostMapping("/conferences/{conferenceId}/members")
@@ -104,9 +174,19 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @Valid @RequestBody request: ConferenceMembershipAssignRequestDto,
     ): ResponseEntity<BaseResponseDto<ConferenceMembershipDto>> {
-        val data = adminConfigurationService.assignConferenceMember(conferenceId, request)
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(BaseResponseDto(code = 201, message = "Conference membership assigned", data = data))
+        try {
+            val data = adminConfigurationService.assignConferenceMember(conferenceId, request)
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponseDto(code = 201, message = "Conference membership assigned", data = data))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @DeleteMapping("/conferences/{conferenceId}/members/{userId}")
@@ -114,14 +194,34 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @PathVariable userId: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
+        try {
         adminConfigurationService.removeConferenceMember(conferenceId, userId)
         return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Conference membership removed", data = Unit))
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+            BaseResponseDto(
+                code = 500,
+                message = e.message ?: "error.internal.server"
+            )
+        )
+    }
     }
 
     @GetMapping("/conferences/{conferenceId}/tracks")
     fun getTracks(@PathVariable conferenceId: String): ResponseEntity<BaseResponseDto<List<AdminTrackConfigDto>>> {
-        val data = adminConfigurationService.getTracks(conferenceId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Tracks retrieved", data = data))
+        try {
+            val data = adminConfigurationService.getTracks(conferenceId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Tracks retrieved", data = data))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PostMapping("/conferences/{conferenceId}/tracks")
@@ -129,9 +229,19 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @Valid @RequestBody request: AdminTrackConfigCreateRequestDto,
     ): ResponseEntity<BaseResponseDto<AdminTrackConfigDto>> {
-        val created = adminConfigurationService.createTrack(conferenceId, request)
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(BaseResponseDto(code = 201, message = "Track created", data = created))
+        try {
+            val created = adminConfigurationService.createTrack(conferenceId, request)
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponseDto(code = 201, message = "Track created", data = created))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PutMapping("/conferences/{conferenceId}/tracks/{trackId}")
@@ -140,8 +250,18 @@ class AdminConfigurationController(
         @PathVariable trackId: String,
         @Valid @RequestBody request: AdminTrackConfigUpdateRequestDto,
     ): ResponseEntity<BaseResponseDto<AdminTrackConfigDto>> {
-        val updated = adminConfigurationService.updateTrack(conferenceId, trackId, request)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Track updated", data = updated))
+        try {
+            val updated = adminConfigurationService.updateTrack(conferenceId, trackId, request)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Track updated", data = updated))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @DeleteMapping("/conferences/{conferenceId}/tracks/{trackId}")
@@ -149,8 +269,18 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @PathVariable trackId: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
-        adminConfigurationService.deleteTrack(conferenceId, trackId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Track deleted", data = Unit))
+        try {
+            adminConfigurationService.deleteTrack(conferenceId, trackId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Track deleted", data = Unit))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @GetMapping("/conferences/{conferenceId}/topics")
@@ -158,8 +288,18 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @RequestParam(required = false) trackId: String?,
     ): ResponseEntity<BaseResponseDto<List<AdminTopicConfigDto>>> {
-        val data = adminConfigurationService.getTopics(conferenceId, trackId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Topics retrieved", data = data))
+        try {
+            val data = adminConfigurationService.getTopics(conferenceId, trackId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Topics retrieved", data = data))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PostMapping("/conferences/{conferenceId}/topics")
@@ -167,9 +307,19 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @Valid @RequestBody request: AdminTopicConfigCreateRequestDto,
     ): ResponseEntity<BaseResponseDto<AdminTopicConfigDto>> {
-        val created = adminConfigurationService.createTopic(conferenceId, request)
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(BaseResponseDto(code = 201, message = "Topic created", data = created))
+        try {
+            val created = adminConfigurationService.createTopic(conferenceId, request)
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponseDto(code = 201, message = "Topic created", data = created))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PutMapping("/conferences/{conferenceId}/topics/{topicId}")
@@ -178,8 +328,18 @@ class AdminConfigurationController(
         @PathVariable topicId: String,
         @Valid @RequestBody request: AdminTopicConfigUpdateRequestDto,
     ): ResponseEntity<BaseResponseDto<AdminTopicConfigDto>> {
-        val updated = adminConfigurationService.updateTopic(conferenceId, topicId, request)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Topic updated", data = updated))
+        try {
+            val updated = adminConfigurationService.updateTopic(conferenceId, topicId, request)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Topic updated", data = updated))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @DeleteMapping("/conferences/{conferenceId}/topics/{topicId}")
@@ -187,8 +347,18 @@ class AdminConfigurationController(
         @PathVariable conferenceId: String,
         @PathVariable topicId: String,
     ): ResponseEntity<BaseResponseDto<Unit>> {
-        adminConfigurationService.deleteTopic(conferenceId, topicId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Topic deleted", data = Unit))
+        try {
+            adminConfigurationService.deleteTopic(conferenceId, topicId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Topic deleted", data = Unit))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @GetMapping("/users")
@@ -196,15 +366,25 @@ class AdminConfigurationController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<BaseResponseDto<PageResponseDto<UserDto>>> {
-        val safePage = if (page < 0) 0 else page
-        val safeSize = when {
-            size < 1 -> 10
-            size > 100 -> 100
-            else -> size
+        try {
+            val safePage = if (page < 0) 0 else page
+            val safeSize = when {
+                size < 1 -> 10
+                size > 100 -> 100
+                else -> size
+            }
+            val pageable = PageRequest.of(safePage, safeSize)
+            val users = adminConfigurationService.getUsers(pageable)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Users retrieved", data = PageResponseDto.from(users)))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
         }
-        val pageable = PageRequest.of(safePage, safeSize)
-        val users = adminConfigurationService.getUsers(pageable)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Users retrieved", data = PageResponseDto.from(users)))
     }
 
     @GetMapping("/users/search")
@@ -217,24 +397,44 @@ class AdminConfigurationController(
         @RequestParam(required = false) role: String?,
         @RequestParam(required = false) status: String?,
     ): ResponseEntity<BaseResponseDto<PageResponseDto<UserDto>>> {
-        val safePage = if (page < 0) 0 else page
-        val safeSize = when {
-            size < 1 -> 10
-            size > 100 -> 100
-            else -> size
+        try {
+            val safePage = if (page < 0) 0 else page
+            val safeSize = when {
+                size < 1 -> 10
+                size > 100 -> 100
+                else -> size
+            }
+            val pageable = PageRequest.of(safePage, safeSize)
+            val users = adminConfigurationService.searchUsers(name, email, institutionName, role, status, pageable)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Users retrieved", data = PageResponseDto.from(users)))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
         }
-        val pageable = PageRequest.of(safePage, safeSize)
-        val users = adminConfigurationService.searchUsers(name, email, institutionName, role, status, pageable)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "Users retrieved", data = PageResponseDto.from(users)))
     }
 
     @PostMapping("/users")
     fun createUser(
         @Valid @RequestBody request: AdminCreateUserRequestDto,
     ): ResponseEntity<BaseResponseDto<UserDto>> {
-        val created = adminConfigurationService.createUser(request)
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(BaseResponseDto(code = 201, message = "User created", data = created))
+        try {
+            val created = adminConfigurationService.createUser(request)
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponseDto(code = 201, message = "User created", data = created))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PatchMapping("/users/{userId}/role")
@@ -243,9 +443,19 @@ class AdminConfigurationController(
         @Valid @RequestBody request: UserRoleUpdateRequestDto,
         @AuthenticationPrincipal principal: Jwt,
     ): ResponseEntity<BaseResponseDto<UserDto>> {
-        val actorRole = extractRole(principal)
-        val updated = adminConfigurationService.updateUserRole(userId, request.role, actorRole)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User role updated", data = updated))
+        try {
+            val actorRole = extractRole(principal)
+            val updated = adminConfigurationService.updateUserRole(userId, request.role, actorRole)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User role updated", data = updated))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @PatchMapping("/users/{userId}/status")
@@ -253,14 +463,34 @@ class AdminConfigurationController(
         @PathVariable userId: String,
         @Valid @RequestBody request: UserStatusUpdateRequestDto,
     ): ResponseEntity<BaseResponseDto<UserDto>> {
-        val updated = adminConfigurationService.updateUserStatus(userId, request.status)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User status updated", data = updated))
+        try {
+            val updated = adminConfigurationService.updateUserStatus(userId, request.status)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User status updated", data = updated))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     @DeleteMapping("/users/{userId}")
     fun deleteUser(@PathVariable userId: String): ResponseEntity<BaseResponseDto<Unit>> {
-        adminConfigurationService.deleteUser(userId)
-        return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User deleted", data = Unit))
+        try {
+            adminConfigurationService.deleteUser(userId)
+            return ResponseEntity.ok(BaseResponseDto(code = 200, message = "User deleted", data = Unit))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = e.message ?: "error.internal.server"
+                )
+            )
+        }
     }
 
     private fun extractRole(principal: Jwt): GlobalRole {
@@ -269,7 +499,11 @@ class AdminConfigurationController(
             ?: throw AccessDeniedException("Role information missing")
         return try {
             GlobalRole.valueOf(roleName)
-        } catch (_: IllegalArgumentException) {
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            throw AccessDeniedException("Invalid role in token: $roleName")
+        } catch (e: Exception) {
+            e.printStackTrace()
             throw AccessDeniedException("Invalid role in token: $roleName")
         }
     }

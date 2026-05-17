@@ -1,5 +1,6 @@
 package com.example.researchreview.exceptions
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.ErrorResponseDto
 import jakarta.persistence.EntityNotFoundException
@@ -81,7 +82,7 @@ class ExceptionController(
             ErrorResponseDto(
                 status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 errorCode = "INTERNAL_SERVER_ERROR",
-                message = msg("error.internal.server"),
+                message = msg(ErrorCode.INTERNAL_SERVER.key),
             )
         )
     }

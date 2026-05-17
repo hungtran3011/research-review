@@ -420,7 +420,7 @@ class ArticlesServiceImpl(
         }
         // Ensure we have a managed article instance by fetching it fresh
         val managedArticle = articleRepository.findById(article.id)
-            .orElseThrow { EntityNotFoundException("article.notFound") }
+            .orElseThrow { EntityNotFoundException(com.example.researchreview.constants.ErrorCode.ARTICLE_NOT_FOUND.key) }
         authors.forEachIndexed { index, dto ->
             val savedAuthor = persistAuthor(dto)
             val relation = ArticleAuthor().apply {
@@ -440,7 +440,7 @@ class ArticlesServiceImpl(
         }
 
         val managedArticle = articleRepository.findById(article.id)
-            .orElseThrow { EntityNotFoundException("article.notFound") }
+            .orElseThrow { EntityNotFoundException(com.example.researchreview.constants.ErrorCode.ARTICLE_NOT_FOUND.key) }
 
         topics.forEach { topic ->
             articleTopicRepository.save(

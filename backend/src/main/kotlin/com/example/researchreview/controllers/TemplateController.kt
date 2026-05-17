@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.TemplateDto
@@ -31,10 +32,11 @@ class TemplateController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = TemplateDto()
                 )
             )
@@ -68,12 +70,6 @@ class TemplateController(
         val deleted = templateService.delete(id)
         return ResponseEntity.ok(mapOf("success" to deleted))
     }
-//
-//    @PostMapping("/render")
-//    fun renderTemplate(@RequestBody renderDto: TemplateRenderDto): ResponseEntity<Map<String, String>> {
-//        val renderedHtml = templateService.renderTemplate(renderDto.templateId, renderDto.variables)
-//        return ResponseEntity.ok(mapOf("renderedHtml" to renderedHtml))
-//    }
 
     @GetMapping("/{id}/content")
     fun getTemplateContent(@PathVariable id: String): ResponseEntity<Map<String, String>> {

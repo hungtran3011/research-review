@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.ArticleVersionCreateRequestDto
 import com.example.researchreview.dtos.ArticleVersionDto
 import com.example.researchreview.dtos.BaseResponseDto
@@ -41,17 +42,27 @@ class ArticleVersionController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "articleVersion.articleOrAttachmentNotFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_NOT_FOUND.key
                 )
             )
         } catch (ex: IllegalStateException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 BaseResponseDto(
                     code = 400,
-                    message = ex.message ?: "articleVersion.invalidRequest"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_INVALID_REQUEST.key
+                )
+            )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -59,14 +70,24 @@ class ArticleVersionController(
 
     @GetMapping
     fun listVersions(@PathVariable articleId: String): ResponseEntity<BaseResponseDto<List<ArticleVersionDto>>> {
-        val versions = articleVersionService.listVersions(articleId)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "articleVersion.retrieved",
-                data = versions
+        return try {
+            val versions = articleVersionService.listVersions(articleId)
+            ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "articleVersion.retrieved",
+                    data = versions
+                )
+            )   
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
             )
-        )
+        } 
     }
 
     @PostMapping("/{version}/attachments")
@@ -85,17 +106,19 @@ class ArticleVersionController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "articleVersion.articleOrAttachmentNotFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_NOT_FOUND.key
                 )
             )
         } catch (ex: IllegalStateException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 BaseResponseDto(
                     code = 400,
-                    message = ex.message ?: "articleVersion.invalidRequest"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_INVALID_REQUEST.key
                 )
             )
         }
@@ -116,10 +139,11 @@ class ArticleVersionController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "articleVersion.notFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_NOT_FOUND.key
                 )
             )
         }
@@ -141,17 +165,19 @@ class ArticleVersionController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "articleVersion.mainAttachmentNotFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_NOT_FOUND.key
                 )
             )
         } catch (ex: IllegalStateException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 BaseResponseDto(
                     code = 400,
-                    message = ex.message ?: "articleVersion.invalidRequest"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_INVALID_REQUEST.key
                 )
             )
         }
@@ -174,17 +200,27 @@ class ArticleVersionController(
                 )
             )
         } catch (ex: EntityNotFoundException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 BaseResponseDto(
                     code = 404,
-                    message = ex.message ?: "articleVersion.articleOrAttachmentNotFound"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_NOT_FOUND.key
                 )
             )
         } catch (ex: IllegalStateException) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 BaseResponseDto(
                     code = 400,
-                    message = ex.message ?: "articleVersion.invalidRequest"
+                    message = ex.message ?: ErrorCode.ARTICLE_VERSION_INVALID_REQUEST.key
+                )
+            )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }

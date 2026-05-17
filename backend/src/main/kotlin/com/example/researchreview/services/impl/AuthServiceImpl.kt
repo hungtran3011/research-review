@@ -97,6 +97,7 @@ class AuthServiceImpl(
         try {
             setTokensAsCookiesForUser(created.id)
         } catch (e: Exception) {
+            e.printStackTrace()
             // don't fail creation if cookie setting fails (may be non-web context)
         }
     }
@@ -199,6 +200,7 @@ class AuthServiceImpl(
                 redisTemplate.delete(resendCountKey(email, deviceFingerprint))
                 issued
             } catch (e: Exception) {
+            e.printStackTrace()
                 // fallback: treat any failure as token invalid
                 throw TokenInvalidException()
             }
@@ -239,6 +241,7 @@ class AuthServiceImpl(
             }
             return tokens
         } catch (e: Exception) {
+            e.printStackTrace()
             throw TokenInvalidException()
         }
     }

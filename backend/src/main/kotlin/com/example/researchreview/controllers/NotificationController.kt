@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.NotificationDto
 import com.example.researchreview.dtos.PageResponseDto
@@ -24,15 +25,26 @@ class NotificationController(
 
     @GetMapping
     fun list(@RequestParam(defaultValue = "0") page: Int, @RequestParam(defaultValue = "20") size: Int): ResponseEntity<BaseResponseDto<PageResponseDto<NotificationDto>>> {
-        val pageable = PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))
-        val notifications = notificationService.getCurrentUserNotifications(pageable)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Notifications retrieved",
-                data = PageResponseDto.from(notifications)
+        try {
+            val pageable = PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, 100))
+            val notifications = notificationService.getCurrentUserNotifications(pageable)
+            return ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "Notifications retrieved",
+                    data = PageResponseDto.from(notifications)
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key,
+                    data = null
+                )
+            )
+        }
     }
 
     @PostMapping("/{id}/read")
@@ -40,16 +52,17 @@ class NotificationController(
         return try {
             notificationService.markAsRead(id)
             ResponseEntity.ok(
-                BaseResponseDto(
+                BaseResponseDto<Unit>(
                     code = 200,
                     message = "Notification marked as read"
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                BaseResponseDto(
+                BaseResponseDto<Unit>(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }

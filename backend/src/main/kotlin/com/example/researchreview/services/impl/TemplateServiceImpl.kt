@@ -114,6 +114,7 @@ class TemplateServiceImpl @Autowired constructor(
         try {
             template.bucketPath?.let { s3Service.delete(bucketName, it) }
         } catch (e: Exception) {
+            e.printStackTrace()
             // Log error but continue with database deletion
             println("Error deleting from S3: ${e.message}")
         }
@@ -213,6 +214,7 @@ class TemplateServiceImpl @Autowired constructor(
         return try {
             jacksonObjectMapper().readValue(json, List::class.java) as? List<String>
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
@@ -222,6 +224,7 @@ class TemplateServiceImpl @Autowired constructor(
         return try {
             jacksonObjectMapper().writeValueAsString(list)
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }

@@ -179,6 +179,7 @@ class AuthController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,

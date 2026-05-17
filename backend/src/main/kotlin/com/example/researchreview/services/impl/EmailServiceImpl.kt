@@ -45,6 +45,7 @@ class EmailServiceImpl(
             throw SendEmailFailedException()
         }
         catch (e: Exception) {
+            e.printStackTrace()
             println(e)
             throw InternalErrorException()
         }

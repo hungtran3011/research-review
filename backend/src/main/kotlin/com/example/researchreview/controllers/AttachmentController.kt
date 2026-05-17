@@ -1,6 +1,7 @@
 package com.example.researchreview.controllers
 
 import com.example.researchreview.constants.AttachmentKind
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.AttachmentDto
 import com.example.researchreview.dtos.AttachmentFinalizeRequestDto
 import com.example.researchreview.dtos.AttachmentUploadRequestDto
@@ -47,10 +48,11 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -73,10 +75,11 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -97,10 +100,11 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
@@ -132,35 +136,57 @@ class AttachmentController(
                 )
             )
         } catch (ex: Exception) {
+            ex.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = ex.message ?: "error.internal.server"
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
                 )
             )
         }
     }
 
     @GetMapping("/attachments/{attachmentId}/download")
-    fun downloadAttachment(@PathVariable attachmentId: String): ResponseEntity<ByteArrayResource> {
-        val download = attachmentService.downloadAttachment(attachmentId)
-        val resource = ByteArrayResource(download.bytes)
-        return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${download.fileName}\"")
-            .contentType(MediaType.parseMediaType(download.mimeType))
-            .contentLength(download.bytes.size.toLong())
-            .body(resource)
+    fun downloadAttachment(@PathVariable attachmentId: String): ResponseEntity<Any> {
+        try {
+            val download = attachmentService.downloadAttachment(attachmentId)
+            val resource = ByteArrayResource(download.bytes)
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${download.fileName}\"")
+                .contentType(MediaType.parseMediaType(download.mimeType))
+                .contentLength(download.bytes.size.toLong())
+                .body(resource)
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto<Unit>(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key,
+                    data = null
+                )
+            )
+        }
     }
 
     @GetMapping("/attachments/{attachmentId}/download-url")
     fun downloadUrl(@PathVariable attachmentId: String): ResponseEntity<BaseResponseDto<String>> {
-        val url = attachmentService.downloadUrl(attachmentId)
-        return ResponseEntity.ok(
-            BaseResponseDto(
-                code = 200,
-                message = "Download URL generated",
-                data = url
+        try {
+            val url = attachmentService.downloadUrl(attachmentId)
+            return ResponseEntity.ok(
+                BaseResponseDto(
+                    code = 200,
+                    message = "Download URL generated",
+                    data = url
+                )
             )
-        )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                BaseResponseDto(
+                    code = 500,
+                    message = ex.message ?: ErrorCode.INTERNAL_SERVER.key
+                )
+            )
+        }
     }
 }

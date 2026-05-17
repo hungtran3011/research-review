@@ -1,5 +1,6 @@
 package com.example.researchreview.controllers
 
+import com.example.researchreview.constants.ErrorCode
 import com.example.researchreview.dtos.BaseResponseDto
 import com.example.researchreview.dtos.PageResponseDto
 import com.example.researchreview.dtos.EditorDto
@@ -30,10 +31,11 @@ class EditorController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = EditorDto()
                 )
             )
@@ -69,10 +71,11 @@ class EditorController(
                 )
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
-                    message = "error.internal.server",
+                    message = ErrorCode.INTERNAL_SERVER.key,
                     data = EditorDto()
                 )
             )
