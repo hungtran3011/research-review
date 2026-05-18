@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
+import org.slf4j.LoggerFactory
+import jakarta.annotation.PostConstruct
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -20,6 +22,8 @@ class ResendEmailServiceImpl(
     private val objectMapper: ObjectMapper
 ) : EmailService {
 
+    private val log = LoggerFactory.getLogger(ResendEmailServiceImpl::class.java)
+
     @Value("\${resend.api-key:}")
     private val apiKey: String = ""
 
@@ -27,6 +31,11 @@ class ResendEmailServiceImpl(
     private val fromEmail: String = ""
 
     private val httpClient = HttpClient.newBuilder().build()
+
+    @PostConstruct
+    fun init() {
+        log.info("ResendEmailServiceImpl loaded. API key present: ${apiKey.isNotBlank()}, From email: $fromEmail")
+    }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private data class ResendAttachment(
@@ -55,7 +64,7 @@ class ResendEmailServiceImpl(
         attachment: Map<String, ByteArray>?
     ) {
         if (apiKey.isBlank() || fromEmail.isBlank()) {
-            println("Resend API key or From Email is missing in configuration.")
+            log.error("Resend API key or From Email is missing. apiKey blank: ${apiKey.isBlank()}, fromEmail blank: ${fromEmail.isBlank()}")
             throw SendEmailFailedException()
         }
 
@@ -77,6 +86,7 @@ class ResendEmailServiceImpl(
         )
 
         val jsonBody = objectMapper.writeValueAsString(payload)
+        log.info("Sending email via Resend to: $to, subject: $subject")
 
         val request = HttpRequest.newBuilder()
             .uri(URI.create("https://api.resend.com/emails"))
@@ -88,13 +98,14 @@ class ResendEmailServiceImpl(
         try {
             val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() !in 200..299) {
-                println("Resend API failed with status ${response.statusCode()}: ${response.body()}")
+                log.error("Resend API failed with status ${response.statusCode()}: ${response.body()}")
                 throw SendEmailFailedException()
             }
+            log.info("Resend API success: ${response.body()}")
         } catch (e: SendEmailFailedException) {
             throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.error("Resend API call failed with exception", e)
             throw InternalErrorException()
         }
     }
