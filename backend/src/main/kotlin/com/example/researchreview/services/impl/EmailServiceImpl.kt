@@ -10,8 +10,10 @@ import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.JavaMailSenderImpl
 import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.stereotype.Service
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 
 @Service
+@ConditionalOnProperty(name = ["email.provider"], havingValue = "smtp", matchIfMissing = true)
 class EmailServiceImpl(
     private val emailSender: JavaMailSender,
 ): EmailService {
