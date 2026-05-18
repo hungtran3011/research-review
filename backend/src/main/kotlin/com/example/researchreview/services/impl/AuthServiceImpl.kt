@@ -17,6 +17,7 @@ import org.apache.http.client.utils.URIBuilder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import org.slf4j.LoggerFactory
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.TimeUnit
@@ -34,6 +35,8 @@ class AuthServiceImpl(
     private val redisTemplate: RedisTemplate<String, String>,
     private val jwtService: JwtService,
 ): AuthService {
+
+    private val log = LoggerFactory.getLogger(AuthServiceImpl::class.java)
 
     @Value("\${custom.front-end-url}")
     private val frontendUrl: String = ""
@@ -103,36 +106,46 @@ class AuthServiceImpl(
     }
 
     override fun signInWithMail(email: String, deviceFingerprint: String?): MagicLinkSendResult {
+        log.info("[signIn] Looking up user by email")
         if (usersService.getByEmail(email) === null) {
             throw UserNotFoundException()
         }
+        log.info("[signIn] User found, deleting resend keys from Redis...")
         // reset resend keys so the user can request again immediately for sign-in
         redisTemplate.delete(resendKey(email, deviceFingerprint))
+        log.info("[signIn] Deleted resend key")
         redisTemplate.delete(resendCountKey(email, deviceFingerprint))
+        log.info("[signIn] Deleted resend count key, calling sendMagicLink...")
         return sendMagicLink(email, false, deviceFingerprint)
     }
 
     override fun sendMagicLink(email: String, isSignUp: Boolean, deviceFingerprint: String?): MagicLinkSendResult {
+        log.info("[sendMagicLink] Starting for email (isSignUp=$isSignUp)")
         val rKey = resendKey(email, deviceFingerprint)
         val rCountKey = resendCountKey(email, deviceFingerprint)
         val eKey = emailKey(email, deviceFingerprint)
         val fpHash = fingerprintHash(deviceFingerprint)
 
+        log.info("[sendMagicLink] Reading resend count from Redis...")
         val resendCount = redisTemplate.opsForValue().get(rCountKey)?.toIntOrNull() ?: 0
+        log.info("[sendMagicLink] resendCount=$resendCount")
         val waitTime = when (resendCount) {
             0 -> 30L
             1 -> 60L
             else -> 120L
         }
 
+        log.info("[sendMagicLink] Checking resend lock...")
         if (redisTemplate.opsForValue().get(rKey) != null) {
             val ttl = redisTemplate.getExpire(rKey, TimeUnit.SECONDS)?.coerceAtLeast(0)
             throw TooManyCodeRequestException(ttl ?: 30)
         }
 
         val token = CodeGen.genCode()
+        log.info("[sendMagicLink] Storing token in Redis...")
         // store hashed token, not the raw token
         redisTemplate.opsForValue().set(eKey, magicPayload(CodeGen.sha512(token), fpHash), 5, TimeUnit.MINUTES)
+        log.info("[sendMagicLink] Setting resend lock...")
         // set resend lock and increment resend counter
         redisTemplate.opsForValue().set(rKey, "1", waitTime, TimeUnit.SECONDS)
         redisTemplate.opsForValue().set(rCountKey, (resendCount + 1).toString())
@@ -142,6 +155,7 @@ class AuthServiceImpl(
         url.addParameter("token", token)
         url.addParameter("email", email)
         url.addParameter("isSignUp", isSignUp.toString())
+        log.info("[sendMagicLink] Calling emailService.sendEmail...")
         emailService.sendEmail(
             to = listOf(email),
             subject = "Research Review Signup",
@@ -151,6 +165,7 @@ class AuthServiceImpl(
             """.trimIndent(),
             template = "signup-email"
         )
+        log.info("[sendMagicLink] Email sent successfully")
 
         val attemptsRemaining = (3 - (resendCount + 1)).coerceAtLeast(0)
         return MagicLinkSendResult(cooldownSeconds = waitTime, attemptsRemaining = attemptsRemaining)

@@ -17,6 +17,7 @@ import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.slf4j.LoggerFactory
 import java.time.Instant
 
 @RestController
@@ -27,6 +28,7 @@ class AuthController(
 ) {
 
     private fun msg(code: String): String = messageSource.getMessage(code, null, LocaleContextHolder.getLocale())
+    private val log = LoggerFactory.getLogger(AuthController::class.java)
 
     @PostMapping("/signup")
     fun signUp(@Valid @RequestBody request: AuthRequestDto): ResponseEntity<BaseResponseDto<AuthResponseDto>> {
@@ -71,7 +73,8 @@ class AuthController(
                     data = AuthResponseDto(success = false, message = msg("auth.emailAlreadyVerified"))
                 )
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.error("[signUp] Unhandled exception", e)
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 BaseResponseDto(
                     code = 500,
@@ -129,7 +132,8 @@ class AuthController(
                     data = AuthResponseDto(success = false, message = msg("auth.internalServer"))
                 )
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.error("[signIn] Unhandled exception", e)
             return ResponseEntity.badRequest().body(
                 BaseResponseDto(
                     code = 400,
