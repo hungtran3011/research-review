@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service
 
 @Service
 class EmailServiceImpl(
-    private val emailSender: JavaMailSender
+    private val emailSender: JavaMailSender,
+    
+    @Value("\${spring.mail.username}")
+    private val fromEmail: String
 ): EmailService {
     override fun sendEmail(
         to: List<String>,
@@ -25,8 +28,11 @@ class EmailServiceImpl(
     ) {
         val mimeMessage = emailSender.createMimeMessage()
         val helper = MimeMessageHelper(
-            mimeMessage, attachment != null && attachment.isNotEmpty()
+            mimeMessage, attachment != null && attachment.isNotEmpty(), "UTF-8"
         )
+        if (fromEmail.isNotBlank()) {
+            helper.setFrom(fromEmail)
+        }
         helper.setTo(to.toTypedArray())
         cc?.takeIf { it.isNotEmpty() }?.toTypedArray()?.let { helper.setCc(it) }
         bcc?.takeIf { it.isNotEmpty() }?.toTypedArray()?.let { helper.setBcc(it) }
