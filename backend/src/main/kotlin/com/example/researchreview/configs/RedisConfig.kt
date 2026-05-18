@@ -18,10 +18,25 @@ class RedisConfig {
     @Value("\${spring.data.redis.port}")
     var port: Int = 6379
 
+    @Value("\${spring.data.redis.password:}")
+    var password: String = ""
+
+    @Value("\${spring.data.redis.ssl.enabled:false}")
+    var sslEnabled: Boolean = false
+
     @Bean
     fun redisConnectionFactory(): RedisConnectionFactory {
         val redisConfig = RedisStandaloneConfiguration(host, port)
-        return LettuceConnectionFactory(redisConfig)
+        if (password.isNotBlank()) {
+            redisConfig.setPassword(password)
+        }
+        val clientConfig = io.lettuce.core.ClientOptions.builder()
+            .build()
+        val lettuceClientConfig = org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.builder()
+        if (sslEnabled) {
+            lettuceClientConfig.useSsl().disablePeerVerification()
+        }
+        return LettuceConnectionFactory(redisConfig, lettuceClientConfig.build())
     }
 
     @Bean
