@@ -4,6 +4,7 @@ import com.example.researchreview.exceptions.InternalErrorException
 import com.example.researchreview.exceptions.SendEmailFailedException
 import com.example.researchreview.services.EmailService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.mail.MailException
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.JavaMailSenderImpl
@@ -13,10 +14,11 @@ import org.springframework.stereotype.Service
 @Service
 class EmailServiceImpl(
     private val emailSender: JavaMailSender,
-    
-    @Value("\${spring.mail.username}")
-    private val fromEmail: String
 ): EmailService {
+
+    @Value("\${spring.mail.username}")
+    private val fromEmail: String = ""
+
     override fun sendEmail(
         to: List<String>,
         cc: List<String>?,
