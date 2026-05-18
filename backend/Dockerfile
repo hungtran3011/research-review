@@ -29,6 +29,9 @@ RUN jlink \
 FROM alpine:3.19
 WORKDIR /app
 
+# Fix JVM DNS resolution on Alpine (musl libc incompatibility)
+RUN apk add --no-cache libc6-compat
+
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
